@@ -1,0 +1,83 @@
+You are on a different computer. Continue a Forge of Empires browser-automation check from scratch, but do not modify any project repo permanently. Use only temporary files under /tmp or an equivalent temp directory.
+
+Goal:
+1. Verify whether Forge of Empires can be opened, registered, logged into, and actually played from this computer.
+2. Reuse the already-created test account first instead of creating a new one:
+   - Username: ForgeProbe97028539
+   - Password: TempPass123!
+3. If login works and the game client loads, stop there and report success with screenshots.
+4. If login works but the game client fails, report the exact blocker with screenshots and any relevant console/network/runtime details.
+5. Only create a new account if the above credentials no longer work.
+
+Important context from the previous machine:
+- The Forge of Empires landing page was automatable.
+- The landing page defaults to the Login tab.
+- The Register tab exists but is hidden behind CSS tabs.
+- A new account was successfully created via the Register tab.
+- After registration, the flow redirected through:
+  - us-play.forgeofempires.com
+  - us0.forgeofempires.com/start/index?action=token_login...
+  - a game server like us26.forgeofempires.com/game/index?
+- On that machine, the actual game client failed with:
+  - "Something went wrong"
+  - "The game could not load properly. Try to reload the game!"
+- The network logs there included:
+  - track_loading_process&step=hw_acc_not_supported
+- That strongly suggests the previous machine lacked usable WebGL / hardware acceleration for the live game client.
+- Logging into the account homepage worked fine, but entering the real city/client did not.
+
+What to do:
+1. Check local browser tooling.
+   - Prefer Chromium/Chrome plus Playwright.
+   - If needed, install Playwright into a temp directory only.
+2. Use a visible browser if possible, not just headless, because the issue may be GPU/WebGL-related.
+3. Try Chromium/Chrome with software-rendering / compatibility flags if needed, for example:
+   - --ignore-gpu-blocklist
+   - --enable-webgl
+   - --use-angle=swiftshader
+4. First test login with the existing account:
+   - Go to https://us-play.forgeofempires.com/
+   - Accept cookies if prompted.
+   - Stay on Login tab.
+   - Log in with:
+     - Username: ForgeProbe97028539
+     - Password: TempPass123!
+5. Once logged in, press the PLAY button and try to enter the actual game world/city.
+6. Capture screenshots at each major stage:
+   - Landing page
+   - Logged-in account/home page
+   - Attempt to launch game client
+   - Final result
+7. Collect useful diagnostics if the client fails:
+   - Final URL
+   - Console errors
+   - Network requests around game startup
+   - Any WebGL/GPU/browser capability issues
+8. If the existing account fails to log in, create one new throwaway account and continue the same test.
+   - Use the Register tab.
+   - If the tab is hidden via CSS radio tabs, toggle it programmatically if needed.
+   - Accept terms/privacy if required.
+9. Do not spend time on gameplay strategy. This is only a quick technical launch/playability check.
+
+Implementation hints from the previous machine:
+- The landing page had a CSS-tab structure with:
+  - Register tab label: label[for="tab1"]
+  - Login tab label: label[for="tab2"]
+- Useful register selectors previously found:
+  - #nickname-input
+  - #page_registration_step-one_input_password
+  - #page_registration_step-one_button_register
+- Useful login selectors previously found:
+  - #page_login_always-visible_input_player-identifier
+  - #page_login_always-visible_input_password
+  - #page_login_always-visible_button_login
+- Some elements looked visible on screen but reported zero-size to Playwright, so DOM-level value setting and event dispatching may be necessary.
+- On the previous machine, account creation succeeded even when normal fill/click was unreliable.
+
+Deliverable:
+Return a concise report with:
+- whether login worked
+- whether the actual game client loaded
+- exact blocker if not
+- screenshots/paths
+- whether this new computer can proceed to real gameplay
