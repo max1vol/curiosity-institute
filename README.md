@@ -1,2 +1,2 @@
 # forge-of-subjects
-A educational, fun to play game.
+An English-learning browser game prototype with a city map, lesson districts, and quick practice prompts.

@@ -99,7 +99,7 @@ const state: AppState = {
   currentOutcome: null,
   intervalDraft: { lower: "", upper: "" },
   comparisonDraft: { direction: null, confidence: 65 },
-  eventLog: ["The academy charter has been reopened."],
+  eventLog: ["The English academy gates are open again."],
   messageIndex: 0,
   clock: 0,
 };
@@ -322,18 +322,18 @@ const renderMissionList = () => {
     .length;
   const missions = [
     {
-      title: "Open the second forecasting round",
-      copy: "Complete eight interval challenges so the academy unlocks Above or Below.",
+      title: "Open the fast-answer round",
+      copy: "Complete eight interval lessons so the city unlocks Above or Below.",
       complete: state.currentRound === 2,
     },
     {
-      title: "Restore two city districts",
-      copy: "Push any two districts to stage three or higher.",
+      title: "Restore two English districts",
+      copy: "Push any two quarters to stage three or higher.",
       complete: restoredDistricts >= 2,
     },
     {
-      title: "Reach 600 prestige",
-      copy: "Accumulate enough points to attract a full scholarly crowd.",
+      title: "Reach 600 fluency",
+      copy: "Accumulate enough points to draw a full city of learners.",
       complete: state.score >= 600,
     },
   ];
@@ -388,7 +388,7 @@ const renderDetailPanel = (district: District) => {
 
   return `
     <section class="panel-card" style="--district-glow:${district.palette.glow}; --district-roof:${district.palette.roof}">
-      <p class="eyebrow">${district.subject === "science" ? "Science Quarter" : "English Quarter"}</p>
+      <p class="eyebrow">English Quarter</p>
       <div class="selected-header">
         <div class="selected-badge">${district.icon}</div>
         <div>
@@ -431,7 +431,7 @@ const renderQuizPanel = () => {
   if (!quiz && !state.currentOutcome) {
     return `
       <section class="panel-card panel-card--quiz">
-        <p class="eyebrow">Academy Quiz Desk</p>
+        <p class="eyebrow">English Lesson Desk</p>
         <h2>${nextQuiz ? "Ready for the next challenge" : "District report complete"}</h2>
         <p class="quiz-prompt">
           ${
@@ -632,7 +632,7 @@ const renderTutorial = () => {
   return `
     <div class="tutorial-shell">
       <div class="tutorial-card">
-        <p class="eyebrow">Academy Briefing</p>
+        <p class="eyebrow">Lesson Briefing</p>
         <h2>${roundCopy.title}</h2>
         <p>${roundCopy.body}</p>
         <div class="tutorial-actions">
@@ -651,10 +651,10 @@ const renderShell = () => {
     <div class="game-shell">
       <header class="topbar">
         <div class="topbar__crest">
-          <div class="crest__icon">FS</div>
+          <div class="crest__icon">FE</div>
           <div>
-            <p class="eyebrow">Forge of Subjects</p>
-            <h1>Build the learning city through estimation quests.</h1>
+            <p class="eyebrow">Forge of English</p>
+            <h1>Build an English-learning city through estimation quests.</h1>
           </div>
         </div>
         <div class="topbar__era">Round ${state.currentRound}: ${
@@ -662,15 +662,15 @@ const renderShell = () => {
         }</div>
         <div class="topbar__stats">
           <div class="resource-pill">
-            <span>Prestige</span>
+            <span>Fluency</span>
             <strong>${formatNumber(state.score)}</strong>
           </div>
           <div class="resource-pill">
-            <span>Wisdom</span>
+            <span>Word Power</span>
             <strong>${formatNumber(state.wisdom)}</strong>
           </div>
           <div class="resource-pill">
-            <span>Citizens</span>
+            <span>Learners</span>
             <strong>${formatNumber(state.citizens)}</strong>
           </div>
         </div>
@@ -680,8 +680,8 @@ const renderShell = () => {
         <section class="panel-card">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Royal Objectives</p>
-              <h2>Restoration campaign</h2>
+              <p class="eyebrow">Lesson Goals</p>
+              <h2>Fluency campaign</h2>
             </div>
           </div>
           <div class="mission-list">${renderMissionList()}</div>
@@ -690,8 +690,8 @@ const renderShell = () => {
         <section class="panel-card">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">District Map</p>
-              <h2>Choose a quarter</h2>
+              <p class="eyebrow">English Map</p>
+              <h2>Choose a district</h2>
             </div>
           </div>
           <div class="district-list">${renderDistrictList()}</div>
@@ -700,10 +700,10 @@ const renderShell = () => {
 
       <main class="panel panel--centre">
         <div class="city-stage">
-          <canvas id="city-canvas" width="1280" height="860" aria-label="Isometric learning city"></canvas>
+          <canvas id="city-canvas" width="1280" height="860" aria-label="Isometric English learning city"></canvas>
           <div class="stage-overlay">
             <div class="stage-banner">
-              <p class="eyebrow">City Chronicle</p>
+              <p class="eyebrow">Lesson Chronicle</p>
               <h2>${district.name}</h2>
               <p>${worldMessages[state.messageIndex % worldMessages.length]}</p>
             </div>
@@ -842,10 +842,10 @@ const drawCity = (canvas: HTMLCanvasElement) => {
   ctx.fillStyle = "#f8edd5";
   ctx.textAlign = "center";
   ctx.font = '700 44px "Georgia", serif';
-  ctx.fillText("Academy of Estimates", academy.x, 74);
+  ctx.fillText("Academy of English", academy.x, 74);
   ctx.font = '400 21px "Georgia", serif';
   ctx.fillStyle = "rgba(248, 237, 213, 0.9)";
-  ctx.fillText("A KS2 learning city rebuilt through judgement", academy.x, 106);
+  ctx.fillText("A KS2 city rebuilt through English estimation", academy.x, 106);
 
   districts.forEach((district) => {
     const progress = state.districtProgress[district.id];
