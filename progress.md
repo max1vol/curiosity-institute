@@ -1,0 +1,35 @@
+Original prompt: Study, take screenshots etc how https://www.quantifiedintuitions.org/estimation-game works. Then study the forge of Empires game and make a similarly looking (gemoetrical prtojection from the bird eye view) game, but instead of battles the user needs to "learn". The learning will be around KS2 science and English (assume UK curriculum). The learning should be done in the style of "estimation game" quizes. For graphics use https://github.com/gemini-cli-extensions/nanobanana (gemini cli is installed here, update if needed and install extension if needed), gemini api keys take from ~/projects/spark/web/.env.local. Obviously use subagents to parallelise the work. Make commit to the github as you progress, including maintaining TODO.md fiel with what's happening. Feel free to make commit frequently.
+
+2026-03-28
+- Started local skill loading and repo inspection.
+- Confirmed the repository had no existing application scaffold.
+- Spawned parallel agents for estimation-game research, Forge of Empires visual research, and KS2 content planning.
+- Created initial project scaffold files and TODO tracking.
+- Installed dependencies with `npm install`.
+- Verified the scaffold builds successfully with `npm run build`.
+- Quantified Intuitions findings integrated from the research subagent:
+  - The public game structure is a two-round challenge with minimal onboarding.
+  - Round 1 uses confidence intervals; Round 2 uses above/below plus confidence.
+  - Immediate result cards, visible scoring, and ceremonial but short transitions are key UI cues.
+  - Research screenshots were captured under `/tmp/qi-estimation.CstA0t/`.
+- Forge of Empires visual cues are being carried over from the earlier live browser session on this machine:
+  - Isometric bird's-eye world view
+  - Warm brass/parchment chrome
+  - District/building restoration framing
+  - Relevant screenshots are available under `/tmp/forge-probe.BWwNm0/`.
+- The prototype has now moved beyond scaffolding:
+  - Richer district and quiz data added in `src/gameData.ts`
+  - A fuller city-builder learning loop is implemented in `src/main.ts`
+  - Active HUD styling is now anchored on `src/styles.css`
+  - Production build is passing again with `npm run build`
+- Local validation completed:
+  - The Playwright client captured the isometric canvas state in `/tmp/forge-game-test/shot-0.png`
+  - Full-page UI screenshots were captured in `/tmp/forge-subjects-ui/full-home.png`, `/tmp/forge-subjects-ui/full-city.png`, and `/tmp/forge-subjects-ui/full-result.png`
+  - A sample observatory interval answer (`1200` to `1600` minutes) scored successfully and advanced district progress to stage 1
+  - No front-end runtime errors appeared beyond expected Vite debug console messages
+- Nano Banana status:
+  - The `nanobanana` Gemini extension is installed and enabled.
+  - Asset generation is currently blocked because both `GOOGLE_API_KEY` and `GEMINI_API_KEY` from `~/projects/spark/web/.env.local` are rejected by Gemini as leaked (`403 PERMISSION_DENIED`).
+- Next steps:
+  - Replace fallback geometric district blocks with generated art once a working Gemini key is available
+  - Commit and push the milestone
