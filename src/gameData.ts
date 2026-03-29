@@ -94,6 +94,15 @@ export type DistrictLearningPlan = {
   practicePrompts: PracticePrompt[];
 };
 
+export type DistrictResearchNode = {
+  id: string;
+  tier: 1 | 2 | 3;
+  name: string;
+  summary: string;
+  effect: string;
+  risk: string;
+};
+
 export type DistrictHistoryEntry = {
   quizId: string;
   points: number;
@@ -113,10 +122,10 @@ export type DistrictProgressMap = Record<DistrictId, DistrictProgressState>;
 export const districts: District[] = [
   {
     id: "laboratory",
-    name: "Discovery Lab",
+    name: "Chemistry Lab",
     subject: "science",
-    summary: "Forces, circuits, life systems, and fair tests power the first research quarter.",
-    tagline: "Experiments, evidence, and scientific systems",
+    summary: "Chemistry benches, forces, circuits, and fair tests power the first research quarter.",
+    tagline: "Chemistry, experiments, evidence, and scientific systems",
     lore: "Review the investigation rule, adapt it to a new experiment, then clear the district's estimate test.",
     icon: "⚗",
     mentor: "Dr. Imani",
@@ -254,17 +263,17 @@ export const districtsById = Object.fromEntries(
 export const learningPlans: Record<DistrictId, DistrictLearningPlan> = {
   laboratory: {
     districtId: "laboratory",
-    primerTitle: "Discovery Lab Study Sheet",
+    primerTitle: "Chemistry Lab Study Sheet",
     primerGoal: "Notice what the test is counting in a science system: parts, stages, or measured results.",
     memoryPrompt: "Hold the rule steady: in science, change one thing at a time and count only the named part of the system.",
     adaptationHint: "The lab swaps in a fresh experiment, so you must transfer the rule instead of copying the example.",
     testBrief: "The lab only opens its estimate line after you show that you can use scientific thinking in a new setup.",
     masteryReward: "Research charter",
-    cityProjectName: "Greenhouse Court",
+    cityProjectName: "Reaction Court",
     cityProjectSummary:
-      "Raise a glasshouse court with specimen tables, weather gauges, and experiment benches beside the lab.",
+      "Raise a chemistry court with reaction benches, specimen tables, glassware towers, and weather gauges beside the lab.",
     cityProjectEffect:
-      "Adds planters, instrument stands, and lit experiment stations around Discovery Lab.",
+      "Adds reaction benches, glassware stands, and lit experiment stations around Chemistry Lab.",
     studyCards: [
       {
         title: "Fair tests change one variable",
@@ -796,6 +805,165 @@ export const learningPlans: Record<DistrictId, DistrictLearningPlan> = {
   },
 };
 
+export const researchNodesByDistrict: Record<DistrictId, DistrictResearchNode[]> = {
+  laboratory: [
+    {
+      id: "lab-field-notes",
+      tier: 1,
+      name: "Field Notes",
+      summary: "Standardise fair tests and recorded observations across the district.",
+      effect: "Unlocks stable lab procedures for experiments and evidence gathering.",
+      risk: "Bad variable control corrupts results and endangers the district.",
+    },
+    {
+      id: "lab-circuit-relay",
+      tier: 2,
+      name: "Circuit Relay",
+      summary: "Apply circuit knowledge to safe lighting and signal routes.",
+      effect: "Keeps the district powered and active after the first successful test.",
+      risk: "Unsafe circuit deployment burns tools, buildings, and citizens.",
+    },
+    {
+      id: "lab-greenhouse-network",
+      tier: 3,
+      name: "Greenhouse Network",
+      summary: "Use life-cycle and climate knowledge to improve food growth.",
+      effect: "Raises long-term food security and citizen recovery.",
+      risk: "Misapplied conditions ruin crops and create city losses.",
+    },
+  ],
+  workshop: [
+    {
+      id: "work-measure-jigs",
+      tier: 1,
+      name: "Measure Jigs",
+      summary: "Lock in accurate units and cutting guides before building starts.",
+      effect: "Stabilises material plans and prevents waste in the forge.",
+      risk: "Wrong conversions produce unsafe parts and failed structures.",
+    },
+    {
+      id: "work-frame-press",
+      tier: 2,
+      name: "Frame Press",
+      summary: "Apply structural shape rules to frames, braces, and supports.",
+      effect: "Unlocks safe workshop builds after the first successful deployment.",
+      risk: "Weak geometry causes collapses and injuries.",
+    },
+    {
+      id: "work-yard-crane",
+      tier: 3,
+      name: "Yard Crane",
+      summary: "Scale accurate design knowledge into heavy district construction.",
+      effect: "Accelerates project building across the makers quarter.",
+      risk: "Misused loads and measurements cost materials and lives.",
+    },
+  ],
+  observatory: [
+    {
+      id: "math-measure-dial",
+      tier: 1,
+      name: "Measure Dial",
+      summary: "Align number, angle, and time conversions before field use.",
+      effect: "Improves calculation reliability across the city.",
+      risk: "Bad conversions distort every later decision.",
+    },
+    {
+      id: "math-factor-lattice",
+      tier: 2,
+      name: "Factor Lattice",
+      summary: "Apply pattern and divisor knowledge to planning engines.",
+      effect: "Unlocks stronger civic planning after the first successful test.",
+      risk: "Broken number logic destabilises scheduling and supply counts.",
+    },
+    {
+      id: "math-signal-dome",
+      tier: 3,
+      name: "Signal Dome",
+      summary: "Use advanced quantitative judgment to steer the whole city.",
+      effect: "Raises prestige and improves high-level decision making.",
+      risk: "Overconfident maths calls trigger large-scale errors.",
+    },
+  ],
+  scriptorium: [
+    {
+      id: "eng-rule-sheet",
+      tier: 1,
+      name: "Rule Sheet",
+      summary: "Secure punctuation, grammar, and vocabulary conventions in writing.",
+      effect: "Stabilises messages, notices, and lesson records.",
+      risk: "Language errors spread confusion through the city.",
+    },
+    {
+      id: "eng-reading-lanterns",
+      tier: 2,
+      name: "Reading Lanterns",
+      summary: "Apply reading and language cues to shared public instruction.",
+      effect: "Unlocks clearer teaching routes after the first successful test.",
+      risk: "Misread instructions create avoidable accidents.",
+    },
+    {
+      id: "eng-story-exchange",
+      tier: 3,
+      name: "Story Exchange",
+      summary: "Use precise language to connect districts and guide citizens.",
+      effect: "Boosts morale, trust, and city-wide communication.",
+      risk: "Bad wording at scale causes panic and disorder.",
+    },
+  ],
+  archive: [
+    {
+      id: "hist-timeline-wall",
+      tier: 1,
+      name: "Timeline Wall",
+      summary: "Anchor chronology so the district can place events correctly.",
+      effect: "Improves memory, order, and evidence use in the archive.",
+      risk: "Bad sequencing leads the city to repeat old mistakes.",
+    },
+    {
+      id: "hist-charter-hall",
+      tier: 2,
+      name: "Charter Hall",
+      summary: "Apply evidence and source judgment to civic decisions.",
+      effect: "Unlocks safer governance after the first successful test.",
+      risk: "Weak source use causes policy failures and public harm.",
+    },
+    {
+      id: "hist-memory-cloister",
+      tier: 3,
+      name: "Memory Cloister",
+      summary: "Turn historical understanding into long-term city resilience.",
+      effect: "Raises prestige and reduces repeated strategic mistakes.",
+      risk: "Misread history scales small errors into lasting damage.",
+    },
+  ],
+  harbour: [
+    {
+      id: "geo-compass-posts",
+      tier: 1,
+      name: "Compass Posts",
+      summary: "Stabilise routes with reliable direction and map knowledge.",
+      effect: "Improves navigation between the city districts.",
+      risk: "Bad orientation sends people and cargo into danger.",
+    },
+    {
+      id: "geo-survey-quay",
+      tier: 2,
+      name: "Survey Quay",
+      summary: "Apply map and feature knowledge to the city edge and trade lanes.",
+      effect: "Unlocks safer harbour expansion after the first successful test.",
+      risk: "Misread physical features cause losses on the coast.",
+    },
+    {
+      id: "geo-atlas-fleet",
+      tier: 3,
+      name: "Atlas Fleet",
+      summary: "Scale place knowledge into a city-wide trade and climate network.",
+      effect: "Improves resources, movement, and world awareness.",
+      risk: "Wrong route planning costs ships, supplies, and citizens.",
+    },
+  ],
+};
+
 type BaseQuiz = Omit<
   Quiz,
   "round" | "mode" | "comparisonValue" | "comparisonAnswer" | "source" | "reward"
@@ -1252,15 +1420,16 @@ export const worldMessages = [
   "The academy now runs six base subjects: science, DTE, maths, English, history, and geography.",
   "Every district teaches the rule first, checks whether you can adapt it, and only then unlocks the estimate test.",
   "Study sheets explain the base knowledge; practice sheets force you to use that knowledge in a fresh situation.",
+  "Battle Rush turns subject knowledge into automated front-line movement, so quick correct answers push your warriors ahead.",
   "Round 1 rewards careful intervals, while Round 2 rewards faster Above or Below decisions.",
   "The city grows fastest when all six subject districts are teaching, testing, and building at once.",
 ];
 
 export function buildInitialDistrictState(): DistrictProgressMap {
   return districtOrder.reduce(
-    (accumulator, districtId, index) => {
+    (accumulator, districtId) => {
       accumulator[districtId] = {
-        unlocked: index === 0,
+        unlocked: true,
         completed: 0,
         stage: 0,
         bestScore: 0,
