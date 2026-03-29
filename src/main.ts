@@ -565,6 +565,56 @@ const getCityMorale = () => {
   return clamp(Math.round(morale), 0, 100);
 };
 
+const getReadyProjectCount = () =>
+  districtOrder.filter((districtId) => canBuildProject(districtId)).length;
+
+const getResearchSummary = () => {
+  let live = 0;
+  let total = 0;
+
+  districtOrder.forEach((districtId) => {
+    researchNodesByDistrict[districtId].forEach((node) => {
+      total += 1;
+      const status = getResearchNodeStatus(districtId, node);
+      if (status.state === "online" || status.state === "ready") {
+        live += 1;
+      }
+    });
+  });
+
+  return { live, total };
+};
+
+const getCriticalOrderCount = () =>
+  getCityOrders().filter((order) => order.status === "critical").length;
+
+const getDistrictProgressLabel = (districtId: DistrictId) => {
+  const training = state.training[districtId];
+  const nextQuiz = getNextQuizForDistrict(districtId);
+
+  if (training.remediationRequired) {
+    return "Recovery";
+  }
+
+  if (!training.studied) {
+    return "Study";
+  }
+
+  if (!training.practicePassed) {
+    return "Drill";
+  }
+
+  if (nextQuiz) {
+    return "Trial";
+  }
+
+  if (canBuildProject(districtId)) {
+    return "Build";
+  }
+
+  return state.projects[districtId].built ? "Deployed" : "Stable";
+};
+
 const getCityOrders = (): CityOrder[] =>
   districts
     .filter((district) => state.districtProgress[district.id].unlocked)
@@ -1122,41 +1172,115 @@ const renderWorldTicker = () => {
   `;
 };
 
-const renderDistrictRibbon = () => `
-  <div class="district-ribbon">
-    ${districts
-      .map((district) => {
-        const progress = state.districtProgress[district.id];
-        const training = state.training[district.id];
-        const unlocked = progress.unlocked;
-        const selected = district.id === state.selectedDistrictId;
+const renderDistrictTray = () => `
+  <section class="district-tray">
+    <div class="district-tray__header">
+      <div>
+        <p class="eyebrow">District Tray</p>
+        <strong>City Quarters</strong>
+      </div>
+      <span>Select a district to redirect the empire panels.</span>
+    </div>
+    <div class="district-tray__track">
+      ${districts
+        .map((district) => {
+          const selected = district.id === state.selectedDistrictId;
+          const mastery = getMasteryPercent(district.id);
 
-        return `
-          <button
-            class="district-chip ${selected ? "district-chip--selected" : ""}"
-            data-action="select-district"
-            data-district-id="${district.id}"
-            ${unlocked ? "" : "disabled"}
-          >
-            <span class="district-chip__icon">${district.icon}</span>
-            <span class="district-chip__body">
-              <strong>${district.name}</strong>
-              <span>
-                ${
-                  unlocked
-                    ? training.remediationRequired
-                      ? "Recovery locked"
-                      : `Mastery ${getMasteryPercent(district.id)}%`
-                    : "Locked"
-                }
+          return `
+            <button class="district-token ${selected ? "district-token--selected" : ""}" data-action="select-district" data-district-id="${district.id}">
+              <span class="district-token__icon">${district.icon}</span>
+              <span class="district-token__body">
+                <strong>${district.name}</strong>
+                <span>${getDistrictProgressLabel(district.id)}</span>
+                <span class="district-token__meter"><i style="width:${mastery}%;"></i></span>
               </span>
-            </span>
-          </button>
-        `;
-      })
-      .join("")}
-  </div>
+            </button>
+          `;
+        })
+        .join("")}
+    </div>
+  </section>
 `;
+
+const renderEmpireRail = () => {
+  const district = getSelectedDistrict();
+  const facility = districtFacilities[district.id];
+  const research = getResearchSummary();
+  const criticalOrders = getCriticalOrderCount();
+  const readyProjects = getReadyProjectCount();
+  const isFacilityFlow =
+    state.activeSheet === "facility" ||
+    state.activeSheet === "study" ||
+    state.activeSheet === "practice" ||
+    state.activeSheet === "test";
+  const entries = [
+    {
+      id: "research" as SheetView,
+      icon: "◈",
+      label: "Research",
+      detail: `${research.live}/${research.total} nodes live`,
+      active: state.activeSheet === "research",
+    },
+    {
+      id: "facility" as SheetView,
+      icon: district.icon,
+      label: facility.name,
+      detail: getDistrictProgressLabel(district.id),
+      active: isFacilityFlow,
+    },
+    {
+      id: "battle" as SheetView,
+      icon: "⚔",
+      label: "Puzzle Rush",
+      detail:
+        state.activeSheet === "battle" && state.battle.districtId === district.id
+          ? `Front ${state.battle.front}%`
+          : "Automated front",
+      active: state.activeSheet === "battle",
+    },
+    {
+      id: "build" as SheetView,
+      icon: "▣",
+      label: "Build",
+      detail: `${readyProjects} upgrades ready`,
+      active: state.activeSheet === "build",
+    },
+    {
+      id: "council" as SheetView,
+      icon: "☰",
+      label: "Council",
+      detail: `${criticalOrders} critical orders`,
+      active: state.activeSheet === "council",
+    },
+    {
+      id: "ledger" as SheetView,
+      icon: "◎",
+      label: "Records",
+      detail: `${state.answeredQuizIds.length} trials logged`,
+      active: state.activeSheet === "ledger",
+    },
+  ];
+
+  return `
+    <aside class="empire-rail">
+      <p class="eyebrow">Empire Panel</p>
+      ${entries
+        .map(
+          (entry) => `
+            <button class="empire-rail__button ${entry.active ? "empire-rail__button--active" : ""}" data-action="open-sheet" data-sheet="${entry.id}">
+              <span class="empire-rail__icon">${entry.icon}</span>
+              <span class="empire-rail__copy">
+                <strong>${entry.label}</strong>
+                <span>${entry.detail}</span>
+              </span>
+            </button>
+          `,
+        )
+        .join("")}
+    </aside>
+  `;
+};
 
 const renderWorldStats = () => {
   const restoredDistricts = districtOrder.filter(
@@ -1209,104 +1333,97 @@ const renderWorldStats = () => {
   `;
 };
 
-const renderDistrictInspector = () => {
+const renderQuestPanel = () => {
   const district = getSelectedDistrict();
   const plan = getSelectedPlan();
   const training = getTraining();
-  const progress = state.districtProgress[district.id];
   const completion = getDistrictCompletion(district.id);
   const project = getProjectState();
-  const canBuild = canBuildProject(district.id);
   const facility = districtFacilities[district.id];
+  const orders = getCityOrders();
 
   return `
-    <aside class="district-inspector">
-      <div class="district-inspector__header">
-        <div class="district-inspector__crest" style="background:linear-gradient(145deg, ${district.palette.accent}, ${district.palette.stone})">
-          ${district.icon}
-        </div>
-        <div>
-          <p class="eyebrow">Selected District</p>
-          <h2>${district.name}</h2>
-          <p>${district.tagline}</p>
-        </div>
-      </div>
-      <div class="district-inspector__tags">
-        <span>${formatSubjectLabel(district.subject)}</span>
-        <span>${facility.name}</span>
-        <span>Mastery ${getMasteryPercent(district.id)}%</span>
-        <span>${completion.completed}/${completion.total} trials</span>
-      </div>
-      <div class="district-inspector__status ${training.remediationRequired ? "district-inspector__status--danger" : ""}">
-        <strong>${getDistrictRequirement(district.id)}</strong>
-        <span>
-          ${
-            training.remediationRequired
-              ? `${training.losses} citizens lost here. Technology is locked until the longer recovery drill is cleared.`
-              : training.practicePassed
-                ? "The district has remembered the base rule and can attempt a live deployment."
-                : facility.subtitle
-          }
-        </span>
-      </div>
-      <div class="district-inspector__meta">
-        <div class="world-project-chip ${project.built ? "world-project-chip--built" : canBuild ? "world-project-chip--ready" : ""}">
-          <strong>${plan.cityProjectName}</strong>
-          <span>
-            ${
-              project.built
-                ? "District upgrade complete"
-                : canBuild
-                  ? "Ready to raise"
-                  : "Still locked behind mastery"
-            }
-          </span>
-        </div>
-        <div class="district-inspector__ledger">
-          <div>
-            <span>Stage</span>
-            <strong>${progress.stage}/5</strong>
+    <aside class="quest-panel">
+      <div class="quest-panel__focus">
+        <div class="quest-panel__header">
+          <div class="quest-panel__crest" style="background:linear-gradient(145deg, ${district.palette.accent}, ${district.palette.stone})">
+            ${district.icon}
           </div>
           <div>
-            <span>Incidents</span>
-            <strong>${training.incidents}</strong>
-          </div>
-          <div>
-            <span>Mentor</span>
-            <strong>${district.mentor}</strong>
+            <p class="eyebrow">Selected District</p>
+            <h2>${district.name}</h2>
+            <p>${district.tagline}</p>
           </div>
         </div>
+        <div class="quest-panel__chips">
+          <span>${formatSubjectLabel(district.subject)}</span>
+          <span>${facility.name}</span>
+          <span>${completion.completed}/${completion.total} trials</span>
+          <span>${project.built ? "Project raised" : "Project pending"}</span>
+        </div>
+        <div class="quest-panel__status ${training.remediationRequired ? "quest-panel__status--danger" : ""}">
+          <strong>${getDistrictRequirement(district.id)}</strong>
+          <p>${training.remediationRequired ? `${training.losses} citizens have been lost here. Clear the corrective drill before higher technology returns.` : plan.cityProjectSummary}</p>
+        </div>
+        <div class="quest-panel__meter">
+          <span>Mastery ${getMasteryPercent(district.id)}%</span>
+          <div><i style="width:${getMasteryPercent(district.id)}%;"></i></div>
+        </div>
+        <div class="quest-panel__actions">
+          <button class="button button--ghost" data-action="open-sheet" data-sheet="facility">Open ${facility.name}</button>
+          <button class="button" data-action="open-sheet" data-sheet="${training.practicePassed ? "test" : "research"}">
+            ${training.practicePassed ? "Launch trial" : "View tech tree"}
+          </button>
+        </div>
       </div>
-      <div class="district-inspector__actions">
-        <button class="button button--ghost" data-action="open-sheet" data-sheet="facility">Open ${facility.name}</button>
-        <button class="button" data-action="open-sheet" data-sheet="research">View tech tree</button>
+      <div class="quest-panel__orders">
+        <div class="quest-panel__orders-header">
+          <div>
+            <p class="eyebrow">Empire Quests</p>
+            <strong>Active Orders</strong>
+          </div>
+          <span>${orders.length} tracked</span>
+        </div>
+        ${orders
+          .map(
+            (order) => `
+              <button class="quest-card quest-card--${order.status}" data-action="jump-order" data-district-id="${order.districtId}" data-sheet="${order.sheet}">
+                <span class="quest-card__district">${districtsById[order.districtId].name}</span>
+                <strong>${order.title}</strong>
+                <p>${order.summary}</p>
+                <div class="quest-card__footer">
+                  <span>${order.reward}</span>
+                  <span>${order.statusLabel}</span>
+                </div>
+              </button>
+            `,
+          )
+          .join("")}
       </div>
     </aside>
   `;
 };
 
-const renderActionDock = () => {
-  const district = getSelectedDistrict();
-  const facility = districtFacilities[district.id];
-  const activeSheet = state.activeSheet;
-  const isFacilityFlow =
-    activeSheet === "facility" || activeSheet === "study" || activeSheet === "practice" || activeSheet === "test";
-  const actions: Array<{ id: SheetView; label: string; active: boolean }> = [
-    { id: "research", label: "Tech Tree", active: activeSheet === "research" },
-    { id: "facility", label: facility.name, active: isFacilityFlow },
-    { id: "battle", label: "Puzzle Rush", active: activeSheet === "battle" },
-    { id: "build", label: "Build", active: activeSheet === "build" },
-    { id: "council", label: "Council", active: activeSheet === "council" },
-    { id: "ledger", label: "Ledger", active: activeSheet === "ledger" },
+const renderSheetTabs = (activeView: SheetView) => {
+  const tabs: Array<{ id: SheetView; label: string }> = [
+    { id: "research", label: "Tech Tree" },
+    { id: "facility", label: "Facility" },
+    { id: "study", label: "Study" },
+    { id: "practice", label: "Drill" },
+    { id: "test", label: "Trial" },
+    { id: "battle", label: "Puzzle Rush" },
+    { id: "build", label: "Build" },
+    { id: "council", label: "Council" },
+    { id: "ledger", label: "Ledger" },
   ];
 
   return `
-    <div class="action-dock">
-      ${actions
+    <div class="sheet-window__tabs">
+      ${tabs
         .map(
-          (action) => `
-            <button class="world-action ${action.active ? "world-action--active" : ""}" data-action="open-sheet" data-sheet="${action.id}">
-              ${action.label}
+          (tab) => `
+            <button class="sheet-tab ${activeView === tab.id ? "sheet-tab--active" : ""}" data-action="open-sheet" data-sheet="${tab.id}">
+              ${tab.label}
             </button>
           `,
         )
@@ -1401,6 +1518,7 @@ const renderSheetWindow = () => {
           </div>
           <button class="icon-button" data-action="close-sheet" aria-label="Close sheet">×</button>
         </div>
+        ${renderSheetTabs(state.activeSheet)}
         <div class="sheet-window__body">
           ${renderSheetBody(state.activeSheet)}
         </div>
@@ -2288,10 +2406,10 @@ const renderShell = () => {
         <div class="city-stage">
           <canvas id="city-canvas" width="1280" height="860" aria-label="Isometric learning city"></canvas>
           ${renderWorldTicker()}
-          ${renderDistrictRibbon()}
-          ${renderDistrictInspector()}
+          ${renderEmpireRail()}
+          ${renderQuestPanel()}
           ${renderWorldStats()}
-          ${renderActionDock()}
+          ${renderDistrictTray()}
           ${renderSheet()}
         </div>
       </main>
@@ -2612,6 +2730,61 @@ const drawCrate = (ctx: CanvasRenderingContext2D, x: number, y: number, scale: n
   ctx.restore();
 };
 
+const drawTent = (ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, cloth: string) => {
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 8 * scale, 18 * scale, 7 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = cloth;
+  ctx.beginPath();
+  ctx.moveTo(x - 18 * scale, y + 8 * scale);
+  ctx.lineTo(x, y - 18 * scale);
+  ctx.lineTo(x + 18 * scale, y + 8 * scale);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "#f7e7c0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 18 * scale);
+  ctx.lineTo(x, y + 10 * scale);
+  ctx.stroke();
+  ctx.restore();
+};
+
+const drawTower = (ctx: CanvasRenderingContext2D, x: number, y: number, roof: string) => {
+  drawBlock(ctx, x, y, 38, 26, 62, {
+    top: "#d6b47f",
+    left: "#805536",
+    right: "#ab754b",
+  });
+  drawBlock(ctx, x, y - 42, 26, 16, 20, {
+    top: roof,
+    left: "#6a4630",
+    right: "#8c613f",
+  });
+  drawBanner(ctx, x + 8, y - 62, "#f0bf73");
+};
+
+const drawSignalBeam = (
+  ctx: CanvasRenderingContext2D,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  color: string,
+) => {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.setLineDash([10, 12]);
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.quadraticCurveTo((from.x + to.x) / 2, Math.min(from.y, to.y) - 70, to.x, to.y);
+  ctx.stroke();
+  ctx.restore();
+};
+
 const drawDistrictLandmarks = (
   ctx: CanvasRenderingContext2D,
   district: District,
@@ -2801,6 +2974,28 @@ const drawCity = (canvas: HTMLCanvasElement) => {
     drawRoad(ctx, path, 16, "#9a7853", "rgba(58, 37, 25, 0.68)");
   });
 
+  const selectedDistrict = getSelectedDistrict();
+  const selectedPoint = projectPlot(selectedDistrict.plot.row, selectedDistrict.plot.col);
+  drawRoad(
+    ctx,
+    [
+      { x: academy.x, y: academy.y + 58 },
+      { x: (academy.x + selectedPoint.x) / 2, y: (academy.y + selectedPoint.y) / 2 + 64 },
+      { x: selectedPoint.x, y: selectedPoint.y + 34 },
+    ],
+    22,
+    selectedDistrict.palette.accent,
+    "rgba(255, 240, 210, 0.32)",
+  );
+
+  drawTower(ctx, academy.x - 246, academy.y + 102, "#d6a257");
+  drawTower(ctx, academy.x + 246, academy.y + 110, "#d6a257");
+  drawTower(ctx, academy.x - 176, academy.y + 186, "#be8552");
+  drawTower(ctx, academy.x + 180, academy.y + 194, "#be8552");
+  ctx.fillStyle = "#8d6540";
+  ctx.fillRect(academy.x - 214, academy.y + 126, 428, 18);
+  ctx.fillRect(academy.x - 148, academy.y + 190, 290, 14);
+
   [
     { x: academy.x - 230, y: academy.y + 220, scale: 1.2, canopy: "#507847" },
     { x: academy.x - 302, y: academy.y + 146, scale: 0.9, canopy: "#406e3d" },
@@ -2867,6 +3062,15 @@ const drawCity = (canvas: HTMLCanvasElement) => {
   ctx.fillStyle = "rgba(248, 237, 213, 0.9)";
   ctx.fillText("Science, DTE, maths, English, history, and geography", academy.x, 106);
 
+  if (state.activeSheet && state.activeSheet !== "ledger" && state.activeSheet !== "council") {
+    drawSignalBeam(
+      ctx,
+      { x: academy.x, y: academy.y - 20 },
+      { x: selectedPoint.x, y: selectedPoint.y - 30 },
+      `${selectedDistrict.palette.trim}99`,
+    );
+  }
+
   districts.forEach((district) => {
     const progress = state.districtProgress[district.id];
     const training = state.training[district.id];
@@ -2919,6 +3123,8 @@ const drawCity = (canvas: HTMLCanvasElement) => {
     if (state.activeSheet === "battle" && state.selectedDistrictId === district.id) {
       drawStall(ctx, point.x - 64, point.y + 26, 0.72, "#b05d48", "#5f3c2c");
       drawStall(ctx, point.x - 18, point.y + 34, 0.64, "#d09763", "#6e4731");
+      drawTent(ctx, point.x - 82, point.y + 36, 0.8, "#a45546");
+      drawTent(ctx, point.x + 76, point.y + 42, 0.72, "#cf8c58");
       drawBanner(ctx, point.x + 56, point.y + 16, "#f0bf73");
     }
 
