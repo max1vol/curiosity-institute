@@ -113,6 +113,9 @@ const clamp = (value: number, min: number, max: number) =>
 const formatNumber = (value: number) =>
   new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(Math.round(value));
 
+const formatSubjectLabel = (subject: District["subject"]) =>
+  subject === "dte" ? "DTE" : subject.charAt(0).toUpperCase() + subject.slice(1);
+
 const buildInitialTrainingState = (): DistrictTrainingMap =>
   districtOrder.reduce(
     (accumulator, districtId) => {
@@ -168,7 +171,7 @@ const state: AppState = {
   comparisonDraft: { direction: null, confidence: 65 },
   practiceDraft: {},
   practiceOutcome: null,
-  eventLog: ["The academy has switched to sheet-led lessons: study, adapt, then estimate."],
+  eventLog: ["The academy now runs six subject districts: science, DTE, maths, English, history, and geography."],
   messageIndex: 0,
   clock: 0,
 };
@@ -309,7 +312,9 @@ const unlockNextDistrict = (districtId: DistrictId) => {
 };
 
 const maybeAdvanceRound = () => {
-  if (state.currentRound === 1 && countRoundAnswers(1) >= 8) {
+  const roundOneRequirement = Math.max(8, districtOrder.length * 2);
+
+  if (state.currentRound === 1 && countRoundAnswers(1) >= roundOneRequirement) {
     state.currentRound = 2;
     pushEvent("Round 2 unlocked: the city now allows faster Above or Below judgment tests.");
   }
@@ -627,11 +632,11 @@ const renderWorldStats = () => {
       </div>
       <div class="world-pill">
         <span>Districts</span>
-        <strong>${restoredDistricts}/4</strong>
+        <strong>${restoredDistricts}/${districtOrder.length}</strong>
       </div>
       <div class="world-pill">
         <span>Projects</span>
-        <strong>${builtProjects}/4</strong>
+        <strong>${builtProjects}/${districtOrder.length}</strong>
       </div>
     </div>
   `;
@@ -660,6 +665,7 @@ const renderDistrictCallout = () => {
         </div>
       </div>
       <div class="world-callout__meta">
+        <span>${formatSubjectLabel(district.subject)}</span>
         <span>Mastery ${getMasteryPercent(district.id)}%</span>
         <span>Stage ${progress.stage}/5</span>
         <span>${completion.completed}/${completion.total} tests</span>
@@ -1258,10 +1264,10 @@ const renderShell = () => {
     <div class="game-shell">
       <header class="topbar">
         <div class="topbar__crest">
-          <div class="crest__icon">FE</div>
+          <div class="crest__icon">FS</div>
           <div>
-            <p class="eyebrow">Forge of English</p>
-            <h1>Rebuild the learning city by studying, testing, and raising new districts.</h1>
+            <p class="eyebrow">Forge of Subjects</p>
+            <h1>Rebuild a six-subject city by studying, adapting, testing, and raising each district.</h1>
           </div>
         </div>
         <div class="topbar__era">Round ${state.currentRound}: ${
@@ -1269,7 +1275,7 @@ const renderShell = () => {
         }</div>
         <div class="topbar__stats">
           <div class="resource-pill">
-            <span>Fluency</span>
+            <span>Mastery</span>
             <strong>${formatNumber(state.score)}</strong>
           </div>
           <div class="resource-pill">
@@ -1289,7 +1295,7 @@ const renderShell = () => {
 
       <main class="city-layout">
         <div class="city-stage">
-          <canvas id="city-canvas" width="1280" height="860" aria-label="Isometric English learning city"></canvas>
+          <canvas id="city-canvas" width="1280" height="860" aria-label="Isometric learning city"></canvas>
           ${renderWorldTicker()}
           ${renderWorldStats()}
           ${renderDistrictCallout()}
@@ -1558,25 +1564,35 @@ const drawProjectDetails = (
   }
 
   switch (district.id) {
+    case "laboratory":
+      drawLantern(ctx, point.x - 34, point.y + 18, "#bdefff");
+      drawLantern(ctx, point.x + 20, point.y + 24, "#b0f3e8");
+      drawStall(ctx, point.x + 56, point.y + 24, 0.68, "#79d4df", "#4b6d6a");
+      break;
+    case "workshop":
+      drawStall(ctx, point.x - 54, point.y + 22, 0.78, "#d99859");
+      drawStall(ctx, point.x + 8, point.y + 28, 0.72, "#f0b572", "#70472f");
+      drawLantern(ctx, point.x + 46, point.y + 24, "#ffd38a");
+      break;
     case "observatory":
-      drawStall(ctx, point.x - 56, point.y + 18, 0.8, "#e8c06d");
-      drawStall(ctx, point.x - 20, point.y + 28, 0.7, "#f2a267");
-      drawLantern(ctx, point.x + 34, point.y + 26, "#ffd58c");
+      drawLantern(ctx, point.x - 40, point.y + 22, "#dcd2ff");
+      drawLantern(ctx, point.x + 14, point.y + 20, "#c7beff");
+      drawStall(ctx, point.x + 50, point.y + 24, 0.7, "#9788ff", "#5e5c8b");
       break;
-    case "conservatory":
-      drawStall(ctx, point.x + 44, point.y + 18, 0.75, "#86c774", "#567b50");
-      drawTree(ctx, point.x + 10, point.y + 30, 0.9, "#7ab066");
-      drawLantern(ctx, point.x - 20, point.y + 24, "#b8f0b1");
+    case "scriptorium":
+      drawStall(ctx, point.x - 38, point.y + 22, 0.72, "#91ca7e", "#56724b");
+      drawTree(ctx, point.x + 18, point.y + 30, 0.88, "#6ea15f");
+      drawLantern(ctx, point.x + 50, point.y + 24, "#d3f3a0");
       break;
-    case "guildhall":
-      drawBoat(ctx, point.x + 84, point.y + 46, 0.58, "#5d6fa8");
-      drawStall(ctx, point.x + 20, point.y + 22, 0.7, "#8ea6dd", "#54637a");
-      drawLantern(ctx, point.x - 24, point.y + 18, "#bfd6ff");
+    case "archive":
+      drawTree(ctx, point.x - 40, point.y + 24, 0.86, "#92604e");
+      drawLantern(ctx, point.x + 8, point.y + 18, "#f6cfb0");
+      drawStall(ctx, point.x + 52, point.y + 24, 0.68, "#ca865c", "#6d4b3d");
       break;
     case "harbour":
-      drawTree(ctx, point.x - 46, point.y + 26, 0.92, "#87554a");
-      drawTree(ctx, point.x + 6, point.y + 20, 0.8, "#9e6a5a");
-      drawLantern(ctx, point.x + 44, point.y + 22, "#ffd2b6");
+      drawBoat(ctx, point.x + 82, point.y + 44, 0.58, "#56739c");
+      drawStall(ctx, point.x + 18, point.y + 20, 0.7, "#74a8df", "#455a73");
+      drawLantern(ctx, point.x - 24, point.y + 18, "#bcd7ff");
       break;
     default:
       return;
@@ -1631,10 +1647,10 @@ const drawCity = (canvas: HTMLCanvasElement) => {
   ctx.closePath();
   ctx.fill();
 
-  const harbourWater = ctx.createLinearGradient(870, 420, 1220, 760);
-  harbourWater.addColorStop(0, "rgba(88, 136, 181, 0.9)");
-  harbourWater.addColorStop(1, "rgba(28, 69, 102, 0.96)");
-  ctx.fillStyle = harbourWater;
+  const coastWater = ctx.createLinearGradient(870, 420, 1220, 760);
+  coastWater.addColorStop(0, "rgba(88, 136, 181, 0.9)");
+  coastWater.addColorStop(1, "rgba(28, 69, 102, 0.96)");
+  ctx.fillStyle = coastWater;
   ctx.beginPath();
   ctx.moveTo(920, 450);
   ctx.lineTo(1280, 510);
@@ -1723,10 +1739,10 @@ const drawCity = (canvas: HTMLCanvasElement) => {
   ctx.fillStyle = "#f8edd5";
   ctx.textAlign = "center";
   ctx.font = '700 44px "Georgia", serif';
-  ctx.fillText("Academy of English", academy.x, 74);
+  ctx.fillText("Academy of Subjects", academy.x, 74);
   ctx.font = '400 21px "Georgia", serif';
   ctx.fillStyle = "rgba(248, 237, 213, 0.9)";
-  ctx.fillText("Study, adapt, build, and estimate", academy.x, 106);
+  ctx.fillText("Science, DTE, maths, English, history, and geography", academy.x, 106);
 
   districts.forEach((district) => {
     const progress = state.districtProgress[district.id];
@@ -1796,6 +1812,8 @@ const drawCity = (canvas: HTMLCanvasElement) => {
 
   const citizenRoads = districts.flatMap((district, index) => {
     const point = projectPlot(district.plot.row, district.plot.col);
+    const outboundColors = ["#9dd88c", "#ffca91", "#a8c7ff", "#ffb7a0", "#cbb08b", "#89d6cf"];
+    const inboundColors = ["#f7df8a", "#90d0b5", "#cab9ff", "#ffc9b8", "#f2c39b", "#a9e2f0"];
     return [
       {
         path: [
@@ -1803,7 +1821,7 @@ const drawCity = (canvas: HTMLCanvasElement) => {
           { x: (academy.x + point.x) / 2, y: (academy.y + point.y) / 2 + 64 },
           { x: point.x - 8, y: point.y + 36 },
         ],
-        color: ["#9dd88c", "#ffca91", "#a8c7ff", "#ffb7a0"][index],
+        color: outboundColors[index % outboundColors.length],
         speed: 0.17 + index * 0.04,
       },
       {
@@ -1812,7 +1830,7 @@ const drawCity = (canvas: HTMLCanvasElement) => {
           { x: (academy.x + point.x) / 2, y: (academy.y + point.y) / 2 + 82 },
           { x: academy.x + 22, y: academy.y + 84 },
         ],
-        color: ["#f7df8a", "#90d0b5", "#cab9ff", "#ffc9b8"][index],
+        color: inboundColors[index % inboundColors.length],
         speed: 0.12 + index * 0.03,
       },
     ];
