@@ -67,6 +67,7 @@ web_modules/
 
 # dotenv environment variable files
 .env
+.env.local
 .env.*
 !.env.example
 
@@ -137,3 +138,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local image-generation scratch output
+nanobanana-output/
