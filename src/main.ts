@@ -20,7 +20,7 @@ import {
   type QuizRound,
 } from "./gameData";
 
-type SheetView = "study" | "practice" | "test" | "ledger";
+type SheetView = "study" | "practice" | "test" | "ledger" | "build";
 
 type QuizOutcome = {
   correct: boolean;
@@ -70,10 +70,17 @@ type DistrictTrainingState = {
 
 type DistrictTrainingMap = Record<DistrictId, DistrictTrainingState>;
 
+type DistrictProjectState = {
+  built: boolean;
+};
+
+type DistrictProjectMap = Record<DistrictId, DistrictProjectState>;
+
 type AppState = {
   selectedDistrictId: DistrictId;
   districtProgress: DistrictProgressMap;
   training: DistrictTrainingMap;
+  projects: DistrictProjectMap;
   answeredQuizIds: string[];
   score: number;
   wisdom: number;
@@ -120,6 +127,17 @@ const buildInitialTrainingState = (): DistrictTrainingMap =>
     {} as DistrictTrainingMap,
   );
 
+const buildInitialProjectState = (): DistrictProjectMap =>
+  districtOrder.reduce(
+    (accumulator, districtId) => {
+      accumulator[districtId] = {
+        built: false,
+      };
+      return accumulator;
+    },
+    {} as DistrictProjectMap,
+  );
+
 const spriteCache = new Map<DistrictId, HTMLImageElement>();
 
 const loadDistrictSprites = () => {
@@ -136,6 +154,7 @@ const state: AppState = {
   selectedDistrictId: districtOrder[0],
   districtProgress: buildInitialDistrictState(),
   training: buildInitialTrainingState(),
+  projects: buildInitialProjectState(),
   answeredQuizIds: [],
   score: 0,
   wisdom: 0,
@@ -159,6 +178,8 @@ const getSelectedDistrict = () => districtsById[state.selectedDistrictId];
 const getSelectedPlan = () => learningPlans[state.selectedDistrictId];
 
 const getTraining = (districtId = state.selectedDistrictId) => state.training[districtId];
+
+const getProjectState = (districtId = state.selectedDistrictId) => state.projects[districtId];
 
 const getQuizById = (quizId: string | null) => quizzes.find((quiz) => quiz.id === quizId) ?? null;
 
@@ -241,18 +262,28 @@ const getMasteryPercent = (districtId: DistrictId) => {
   return clamp(Math.round(quizShare + studyShare + practiceShare), 0, 100);
 };
 
+const canBuildProject = (districtId: DistrictId) =>
+  state.districtProgress[districtId].completed >= 1 && !state.projects[districtId].built;
+
 const updateTotals = () => {
   const totalCompleted = state.answeredQuizIds.length;
   const studiedCount = districtOrder.filter((districtId) => state.training[districtId].studied).length;
   const practicePassedCount = districtOrder.filter(
     (districtId) => state.training[districtId].practicePassed,
   ).length;
+  const builtCount = districtOrder.filter((districtId) => state.projects[districtId].built).length;
   const restoredDistricts = Object.values(state.districtProgress).filter((district) => district.stage >= 3)
     .length;
 
-  state.wisdom = totalCompleted * 18 + studiedCount * 12 + practicePassedCount * 18 + restoredDistricts * 12;
-  state.citizens = 120 + totalCompleted * 14 + practicePassedCount * 26 + restoredDistricts * 36;
-  state.prestige = clamp(Math.round(state.score / 14) + studiedCount * 8 + practicePassedCount * 12, 0, 999);
+  state.wisdom =
+    totalCompleted * 18 + studiedCount * 12 + practicePassedCount * 18 + builtCount * 20 + restoredDistricts * 12;
+  state.citizens =
+    120 + totalCompleted * 14 + practicePassedCount * 26 + builtCount * 34 + restoredDistricts * 36;
+  state.prestige = clamp(
+    Math.round(state.score / 14) + studiedCount * 8 + practicePassedCount * 12 + builtCount * 22,
+    0,
+    999,
+  );
 };
 
 const pushEvent = (entry: string) => {
@@ -451,6 +482,22 @@ const markStudyReady = () => {
   renderApp();
 };
 
+const completeProject = () => {
+  const district = getSelectedDistrict();
+  const plan = getSelectedPlan();
+  const project = getProjectState();
+
+  if (!canBuildProject(district.id) || project.built) {
+    return;
+  }
+
+  project.built = true;
+  updateTotals();
+  pushEvent(`${plan.cityProjectName} has been raised in ${district.name}. ${plan.cityProjectEffect}`);
+  state.activeSheet = "build";
+  renderApp();
+};
+
 const buildPracticeFeedback = (prompt: PracticePrompt): PracticeFeedback => {
   const selectedId = state.practiceDraft[prompt.id];
   const selectedOption = prompt.options.find((option) => option.id === selectedId);
@@ -539,169 +586,125 @@ const advanceAfterResult = () => {
   renderApp();
 };
 
-const renderDistrictSwitcher = () =>
-  districts
-    .map((district) => {
-      const progress = state.districtProgress[district.id];
-      const completion = getDistrictCompletion(district.id);
-      const selected = district.id === state.selectedDistrictId;
-      const mastery = getMasteryPercent(district.id);
-      const training = state.training[district.id];
-      const status = !progress.unlocked
-        ? "Locked"
-        : training.practicePassed
-          ? "Test-ready"
-          : training.studied
-            ? "Practice"
-            : "Study";
+const getWorldAnchor = (district: District) => {
+  const point = projectPlot(district.plot.row, district.plot.col);
+  const horizontal = district.plot.col >= 5 ? "world-callout--left" : "world-callout--right";
+  const vertical = district.plot.row >= 6 ? "world-callout--top" : "world-callout--bottom";
 
-      return `
-        <button class="district-chip ${selected ? "district-chip--selected" : ""}" data-action="select-district" data-district-id="${district.id}" ${
-          progress.unlocked ? "" : "disabled"
-        }>
-          <div class="district-chip__icon" style="background:linear-gradient(145deg, ${district.palette.accent}, ${district.palette.stone})">
-            ${district.icon}
-          </div>
-          <div class="district-chip__body">
-            <strong>${district.name}</strong>
-            <small>${progress.unlocked ? district.tagline : "Unlock by restoring the previous district."}</small>
-            <div class="district-chip__meta">
-              <span>${completion.completed}/${completion.total} tests</span>
-              <span>${status}</span>
-              <span>${mastery}% mastery</span>
-            </div>
-          </div>
-        </button>
-      `;
-    })
-    .join("");
-
-const renderSelectedDistrictCard = () => {
-  const district = getSelectedDistrict();
-  const progress = state.districtProgress[district.id];
-  const completion = getDistrictCompletion(district.id);
-  const training = getTraining();
-  const nextRequirement = getDistrictRequirement(district.id);
-
-  return `
-    <section class="overlay-card overlay-card--district">
-      <p class="eyebrow">Selected District</p>
-      <div class="overlay-heading">
-        <div class="selected-seal" style="background:linear-gradient(145deg, ${district.palette.accent}, ${district.palette.stone})">
-          ${district.icon}
-        </div>
-        <div>
-          <h2>${district.name}</h2>
-          <p>${district.summary}</p>
-        </div>
-      </div>
-      <div class="status-grid">
-        <div class="status-tile">
-          <span>Mentor</span>
-          <strong>${district.mentor}</strong>
-        </div>
-        <div class="status-tile">
-          <span>Stage</span>
-          <strong>${progress.stage}/5</strong>
-        </div>
-        <div class="status-tile">
-          <span>Study</span>
-          <strong>${training.studied ? "Reviewed" : "Needed"}</strong>
-        </div>
-        <div class="status-tile">
-          <span>Practice</span>
-          <strong>${training.practicePassed ? "Passed" : "Needed"}</strong>
-        </div>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-bar__fill" style="width:${(completion.completed / completion.total) * 100}%"></div>
-      </div>
-      <p class="district-requirement">${nextRequirement}</p>
-      <div class="district-switcher">${renderDistrictSwitcher()}</div>
-    </section>
-  `;
+  return {
+    style: `left:${(point.x / 1280) * 100}%; top:${(point.y / 860) * 100}%;`,
+    className: `${horizontal} ${vertical}`,
+  };
 };
 
-const renderCampaignCard = () => {
-  const roundOneDone = countRoundAnswers(1);
-  const roundTwoDone = countRoundAnswers(2);
-  const restoredDistricts = districtOrder.filter(
-    (districtId) => state.districtProgress[districtId].stage >= 3,
-  ).length;
+const renderWorldTicker = () => {
+  const latestEvent = state.eventLog[0] ?? "Select a district to begin rebuilding.";
 
   return `
-    <section class="overlay-card overlay-card--campaign">
-      <p class="eyebrow">Campaign Board</p>
-      <div class="campaign-grid">
-        <div class="status-tile">
-          <span>Round 1</span>
-          <strong>${roundOneDone}/12</strong>
-        </div>
-        <div class="status-tile ${state.currentRound === 1 ? "status-tile--locked" : ""}">
-          <span>Round 2</span>
-          <strong>${state.currentRound === 1 ? "Locked" : `${roundTwoDone}/8`}</strong>
-        </div>
-        <div class="status-tile">
-          <span>Districts Restored</span>
-          <strong>${restoredDistricts}/4</strong>
-        </div>
-        <div class="status-tile">
-          <span>Reputation</span>
-          <strong>${formatNumber(state.prestige)}</strong>
-        </div>
-      </div>
-      <div class="log-card">
-        <strong>Recent log</strong>
-        <div class="log-list">
-          ${state.eventLog
-            .map(
-              (entry) => `
-                <p>${entry}</p>
-              `,
-            )
-            .join("")}
-        </div>
-      </div>
-    </section>
-  `;
-};
-
-const renderCommandBar = () => {
-  const buttons: Array<{ sheet: SheetView; label: string; sublabel: string }> = [
-    { sheet: "study", label: "Study", sublabel: "Base knowledge" },
-    { sheet: "practice", label: "Practice", sublabel: "Adapt the rule" },
-    { sheet: "test", label: "Test", sublabel: "Estimation trial" },
-    { sheet: "ledger", label: "Ledger", sublabel: "District progress" },
-  ];
-
-  return `
-    <div class="command-bar">
-      ${buttons
-        .map(
-          (button) => `
-            <button class="command-button ${state.activeSheet === button.sheet ? "command-button--active" : ""}" data-action="open-sheet" data-sheet="${button.sheet}">
-              <strong>${button.label}</strong>
-              <span>${button.sublabel}</span>
-            </button>
-          `,
-        )
-        .join("")}
+    <div class="world-ticker">
+      <p class="eyebrow">City Pulse</p>
+      <strong>${worldMessages[state.messageIndex % worldMessages.length]}</strong>
+      <span>${latestEvent}</span>
     </div>
   `;
 };
 
-const renderSheetTabs = () => {
+const renderWorldStats = () => {
+  const restoredDistricts = districtOrder.filter(
+    (districtId) => state.districtProgress[districtId].stage >= 3,
+  ).length;
+  const builtProjects = districtOrder.filter((districtId) => state.projects[districtId].built).length;
+
+  return `
+    <div class="world-stats">
+      <div class="world-pill">
+        <span>Round</span>
+        <strong>${state.currentRound}</strong>
+      </div>
+      <div class="world-pill">
+        <span>Tests</span>
+        <strong>${state.answeredQuizIds.length}</strong>
+      </div>
+      <div class="world-pill">
+        <span>Districts</span>
+        <strong>${restoredDistricts}/4</strong>
+      </div>
+      <div class="world-pill">
+        <span>Projects</span>
+        <strong>${builtProjects}/4</strong>
+      </div>
+    </div>
+  `;
+};
+
+const renderDistrictCallout = () => {
+  const district = getSelectedDistrict();
+  const plan = getSelectedPlan();
+  const training = getTraining();
+  const progress = state.districtProgress[district.id];
+  const completion = getDistrictCompletion(district.id);
+  const project = getProjectState();
+  const anchor = getWorldAnchor(district);
+  const canBuild = canBuildProject(district.id);
+
+  return `
+    <div class="world-callout ${anchor.className}" style="${anchor.style}">
+      <div class="world-callout__header">
+        <div class="world-callout__seal" style="background:linear-gradient(145deg, ${district.palette.accent}, ${district.palette.stone})">
+          ${district.icon}
+        </div>
+        <div>
+          <p class="eyebrow">Selected</p>
+          <h2>${district.name}</h2>
+          <p>${district.tagline}</p>
+        </div>
+      </div>
+      <div class="world-callout__meta">
+        <span>Mastery ${getMasteryPercent(district.id)}%</span>
+        <span>Stage ${progress.stage}/5</span>
+        <span>${completion.completed}/${completion.total} tests</span>
+      </div>
+      <p class="world-callout__copy">${getDistrictRequirement(district.id)}</p>
+      <div class="world-project-chip ${project.built ? "world-project-chip--built" : canBuild ? "world-project-chip--ready" : ""}">
+        <strong>${plan.cityProjectName}</strong>
+        <span>
+          ${
+            project.built
+              ? "District upgrade complete"
+              : canBuild
+                ? "Ready to raise"
+                : "Clear one estimate test to unlock"
+          }
+        </span>
+      </div>
+      <div class="world-actions">
+        <button class="world-action ${state.activeSheet === "study" ? "world-action--active" : ""}" data-action="open-sheet" data-sheet="study">Study</button>
+        <button class="world-action ${state.activeSheet === "practice" ? "world-action--active" : ""}" data-action="open-sheet" data-sheet="practice">Practice</button>
+        <button class="world-action ${state.activeSheet === "test" ? "world-action--active" : ""}" data-action="open-sheet" data-sheet="test">Test</button>
+        <button class="world-action ${state.activeSheet === "build" ? "world-action--active" : ""}" data-action="open-sheet" data-sheet="build">Build</button>
+        <button class="world-action ${state.activeSheet === "ledger" ? "world-action--active" : ""}" data-action="open-sheet" data-sheet="ledger">Ledger</button>
+      </div>
+      <div class="world-callout__footer">
+        <span>Mentor: ${district.mentor}</span>
+        <span>${training.practicePassed ? "Ready for the next challenge" : "The district still wants proof."}</span>
+      </div>
+    </div>
+  `;
+};
+
+const renderWindowTabs = () => {
   const tabs: Array<{ id: SheetView; label: string }> = [
     { id: "study", label: "Study" },
     { id: "practice", label: "Practice" },
     { id: "test", label: "Test" },
+    { id: "build", label: "Build" },
     { id: "ledger", label: "Ledger" },
   ];
 
   return tabs
     .map(
       (tab) => `
-        <button class="sheet-tab ${state.activeSheet === tab.id ? "sheet-tab--active" : ""}" data-action="open-sheet" data-sheet="${tab.id}">
+        <button class="window-tab ${state.activeSheet === tab.id ? "window-tab--active" : ""}" data-action="open-sheet" data-sheet="${tab.id}">
           ${tab.label}
         </button>
       `,
@@ -1066,6 +1069,74 @@ const renderTestBody = (district: District, plan: DistrictLearningPlan) => {
   `;
 };
 
+const renderBuildBody = (district: District, plan: DistrictLearningPlan) => {
+  const completion = getDistrictCompletion(district.id);
+  const project = getProjectState();
+  const canBuild = canBuildProject(district.id);
+
+  if (project.built) {
+    return `
+      <section class="sheet-section">
+        <p class="eyebrow">District Upgrade Complete</p>
+        <h2>${plan.cityProjectName}</h2>
+        <div class="memory-banner">
+          <strong>Built into the world</strong>
+          <p>${plan.cityProjectEffect}</p>
+        </div>
+        <p>${plan.cityProjectSummary}</p>
+        <div class="sheet-actions">
+          <button class="button button--ghost" data-action="close-sheet">Back to city</button>
+          <button class="button" data-action="open-sheet" data-sheet="ledger">View district ledger</button>
+        </div>
+      </section>
+    `;
+  }
+
+  if (!canBuild) {
+    return `
+      <section class="sheet-section gate-card">
+        <p class="eyebrow">Upgrade Locked</p>
+        <h2>${plan.cityProjectName}</h2>
+        <p>${plan.cityProjectSummary}</p>
+        <div class="gate-list">
+          <div class="gate-item ${completion.completed >= 1 ? "gate-item--complete" : ""}">
+            <strong>Clear a district test</strong>
+            <span>${completion.completed >= 1 ? "Requirement met" : "Still needed"}</span>
+          </div>
+          <div class="gate-item ${state.training[district.id].studied ? "gate-item--complete" : ""}">
+            <strong>Teach the district</strong>
+            <span>${state.training[district.id].studied ? "Requirement met" : "Still needed"}</span>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button class="button button--ghost" data-action="open-sheet" data-sheet="study">Study district</button>
+          <button class="button" data-action="open-sheet" data-sheet="test">Open estimate test</button>
+        </div>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="sheet-section">
+      <p class="eyebrow">World Upgrade</p>
+      <h2>${plan.cityProjectName}</h2>
+      <div class="memory-banner">
+        <strong>Restoration plan</strong>
+        <p>${plan.cityProjectSummary}</p>
+      </div>
+      <div class="feedback-card feedback-card--success">
+        <strong>Visible effect</strong>
+        <p>${plan.cityProjectEffect}</p>
+        <p>Raising this project makes the district look busier, richer, and more alive on the map.</p>
+      </div>
+      <div class="sheet-actions">
+        <button class="button button--ghost" data-action="close-sheet">Not yet</button>
+        <button class="button" data-action="complete-project">Raise ${plan.cityProjectName}</button>
+      </div>
+    </section>
+  `;
+};
+
 const renderLedgerBody = (district: District, plan: DistrictLearningPlan) => {
   const progress = state.districtProgress[district.id];
   const completion = getDistrictCompletion(district.id);
@@ -1146,6 +1217,8 @@ const renderSheetBody = () => {
       return renderPracticeBody(plan);
     case "test":
       return renderTestBody(district, plan);
+    case "build":
+      return renderBuildBody(district, plan);
     case "ledger":
       return renderLedgerBody(district, plan);
     default:
@@ -1159,29 +1232,28 @@ const renderSheet = () => {
   }
 
   const district = getSelectedDistrict();
+  const plan = getSelectedPlan();
 
   return `
-    <div class="sheet-shell">
-      <button class="sheet-backdrop" data-action="close-sheet" aria-label="Close sheet"></button>
-      <aside class="sheet-panel" aria-label="${district.name} ${state.activeSheet} sheet">
-        <div class="sheet-header">
+    <div class="window-shell">
+      <button class="window-backdrop" data-action="close-sheet" aria-label="Close window"></button>
+      <aside class="world-window" aria-label="${district.name} ${state.activeSheet} window">
+        <div class="world-window__header">
           <div>
-            <p class="eyebrow">Sheet UI</p>
+            <p class="eyebrow">City Window</p>
             <h2>${district.name}</h2>
-            <p>${district.lore}</p>
+            <p>${plan.cityProjectName} and the district lesson line both advance from here.</p>
           </div>
-          <button class="icon-button" data-action="close-sheet" aria-label="Close sheet">×</button>
+          <button class="icon-button" data-action="close-sheet" aria-label="Close window">×</button>
         </div>
-        <div class="sheet-tabs">${renderSheetTabs()}</div>
-        <div class="sheet-body">${renderSheetBody()}</div>
+        <div class="world-window__tabs">${renderWindowTabs()}</div>
+        <div class="world-window__body">${renderSheetBody()}</div>
       </aside>
     </div>
   `;
 };
 
 const renderShell = () => {
-  const district = getSelectedDistrict();
-
   return `
     <div class="game-shell">
       <header class="topbar">
@@ -1189,7 +1261,7 @@ const renderShell = () => {
           <div class="crest__icon">FE</div>
           <div>
             <p class="eyebrow">Forge of English</p>
-            <h1>Study first, adapt next, then pass the estimation test.</h1>
+            <h1>Rebuild the learning city by studying, testing, and raising new districts.</h1>
           </div>
         </div>
         <div class="topbar__era">Round ${state.currentRound}: ${
@@ -1218,14 +1290,9 @@ const renderShell = () => {
       <main class="city-layout">
         <div class="city-stage">
           <canvas id="city-canvas" width="1280" height="860" aria-label="Isometric English learning city"></canvas>
-          <div class="stage-banner">
-            <p class="eyebrow">City Chronicle</p>
-            <h2>${district.name}</h2>
-            <p>${worldMessages[state.messageIndex % worldMessages.length]}</p>
-          </div>
-          ${renderSelectedDistrictCard()}
-          ${renderCampaignCard()}
-          ${renderCommandBar()}
+          ${renderWorldTicker()}
+          ${renderWorldStats()}
+          ${renderDistrictCallout()}
         </div>
       </main>
       ${renderSheet()}
@@ -1307,6 +1374,215 @@ const projectPlot = (row: number, col: number) => {
   };
 };
 
+const drawRoad = (
+  ctx: CanvasRenderingContext2D,
+  points: Array<{ x: number; y: number }>,
+  width: number,
+  fill: string,
+  edge: string,
+) => {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+
+  for (let index = 1; index < points.length; index += 1) {
+    ctx.lineTo(points[index].x, points[index].y);
+  }
+
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = edge;
+  ctx.lineWidth = width + 10;
+  ctx.stroke();
+  ctx.strokeStyle = fill;
+  ctx.lineWidth = width;
+  ctx.stroke();
+  ctx.setLineDash([12, 14]);
+  ctx.strokeStyle = "rgba(252, 226, 175, 0.2)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+};
+
+const drawTree = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  canopy = "#4a7a44",
+) => {
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 10 * scale, 18 * scale, 8 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#5f3f25";
+  ctx.fillRect(x - 3 * scale, y - 10 * scale, 6 * scale, 18 * scale);
+  ctx.fillStyle = canopy;
+  ctx.beginPath();
+  ctx.arc(x, y - 14 * scale, 16 * scale, 0, Math.PI * 2);
+  ctx.arc(x - 12 * scale, y - 6 * scale, 13 * scale, 0, Math.PI * 2);
+  ctx.arc(x + 12 * scale, y - 4 * scale, 12 * scale, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawStall = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  roof: string,
+  base = "#6b4b32",
+) => {
+  ctx.save();
+  ctx.fillStyle = base;
+  ctx.fillRect(x - 14 * scale, y - 6 * scale, 28 * scale, 16 * scale);
+  ctx.fillStyle = roof;
+  ctx.beginPath();
+  ctx.moveTo(x - 18 * scale, y - 6 * scale);
+  ctx.lineTo(x, y - 20 * scale);
+  ctx.lineTo(x + 18 * scale, y - 6 * scale);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawBoat = (ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, hull: string) => {
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(x, y + 10 * scale, 24 * scale, 8 * scale, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = hull;
+  ctx.beginPath();
+  ctx.moveTo(x - 26 * scale, y);
+  ctx.lineTo(x + 26 * scale, y);
+  ctx.lineTo(x + 16 * scale, y + 12 * scale);
+  ctx.lineTo(x - 16 * scale, y + 12 * scale);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "#f7e7c0";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y - 28 * scale);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.fillStyle = "#f7e7c0";
+  ctx.beginPath();
+  ctx.moveTo(x, y - 28 * scale);
+  ctx.lineTo(x + 18 * scale, y - 6 * scale);
+  ctx.lineTo(x, y - 6 * scale);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+};
+
+const interpolatePath = (points: Array<{ x: number; y: number }>, progress: number) => {
+  const lengths = [];
+  let total = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const length = Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y);
+    lengths.push(length);
+    total += length;
+  }
+
+  let travelled = progress * total;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const length = lengths[index - 1];
+
+    if (travelled <= length) {
+      const ratio = length === 0 ? 0 : travelled / length;
+      return {
+        x: points[index - 1].x + (points[index].x - points[index - 1].x) * ratio,
+        y: points[index - 1].y + (points[index].y - points[index - 1].y) * ratio,
+      };
+    }
+
+    travelled -= length;
+  }
+
+  return points[points.length - 1];
+};
+
+const drawCitizen = (
+  ctx: CanvasRenderingContext2D,
+  path: Array<{ x: number; y: number }>,
+  progress: number,
+  accent: string,
+) => {
+  const point = interpolatePath(path, progress);
+
+  ctx.save();
+  ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+  ctx.beginPath();
+  ctx.ellipse(point.x, point.y + 9, 8, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = accent;
+  ctx.fillRect(point.x - 3, point.y - 7, 6, 12);
+  ctx.fillStyle = "#f5d7bf";
+  ctx.beginPath();
+  ctx.arc(point.x, point.y - 11, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawLantern = (ctx: CanvasRenderingContext2D, x: number, y: number, glow: string) => {
+  ctx.save();
+  ctx.strokeStyle = "#5d4531";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y - 28);
+  ctx.stroke();
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y - 32, 6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+};
+
+const drawProjectDetails = (
+  ctx: CanvasRenderingContext2D,
+  district: District,
+  point: { x: number; y: number },
+) => {
+  if (!state.projects[district.id].built) {
+    return;
+  }
+
+  switch (district.id) {
+    case "observatory":
+      drawStall(ctx, point.x - 56, point.y + 18, 0.8, "#e8c06d");
+      drawStall(ctx, point.x - 20, point.y + 28, 0.7, "#f2a267");
+      drawLantern(ctx, point.x + 34, point.y + 26, "#ffd58c");
+      break;
+    case "conservatory":
+      drawStall(ctx, point.x + 44, point.y + 18, 0.75, "#86c774", "#567b50");
+      drawTree(ctx, point.x + 10, point.y + 30, 0.9, "#7ab066");
+      drawLantern(ctx, point.x - 20, point.y + 24, "#b8f0b1");
+      break;
+    case "guildhall":
+      drawBoat(ctx, point.x + 84, point.y + 46, 0.58, "#5d6fa8");
+      drawStall(ctx, point.x + 20, point.y + 22, 0.7, "#8ea6dd", "#54637a");
+      drawLantern(ctx, point.x - 24, point.y + 18, "#bfd6ff");
+      break;
+    case "harbour":
+      drawTree(ctx, point.x - 46, point.y + 26, 0.92, "#87554a");
+      drawTree(ctx, point.x + 6, point.y + 20, 0.8, "#9e6a5a");
+      drawLantern(ctx, point.x + 44, point.y + 22, "#ffd2b6");
+      break;
+    default:
+      return;
+  }
+};
+
 const drawCity = (canvas: HTMLCanvasElement) => {
   const ctx = canvas.getContext("2d");
 
@@ -1318,15 +1594,64 @@ const drawCity = (canvas: HTMLCanvasElement) => {
 
   const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
   sky.addColorStop(0, "#29455a");
-  sky.addColorStop(0.34, "#6f8f69");
+  sky.addColorStop(0.22, "#537086");
+  sky.addColorStop(0.42, "#7fa17f");
   sky.addColorStop(1, "#172117");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "rgba(255, 228, 161, 0.16)";
+  ctx.fillStyle = "rgba(255, 228, 161, 0.18)";
   ctx.beginPath();
   ctx.ellipse(1020, 112, 180, 80, -0.18, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+  [0, 1, 2].forEach((index) => {
+    const drift = ((state.clock / 40 + index * 180) % (canvas.width + 220)) - 120;
+    ctx.beginPath();
+    ctx.ellipse(drift, 110 + index * 28, 62, 18, 0, 0, Math.PI * 2);
+    ctx.ellipse(drift + 30, 98 + index * 28, 52, 20, 0, 0, Math.PI * 2);
+    ctx.ellipse(drift + 72, 112 + index * 28, 48, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "rgba(35, 57, 46, 0.44)";
+  ctx.beginPath();
+  ctx.moveTo(0, 240);
+  ctx.lineTo(120, 182);
+  ctx.lineTo(260, 236);
+  ctx.lineTo(410, 170);
+  ctx.lineTo(580, 246);
+  ctx.lineTo(760, 172);
+  ctx.lineTo(940, 228);
+  ctx.lineTo(1120, 184);
+  ctx.lineTo(1280, 250);
+  ctx.lineTo(1280, 320);
+  ctx.lineTo(0, 320);
+  ctx.closePath();
+  ctx.fill();
+
+  const harbourWater = ctx.createLinearGradient(870, 420, 1220, 760);
+  harbourWater.addColorStop(0, "rgba(88, 136, 181, 0.9)");
+  harbourWater.addColorStop(1, "rgba(28, 69, 102, 0.96)");
+  ctx.fillStyle = harbourWater;
+  ctx.beginPath();
+  ctx.moveTo(920, 450);
+  ctx.lineTo(1280, 510);
+  ctx.lineTo(1280, 860);
+  ctx.lineTo(780, 860);
+  ctx.lineTo(820, 666);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(225, 244, 255, 0.18)";
+  ctx.lineWidth = 2;
+  for (let wave = 0; wave < 5; wave += 1) {
+    ctx.beginPath();
+    ctx.moveTo(910 + wave * 22, 492 + wave * 52);
+    ctx.quadraticCurveTo(1030, 472 + wave * 54, 1180, 540 + wave * 50);
+    ctx.stroke();
+  }
 
   const tileWidth = 126;
   const tileHeight = 64;
@@ -1334,12 +1659,41 @@ const drawCity = (canvas: HTMLCanvasElement) => {
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
       const { x, y } = projectPlot(row, col);
-      const shade = (row + col) % 2 === 0 ? "#6a8f58" : "#5b7f4d";
+      const shade =
+        row + col > 11
+          ? (row + col) % 2 === 0
+            ? "#6f8364"
+            : "#617658"
+          : (row + col) % 2 === 0
+            ? "#6a8f58"
+            : "#5b7f4d";
       renderTile(ctx, x, y, tileWidth, tileHeight, shade, "rgba(25, 42, 21, 0.55)");
     }
   }
 
   const academy = projectPlot(4, 4);
+  const academyRoads = districts.map((district) => {
+    const point = projectPlot(district.plot.row, district.plot.col);
+    return [
+      { x: academy.x, y: academy.y + 58 },
+      { x: (academy.x + point.x) / 2, y: (academy.y + point.y) / 2 + 64 },
+      { x: point.x, y: point.y + 34 },
+    ];
+  });
+
+  academyRoads.forEach((path) => {
+    drawRoad(ctx, path, 16, "#9a7853", "rgba(58, 37, 25, 0.68)");
+  });
+
+  [
+    { x: academy.x - 230, y: academy.y + 220, scale: 1.2, canopy: "#507847" },
+    { x: academy.x - 302, y: academy.y + 146, scale: 0.9, canopy: "#406e3d" },
+    { x: academy.x + 278, y: academy.y + 178, scale: 1.1, canopy: "#587d4b" },
+    { x: academy.x + 330, y: academy.y + 118, scale: 0.95, canopy: "#4a6d52" },
+    { x: academy.x - 120, y: academy.y - 70, scale: 0.8, canopy: "#648c58" },
+    { x: academy.x + 118, y: academy.y - 66, scale: 0.75, canopy: "#6b8758" },
+  ].forEach((tree) => drawTree(ctx, tree.x, tree.y, tree.scale, tree.canopy));
+
   drawBlock(ctx, academy.x, academy.y + 10, 210, 126, 148, {
     top: "#b8844f",
     left: "#7c5027",
@@ -1351,17 +1705,33 @@ const drawCity = (canvas: HTMLCanvasElement) => {
     right: "#b4814f",
   });
 
+  drawStall(ctx, academy.x - 116, academy.y + 72, 0.92, "#e5be6c");
+  drawStall(ctx, academy.x + 108, academy.y + 84, 0.88, "#d9a672");
+  drawStall(ctx, academy.x + 8, academy.y + 126, 1.05, "#ca8658");
+
+  const builtCount = districtOrder.filter((districtId) => state.projects[districtId].built).length;
+  for (let houseIndex = 0; houseIndex < 2 + builtCount; houseIndex += 1) {
+    const offsetX = -186 + houseIndex * 54;
+    const offsetY = 168 + (houseIndex % 2) * 24;
+    drawBlock(ctx, academy.x + offsetX, academy.y + offsetY, 52, 34, 42, {
+      top: houseIndex % 2 === 0 ? "#d4ae67" : "#c98c58",
+      left: "#7c5027",
+      right: "#a86d43",
+    });
+  }
+
   ctx.fillStyle = "#f8edd5";
   ctx.textAlign = "center";
   ctx.font = '700 44px "Georgia", serif';
   ctx.fillText("Academy of English", academy.x, 74);
   ctx.font = '400 21px "Georgia", serif';
   ctx.fillStyle = "rgba(248, 237, 213, 0.9)";
-  ctx.fillText("Study, adapt, then estimate", academy.x, 106);
+  ctx.fillText("Study, adapt, build, and estimate", academy.x, 106);
 
   districts.forEach((district) => {
     const progress = state.districtProgress[district.id];
     const training = state.training[district.id];
+    const plan = learningPlans[district.id];
     const point = projectPlot(district.plot.row, district.plot.col);
     const selected = district.id === state.selectedDistrictId;
     const pulse = 0.5 + Math.sin(state.clock / 550 + district.plot.row) * 0.12;
@@ -1394,17 +1764,66 @@ const drawCity = (canvas: HTMLCanvasElement) => {
       });
     }
 
+    drawProjectDetails(ctx, district, point);
+
+    ctx.fillStyle = "rgba(255, 245, 224, 0.9)";
+    ctx.fillRect(point.x - 2, point.y - buildingHeight - 48, 4, 42);
+    ctx.fillStyle = state.projects[district.id].built ? district.palette.trim : district.palette.accent;
+    ctx.beginPath();
+    ctx.moveTo(point.x + 2, point.y - buildingHeight - 46);
+    ctx.lineTo(point.x + 26, point.y - buildingHeight - 34);
+    ctx.lineTo(point.x + 2, point.y - buildingHeight - 22);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.fillStyle = selected ? "#fff1d6" : "rgba(255, 245, 224, 0.92)";
     ctx.font = '700 20px "Georgia", serif';
     ctx.fillText(district.name, point.x, point.y + 78);
     ctx.font = '400 15px "Georgia", serif';
     ctx.fillStyle = "rgba(255, 240, 210, 0.82)";
     ctx.fillText(
-      training.practicePassed ? "Sheet cleared" : training.studied ? "Practice next" : "Study next",
+      state.projects[district.id].built
+        ? plan.cityProjectName
+        : training.practicePassed
+          ? "Test-ready district"
+          : training.studied
+            ? "Practice next"
+            : "Study next",
       point.x,
       point.y + 100,
     );
   });
+
+  const citizenRoads = districts.flatMap((district, index) => {
+    const point = projectPlot(district.plot.row, district.plot.col);
+    return [
+      {
+        path: [
+          { x: academy.x, y: academy.y + 64 },
+          { x: (academy.x + point.x) / 2, y: (academy.y + point.y) / 2 + 64 },
+          { x: point.x - 8, y: point.y + 36 },
+        ],
+        color: ["#9dd88c", "#ffca91", "#a8c7ff", "#ffb7a0"][index],
+        speed: 0.17 + index * 0.04,
+      },
+      {
+        path: [
+          { x: point.x + 12, y: point.y + 40 },
+          { x: (academy.x + point.x) / 2, y: (academy.y + point.y) / 2 + 82 },
+          { x: academy.x + 22, y: academy.y + 84 },
+        ],
+        color: ["#f7df8a", "#90d0b5", "#cab9ff", "#ffc9b8"][index],
+        speed: 0.12 + index * 0.03,
+      },
+    ];
+  });
+
+  citizenRoads.forEach((road, index) => {
+    const progress = ((state.clock / 1000) * road.speed + index * 0.19) % 1;
+    drawCitizen(ctx, road.path, progress, road.color);
+  });
+
+  drawBoat(ctx, 1080 + Math.sin(state.clock / 700) * 22, 666 + Math.cos(state.clock / 820) * 14, 0.86, "#765a4d");
 };
 
 const bindCanvas = () => {
@@ -1475,6 +1894,9 @@ root.addEventListener("click", (event) => {
     case "mark-study-ready":
       markStudyReady();
       return;
+    case "complete-project":
+      completeProject();
+      return;
     case "set-practice-option": {
       const promptId = target.dataset.promptId;
       const optionId = target.dataset.optionId;
@@ -1543,19 +1965,19 @@ let tickerHandle: number | null = null;
 
 const startTicker = () => {
   tickerHandle = window.setInterval(() => {
-    state.clock += 180;
+    state.clock += 220;
+    state.messageIndex = Math.floor(state.clock / 4400) % worldMessages.length;
 
     if (document.activeElement instanceof HTMLInputElement) {
       return;
     }
 
-    if (state.activeSheet === "test" && state.currentOutcome === null) {
+    if (state.activeSheet !== null) {
       return;
     }
 
-    state.messageIndex = (state.messageIndex + 1) % worldMessages.length;
     renderApp();
-  }, 5200);
+  }, 700);
 };
 
 renderApp();

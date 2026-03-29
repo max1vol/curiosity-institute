@@ -87,6 +87,9 @@ export type DistrictLearningPlan = {
   adaptationHint: string;
   testBrief: string;
   masteryReward: string;
+  cityProjectName: string;
+  cityProjectSummary: string;
+  cityProjectEffect: string;
   studyCards: LessonCard[];
   practicePrompts: PracticePrompt[];
 };
@@ -213,6 +216,11 @@ export const learningPlans: Record<DistrictId, DistrictLearningPlan> = {
     adaptationHint: "The practice check changes the sentence, so you must transfer the rule instead of copying the example.",
     testBrief: "The hall only unlocks its estimate test after you show that you can apply the rule to a fresh sentence.",
     masteryReward: "Syntax beacon",
+    cityProjectName: "Scriptorium Square",
+    cityProjectSummary:
+      "Turn the hall forecourt into a public scriptorium with lesson stalls, banners, and grammar notices.",
+    cityProjectEffect:
+      "Adds market awnings, scribes, and illuminated notice boards around Grammar Hall.",
     studyCards: [
       {
         title: "Count the written unit",
@@ -298,6 +306,11 @@ export const learningPlans: Record<DistrictId, DistrictLearningPlan> = {
     adaptationHint: "The practice drill swaps in new words, so you need the pattern and not the old example.",
     testBrief: "The library only releases the estimate test after you prove you can use the pattern on a different word.",
     masteryReward: "Syllable lantern",
+    cityProjectName: "Lexicon Arcade",
+    cityProjectSummary:
+      "Raise a reading arcade with vine walls, word lanterns, and travelling book carts beside the library.",
+    cityProjectEffect:
+      "Adds a reading pergola, carts of books, and bright study lamps around the Word Library.",
     studyCards: [
       {
         title: "Letters stay visible",
@@ -383,6 +396,11 @@ export const learningPlans: Record<DistrictId, DistrictLearningPlan> = {
     adaptationHint: "The dock checks whether you can choose the right phrase in context, not whether you memorised one line.",
     testBrief: "The dock keeps the test locked until your practice choice shows the right phrase for the right moment.",
     masteryReward: "Dialogue fountain",
+    cityProjectName: "Merchant Pier",
+    cityProjectSummary:
+      "Extend the dock with quayside platforms, trade pennants, and speaking circles for public dialogue practice.",
+    cityProjectEffect:
+      "Adds a quay, cargo cranes, pennants, and more boat traffic around Dialogue Dock.",
     studyCards: [
       {
         title: "Polite requests use helpful framing",
@@ -468,6 +486,11 @@ export const learningPlans: Record<DistrictId, DistrictLearningPlan> = {
     adaptationHint: "The garden changes the sentence before the test, so you need understanding rather than a copied answer.",
     testBrief: "The story test opens only after you show that you can move the reading clue into a new context.",
     masteryReward: "Imagery arbor",
+    cityProjectName: "Lantern Orchard",
+    cityProjectSummary:
+      "Plant a reading orchard with story benches, fruit trees, and lantern walks winding through the garden.",
+    cityProjectEffect:
+      "Adds orchards, lantern paths, and reading pavilions around Story Garden.",
     studyCards: [
       {
         title: "Reason words link cause and action",
