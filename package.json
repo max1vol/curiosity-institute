@@ -5,8 +5,7 @@
   "description": "Transform concept art into 3D-style map renders with Google image models.",
   "scripts": {
     "render": "node scripts/render-concept-art-3d.js",
-    "render-3d": "node src/index.js",
-    "render-3d:dry-run": "node src/index.js --dry-run --allow-empty",
+    "render:dry": "node scripts/render-concept-art-3d.js --dry-run --allow-empty",
     "test": "node --test"
   },
   "engines": {

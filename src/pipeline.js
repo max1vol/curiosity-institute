@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { DIRECTIONS } from "./directions.js";
-import { listInputImages, ensureDir, readFileBuffer, writeJson, writeText, writeBuffer, sanitizeFileStem, extensionFromMimeType } from "./fs-utils.js";
+import { listInputImages, ensureDir, readFileBuffer, writeJson, writeText, writeBuffer, outputDirectoryForAsset, extensionFromMimeType } from "./fs-utils.js";
 import { generateEditedImage } from "./google-image-client.js";
 import { build3DMapPrompt } from "./prompts.js";
 import { FailureCollector, renderDeduplicatedFailuresMarkdown } from "./reporting.js";
@@ -79,8 +79,7 @@ async function renderDirection({ asset, direction, config, failureCollector }) {
 }
 
 async function persistRender({ asset, direction, renderResult, outputDir }) {
-  const assetSlug = sanitizeFileStem(asset.baseName);
-  const assetDirectory = path.join(outputDir, assetSlug);
+  const assetDirectory = path.join(outputDir, outputDirectoryForAsset(asset.relativePath));
   const imageExtension = extensionFromMimeType(renderResult.mimeType);
   const imagePath = path.join(assetDirectory, `${direction.id}${imageExtension}`);
   const metadataPath = path.join(assetDirectory, `${direction.id}.json`);
@@ -91,10 +90,10 @@ async function persistRender({ asset, direction, renderResult, outputDir }) {
     direction: direction.id,
     prompt: renderResult.prompt,
     modelText: renderResult.modelText,
-    modelResponse: renderResult.rawResponse,
+    modelResponse: renderResult.responseMeta,
     generatedAt: new Date().toISOString(),
     attempt: renderResult.attempt,
-    dryRun: Boolean(renderResult.rawResponse?.dryRun),
+    dryRun: Boolean(renderResult.responseMeta?.dryRun),
   });
 
   return {

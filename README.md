@@ -1,53 +1,51 @@
 # Curiosity Institute 3D Concept Pipeline
 
-This repository now contains a reproducible pipeline that turns concept art into three 3D-style renders per image using Google's image-capable Gemini models.
+This repo now contains a runnable Node pipeline that takes concept art, sends it to a Google Gemini image model, and renders three distinct oblique 3D-map-style directions for each asset.
 
-## What it does
+## What It Does
 
-- Reads source art from `input/concept-art/`
-- Produces three camera directions for every asset:
+- Reads source images from `input/concept-art/`
+- Generates exactly three direction variants per asset:
   - `northwest-oblique`
   - `northeast-oblique`
-  - `birdseye-oblique`
-- Retries each failed render up to three times
-- Publishes every failed attempt to JSON logs
-- Publishes deduplicated failure summaries so the same mistake is only reported once
-- Saves per-render metadata alongside generated image files
+  - `southwest-oblique`
+- Retries failed generations up to three times
+- Records every failed attempt in `attempt-failures.json`
+- Deduplicates repeated final failures in `deduplicated-failures.json` and `deduplicated-failures.md`
+- Writes per-render metadata next to each generated image
 
-## Model choice
+## Model Choice
 
-The pipeline defaults to `gemini-2.5-flash-image` for the broadest compatibility. If you have preview access, set `GOOGLE_IMAGE_MODEL=gemini-3-pro-image-preview` in `.env`.
+The default model is `gemini-3-pro-image-preview`, which matches the request to use one of Google's dev or preview image models. You can override it with either `GEMINI_MODEL` or `GOOGLE_IMAGE_MODEL`.
 
-Authentication options:
+The implementation currently supports:
 
-- `GEMINI_API_KEY` for the Gemini Developer API
-- `GOOGLE_ACCESS_TOKEN` plus `GOOGLE_CLOUD_PROJECT` for Vertex AI
+- Gemini Developer API with `GEMINI_API_KEY`
+- Vertex AI REST with `GOOGLE_ACCESS_TOKEN`, `GOOGLE_CLOUD_PROJECT`, and `GOOGLE_CLOUD_LOCATION`
 
 ## Usage
 
-1. Copy `.env.example` to `.env` and set your Google credentials.
-2. Put concept art images into `input/concept-art/`.
-3. Run:
+1. Copy `.env.example` to `.env`.
+2. Put source concept art into `input/concept-art/`.
+3. Run `npm run render`.
+
+For a no-network validation run against the current empty repo state:
 
 ```bash
-npm run render
+npm run render:dry
 ```
 
-For a local non-network verification run:
+## Output Layout
 
-```bash
-npm run render -- --dry-run --allow-empty
-```
-
-## Output layout
-
-- `output/renders/<asset>/<direction>.<ext>`
-- `output/renders/<asset>/<direction>.json`
+- `output/renders/<asset-path>/<direction>.<ext>`
+- `output/renders/<asset-path>/<direction>.json`
 - `output/reports/run-summary.json`
 - `output/reports/attempt-failures.json`
 - `output/reports/deduplicated-failures.json`
 - `output/reports/deduplicated-failures.md`
 
-## Important note
+If two source assets share the same filename but live in different subdirectories, the output structure keeps them separate.
 
-At the time this automation was added, the `main` checkout contained no concept-art assets beyond `.gitignore`. The pipeline is ready, but you still need to add the source images before it can render them.
+## Important Note
+
+When this pipeline was added, the repository did not contain any tracked concept-art images. The automation is ready, but you still need to add the source art before it can render final 3D outputs.

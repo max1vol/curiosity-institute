@@ -12,9 +12,9 @@ export const DIRECTIONS = [
       "Use an elevated three-quarter camera from the northeast, looking southwest.",
   },
   {
-    id: "birdseye-oblique",
-    label: "Bird's-eye oblique",
+    id: "southwest-oblique",
+    label: "Southwest oblique",
     cameraInstruction:
-      "Use a higher bird's-eye oblique camera with clear depth, visible roofs, and readable terrain height.",
+      "Use an elevated three-quarter camera from the southwest, looking northeast.",
   },
 ];

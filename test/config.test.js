@@ -11,7 +11,7 @@ test("buildConfig uses dry-run without credentials", () => {
 
   assert.equal(config.dryRun, true);
   assert.equal(config.allowEmpty, true);
-  assert.equal(config.model, "gemini-2.5-flash-image");
+  assert.equal(config.model, "gemini-3-pro-image-preview");
   assert.equal(config.retryLimit, 3);
   assert.equal(config.auth.kind, "none");
 });
@@ -26,4 +26,15 @@ test("buildConfig prefers GEMINI_API_KEY auth", () => {
 
   assert.equal(config.auth.kind, "developer-api");
   assert.equal(config.auth.apiKey, "test-key");
+});
+
+test("buildConfig accepts GEMINI_MODEL as the primary model override", () => {
+  const config = buildConfig({
+    argv: ["--dry-run", "--allow-empty"],
+    env: {
+      GEMINI_MODEL: "gemini-3.1-flash-image-preview",
+    },
+  });
+
+  assert.equal(config.model, "gemini-3.1-flash-image-preview");
 });

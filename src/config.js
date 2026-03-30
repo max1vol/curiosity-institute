@@ -82,7 +82,7 @@ export function buildConfig({ argv = process.argv.slice(2), env = process.env } 
     outputDir: path.resolve(values["output-dir"] ?? env.OUTPUT_DIR ?? "output/renders"),
     reportsDir: path.resolve(values["reports-dir"] ?? env.REPORTS_DIR ?? "output/reports"),
     retryLimit,
-    model: values.model ?? env.GOOGLE_IMAGE_MODEL ?? "gemini-2.5-flash-image",
+    model: values.model ?? env.GEMINI_MODEL ?? env.GOOGLE_IMAGE_MODEL ?? "gemini-3-pro-image-preview",
     auth,
     projectId: env.GOOGLE_CLOUD_PROJECT ?? "",
     location: env.GOOGLE_CLOUD_LOCATION ?? "global",

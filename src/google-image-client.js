@@ -41,7 +41,7 @@ function buildVertexApiRequest({
   imageBuffer,
   mimeType,
 }) {
-  const url = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
+  const url = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
 
   return {
     url,
@@ -104,7 +104,17 @@ function extractImage(responseJson) {
     imageBuffer: Buffer.from(imagePart.inlineData.data, "base64"),
     mimeType: imagePart.inlineData.mimeType || "image/png",
     modelText: text,
-    rawResponse: responseJson,
+    responseMeta: summarizeResponse(responseJson),
+  };
+}
+
+function summarizeResponse(responseJson) {
+  const candidate = responseJson?.candidates?.[0];
+
+  return {
+    usageMetadata: responseJson?.usageMetadata ?? null,
+    promptFeedback: responseJson?.promptFeedback ?? null,
+    finishReason: candidate?.finishReason ?? null,
   };
 }
 
@@ -123,7 +133,7 @@ export async function generateEditedImage({
       imageBuffer,
       mimeType,
       modelText: "Dry run enabled. Original input copied without network generation.",
-      rawResponse: {
+      responseMeta: {
         dryRun: true,
       },
     };

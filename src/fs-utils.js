@@ -87,3 +87,13 @@ export function extensionFromMimeType(mimeType) {
       return ".bin";
   }
 }
+
+export function outputDirectoryForAsset(relativePath) {
+  const parsed = path.parse(relativePath);
+  const directoryParts = parsed.dir
+    ? parsed.dir.split(path.sep).map((part) => sanitizeFileStem(part)).filter(Boolean)
+    : [];
+  const baseName = sanitizeFileStem(parsed.name);
+
+  return path.join(...directoryParts, baseName || "asset");
+}
