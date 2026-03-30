@@ -1,0 +1,11 @@
+{
+  "name": "curiosity-institute",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "node scripts/render-concept-art-3d.js"
+  },
+  "engines": {
+    "node": ">=18.18"
+  }
+}
