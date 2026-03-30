@@ -67,6 +67,7 @@ web_modules/
 
 # dotenv environment variable files
 .env
+.env.local
 .env.*
 !.env.example
 
@@ -80,9 +81,10 @@ out
 
 # Generated render artifacts
 output/reports/*
+!output/reports/.gitkeep
 output/renders/*
 !output/.gitkeep
-
+!output/renders/.gitkeep
 # Nuxt.js build / generate output
 .nuxt
 dist
@@ -142,3 +144,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Local image-generation scratch output
+nanobanana-output/

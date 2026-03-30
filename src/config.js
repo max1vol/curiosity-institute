@@ -78,7 +78,7 @@ export function buildConfig({ argv = process.argv.slice(2), env = process.env } 
   return {
     dryRun: values["dry-run"],
     allowEmpty: values["allow-empty"],
-    inputDir: path.resolve(values["input-dir"] ?? env.INPUT_DIR ?? "input/concept-art"),
+    inputDir: path.resolve(values["input-dir"] ?? env.INPUT_DIR ?? "docs/concept-art"),
     outputDir: path.resolve(values["output-dir"] ?? env.OUTPUT_DIR ?? "output/renders"),
     reportsDir: path.resolve(values["reports-dir"] ?? env.REPORTS_DIR ?? "output/reports"),
     retryLimit,
