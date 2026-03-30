@@ -78,6 +78,11 @@ web_modules/
 .next
 out
 
+# Generated render artifacts
+output/reports/*
+output/renders/*
+!output/.gitkeep
+
 # Nuxt.js build / generate output
 .nuxt
 dist
