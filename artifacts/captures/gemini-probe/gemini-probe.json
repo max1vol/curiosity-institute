@@ -1,0 +1,68 @@
+{
+  "title": "Google Gemini",
+  "url": "https://gemini.google.com/app",
+  "screenshotPath": "artifacts/captures/gemini-probe/gemini-probe.png",
+  "buttons": [
+    {
+      "text": "",
+      "aria": "Main menu",
+      "testId": "side-nav-menu-button",
+      "visible": true
+    },
+    {
+      "text": "",
+      "aria": "",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "",
+      "aria": "Settings & help",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "Write",
+      "aria": "Write, button, tap to use tool",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "Plan",
+      "aria": "Plan, button, tap to use tool",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "Research",
+      "aria": "Research, button, tap to use tool",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "Learn",
+      "aria": "Learn, button, tap to use tool",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "",
+      "aria": "Add files",
+      "testId": "",
+      "visible": true
+    },
+    {
+      "text": "Fast",
+      "aria": "Open mode picker",
+      "testId": "bard-mode-menu-button",
+      "visible": true
+    },
+    {
+      "text": "",
+      "aria": "Microphone",
+      "testId": "",
+      "visible": true
+    }
+  ],
+  "bodyTextSample": "Sign in\nAbout Gemini\nOpens in a new window\nGemini App\nOpens in a new window\nSubscriptions\nOpens in a new window\nFor Business\nOpens in a new window\nConversation with Gemini\nMeet Gemini, your personal AI assistant\nWrite\nPlan\nResearch\nLearn\n\n\n\n\nFast\n\nGoogle Terms\nOpens in a new window\n and the Privacy Policy\nOpens in a new window\n apply. Gemini is AI and can make mistakes, including about people. Your privacy & Gemini\nOpens in a new window"
+}
