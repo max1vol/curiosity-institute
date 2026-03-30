@@ -1,0 +1,112 @@
+{
+  "repo": "forge-of-subjects",
+  "source": "src/gameData.ts",
+  "layoutRecommendation": {
+    "workingFolder": "art/<district-id>/",
+    "variants": [
+      "direction-a.png",
+      "direction-b.png",
+      "direction-c.png"
+    ],
+    "finalSelection": "final.png",
+    "appTargetRule": "Copy the chosen final into the sprite path already referenced by the app"
+  },
+  "districts": [
+    {
+      "id": "laboratory",
+      "name": "Chemistry Lab",
+      "subject": "science",
+      "sprite": "/art/discovery-lab.png",
+      "palette": {
+        "glow": "rgba(129, 220, 238, 0.95)",
+        "accent": "#66c6da",
+        "ground": "#557d72",
+        "stone": "#4f6862",
+        "roof": "#5fa7b2",
+        "left": "#3f6560",
+        "right": "#5f8f90",
+        "trim": "#d2f5fb"
+      }
+    },
+    {
+      "id": "workshop",
+      "name": "Makers Forge",
+      "subject": "dte",
+      "sprite": "/art/makers-forge.png",
+      "palette": {
+        "glow": "rgba(245, 193, 115, 0.95)",
+        "accent": "#dd9f4d",
+        "ground": "#816348",
+        "stone": "#74563e",
+        "roof": "#c67c44",
+        "left": "#844a25",
+        "right": "#a96434",
+        "trim": "#ffe0af"
+      }
+    },
+    {
+      "id": "observatory",
+      "name": "Number Observatory",
+      "subject": "maths",
+      "sprite": "/art/number-observatory.png",
+      "palette": {
+        "glow": "rgba(188, 184, 255, 0.95)",
+        "accent": "#8e87ff",
+        "ground": "#5d6385",
+        "stone": "#555b78",
+        "roof": "#8476d7",
+        "left": "#4b4d80",
+        "right": "#686bab",
+        "trim": "#e1ddff"
+      }
+    },
+    {
+      "id": "scriptorium",
+      "name": "Scriptorium Hall",
+      "subject": "english",
+      "sprite": "/art/scriptorium-hall.png",
+      "palette": {
+        "glow": "rgba(160, 232, 173, 0.95)",
+        "accent": "#71bd70",
+        "ground": "#607f5a",
+        "stone": "#556a52",
+        "roof": "#7fb16a",
+        "left": "#4c7250",
+        "right": "#66936b",
+        "trim": "#dff3cf"
+      }
+    },
+    {
+      "id": "archive",
+      "name": "Chronicle Archive",
+      "subject": "history",
+      "sprite": "/art/chronicle-archive.png",
+      "palette": {
+        "glow": "rgba(221, 164, 126, 0.95)",
+        "accent": "#d18f62",
+        "ground": "#7a6354",
+        "stone": "#6f594e",
+        "roof": "#b7744f",
+        "left": "#7d4f3e",
+        "right": "#9a654d",
+        "trim": "#f2d5c4"
+      }
+    },
+    {
+      "id": "harbour",
+      "name": "Atlas Harbour",
+      "subject": "geography",
+      "sprite": "/art/atlas-harbour.png",
+      "palette": {
+        "glow": "rgba(118, 198, 255, 0.95)",
+        "accent": "#5aa8eb",
+        "ground": "#557085",
+        "stone": "#4d6270",
+        "roof": "#6390c6",
+        "left": "#426079",
+        "right": "#5f7ca4",
+        "trim": "#d6eaff"
+      }
+    }
+  ]
+}

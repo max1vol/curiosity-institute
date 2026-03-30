@@ -250,9 +250,36 @@ const buildInitialBattleState = (districtId: DistrictId | null = null): BattleSt
 });
 
 const spriteCache = new Map<DistrictId, HTMLImageElement>();
+const spriteFailures = new Set<DistrictId>();
 
 const loadDistrictSprites = () => {
   spriteCache.clear();
+  spriteFailures.clear();
+
+  districts.forEach((district) => {
+    const sprite = new Image();
+    sprite.decoding = "async";
+
+    sprite.addEventListener("load", () => {
+      spriteCache.set(district.id, sprite);
+      renderApp();
+    });
+
+    sprite.addEventListener("error", () => {
+      if (spriteFailures.has(district.id)) {
+        return;
+      }
+
+      spriteFailures.add(district.id);
+      console.warn(`Failed to load district sprite: ${district.sprite}`);
+    });
+
+    sprite.src = district.sprite;
+
+    if (sprite.complete && sprite.naturalWidth > 0) {
+      spriteCache.set(district.id, sprite);
+    }
+  });
 };
 
 const state: AppState = {
