@@ -8,7 +8,7 @@ async function main() {
   const summary = await runPipeline(config);
 
   console.log(
-    `Processed ${summary.assetsDiscovered} assets into ${summary.rendersCompleted} renders using ${summary.model}.`,
+    `Processed ${summary.assetsDiscovered} assets into ${summary.rendersCompleted} renders across ${summary.librariesWritten} intersecting libraries using ${summary.model}.`,
   );
   console.log(`Unique failures: ${summary.uniqueFailures}`);
 

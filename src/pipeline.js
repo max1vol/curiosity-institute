@@ -1,8 +1,9 @@
 import path from "node:path";
 
 import { DIRECTIONS } from "./directions.js";
-import { listInputImages, ensureDir, readFileBuffer, writeJson, writeText, writeBuffer, outputDirectoryForAsset, extensionFromMimeType } from "./fs-utils.js";
+import { listInputImages, ensureDir, resetDir, readFileBuffer, writeJson, writeText, writeBuffer, outputDirectoryForAsset, extensionFromMimeType } from "./fs-utils.js";
 import { generateEditedImage } from "./google-image-client.js";
+import { buildAssetLibrary, libraryFilePaths, renderAssetLibraryReadme } from "./library.js";
 import { build3DMapPrompt } from "./prompts.js";
 import { FailureCollector, renderDeduplicatedFailuresMarkdown, renderFailureReadme } from "./reporting.js";
 import { RAISED_RENDER_PROFILE } from "./render-profile.js";
@@ -82,13 +83,19 @@ async function renderDirection({ asset, direction, config, failureCollector }) {
 async function persistRender({ asset, direction, renderResult, outputDir }) {
   const assetDirectory = path.join(outputDir, outputDirectoryForAsset(asset.relativePath));
   const imageExtension = extensionFromMimeType(renderResult.mimeType);
-  const imagePath = path.join(assetDirectory, `${direction.id}${imageExtension}`);
-  const metadataPath = path.join(assetDirectory, `${direction.id}.json`);
+  const imageFile = `${direction.id}${imageExtension}`;
+  const metadataFile = `${direction.id}.json`;
+  const imagePath = path.join(assetDirectory, imageFile);
+  const metadataPath = path.join(assetDirectory, metadataFile);
 
   await writeBuffer(imagePath, renderResult.imageBuffer);
   await writeJson(metadataPath, {
     asset: asset.relativePath,
     direction: direction.id,
+    directionLabel: direction.label,
+    librarySlot: direction.librarySlot,
+    intersectsWith: direction.intersectsWith,
+    overlapInstruction: direction.overlapInstruction,
     prompt: renderResult.prompt,
     renderProfile: RAISED_RENDER_PROFILE.id,
     tricks: RAISED_RENDER_PROFILE.tricks,
@@ -102,9 +109,44 @@ async function persistRender({ asset, direction, renderResult, outputDir }) {
   return {
     asset: asset.relativePath,
     direction: direction.id,
+    directionLabel: direction.label,
+    librarySlot: direction.librarySlot,
+    intersectsWith: direction.intersectsWith,
     imagePath,
     metadataPath,
+    imageFile,
+    metadataFile,
     attempt: renderResult.attempt,
+  };
+}
+
+async function persistAssetLibrary({ asset, persistedRenders, outputDir, retryLimit }) {
+  const assetWithOutput = {
+    ...asset,
+    outputSubdirectory: outputDirectoryForAsset(asset.relativePath),
+  };
+  const { assetDirectory, manifestPath, readmePath } = libraryFilePaths({
+    outputDir,
+    asset: assetWithOutput,
+  });
+  const library = buildAssetLibrary({
+    asset,
+    outputSubdirectory: assetWithOutput.outputSubdirectory,
+    renderProfile: RAISED_RENDER_PROFILE,
+    retryLimit,
+    persistedRenders,
+  });
+
+  await writeJson(manifestPath, library);
+  await writeText(readmePath, renderAssetLibraryReadme(library));
+
+  return {
+    asset: asset.relativePath,
+    assetDirectory,
+    manifestPath,
+    readmePath,
+    completedViews: library.completedViews,
+    missingViews: library.missingViews,
   };
 }
 
@@ -119,8 +161,13 @@ export async function runPipeline(config) {
 
   const failureCollector = new FailureCollector();
   const completedRenders = [];
+  const assetLibraries = [];
 
   for (const asset of assets) {
+    await resetDir(path.join(config.outputDir, outputDirectoryForAsset(asset.relativePath)));
+
+    const persistedRenders = [];
+
     for (const direction of DIRECTIONS) {
       const renderResult = await renderDirection({
         asset,
@@ -133,15 +180,25 @@ export async function runPipeline(config) {
         continue;
       }
 
-      completedRenders.push(
-        await persistRender({
-          asset,
-          direction,
-          renderResult,
-          outputDir: config.outputDir,
-        }),
-      );
+      const persistedRender = await persistRender({
+        asset,
+        direction,
+        renderResult,
+        outputDir: config.outputDir,
+      });
+
+      persistedRenders.push(persistedRender);
+      completedRenders.push(persistedRender);
     }
+
+    assetLibraries.push(
+      await persistAssetLibrary({
+        asset,
+        persistedRenders,
+        outputDir: config.outputDir,
+        retryLimit: config.retryLimit,
+      }),
+    );
   }
 
   const deduplicatedFailures = Array.from(failureCollector.uniqueFailures.values());
@@ -155,8 +212,10 @@ export async function runPipeline(config) {
     tricks: RAISED_RENDER_PROFILE.tricks,
     assetsDiscovered: assets.length,
     directionsPerAsset: DIRECTIONS.length,
+    librariesWritten: assetLibraries.length,
     rendersCompleted: completedRenders.length,
     uniqueFailures: deduplicatedFailures.length,
+    assetLibraries,
     completedRenders,
     generatedAt: new Date().toISOString(),
   };

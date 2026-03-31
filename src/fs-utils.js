@@ -7,6 +7,11 @@ export async function ensureDir(directoryPath) {
   await fs.mkdir(directoryPath, { recursive: true });
 }
 
+export async function resetDir(directoryPath) {
+  await fs.rm(directoryPath, { recursive: true, force: true });
+  await ensureDir(directoryPath);
+}
+
 export async function walkFiles(directoryPath) {
   const directoryEntries = await fs.readdir(directoryPath, { withFileTypes: true });
   const nestedFiles = [];

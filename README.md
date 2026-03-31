@@ -77,7 +77,7 @@ These three concept images show the same gameplay idea with clearly different vi
 
 ## 3D Render Pipeline
 
-This repo also contains a runnable Node pipeline that takes the tracked concept art in `docs/concept-art/`, sends each piece to a Google Gemini image model, and produces three distinct oblique 3D-map-style directions per source image.
+This repo also contains a runnable Node pipeline that takes the tracked concept art in `docs/concept-art/`, sends each piece to a Google Gemini image model, and produces a three-view intersecting oblique 3D-map library per source image.
 
 What it does:
 
@@ -86,12 +86,14 @@ What it does:
   - `northwest-oblique`
   - `northeast-oblique`
   - `southwest-oblique`
+- keeps those three outputs aligned as intersecting views of the same place, like a reusable shared 3D map capture set
 - pushes the model toward stronger 3D cues with angled views, cast shadows, inferred land-height data, terraces, retaining walls, and explicit 3D building massing
 - retries failed generations up to three times
 - writes every failed attempt to `output/reports/attempt-failures.json`
 - deduplicates repeated final failures in `output/reports/deduplicated-failures.json`
 - writes a repo-visible Markdown summary of unique failures to `output/reports/README.md`
 - saves per-render metadata next to each generated image
+- writes `library.json` and `README.md` in each asset output directory so the intersecting view set can be reused later
 
 ### Model Choice
 
@@ -123,6 +125,8 @@ npm run render:dry
 
 - `output/renders/<concept-art-relative-path>/<direction>.<ext>`
 - `output/renders/<concept-art-relative-path>/<direction>.json`
+- `output/renders/<concept-art-relative-path>/library.json`
+- `output/renders/<concept-art-relative-path>/README.md`
 - `output/reports/run-summary.json`
 - `output/reports/attempt-failures.json`
 - `output/reports/deduplicated-failures.json`
