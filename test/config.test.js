@@ -40,3 +40,16 @@ test("buildConfig accepts GEMINI_MODEL as the primary model override", () => {
 
   assert.equal(config.model, "gemini-3.1-flash-image-preview");
 });
+
+test("buildConfig prefers service-account auth when service account JSON is present", () => {
+  const config = buildConfig({
+    argv: [],
+    env: {
+      GOOGLE_SERVICE_ACCOUNT_JSON:
+        '{"project_id":"pic2toon","client_email":"service@example.com","private_key":"-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n"}',
+    },
+  });
+
+  assert.equal(config.auth.kind, "vertex-service-account");
+  assert.equal(config.projectId, "pic2toon");
+});

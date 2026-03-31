@@ -7,3 +7,16 @@ test("pipeline defines exactly three distinct render directions", () => {
   assert.equal(DIRECTIONS.length, 3);
   assert.equal(new Set(DIRECTIONS.map((direction) => direction.id)).size, 3);
 });
+
+test("each direction carries camera, shadow, terrain, and building instructions", () => {
+  for (const direction of DIRECTIONS) {
+    assert.equal(typeof direction.cameraInstruction, "string");
+    assert.equal(typeof direction.shadowInstruction, "string");
+    assert.equal(typeof direction.terrainInstruction, "string");
+    assert.equal(typeof direction.buildingInstruction, "string");
+    assert.ok(direction.cameraInstruction.length > 0);
+    assert.ok(direction.shadowInstruction.length > 0);
+    assert.ok(direction.terrainInstruction.length > 0);
+    assert.ok(direction.buildingInstruction.length > 0);
+  }
+});

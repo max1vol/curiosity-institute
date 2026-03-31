@@ -4,7 +4,8 @@ import { DIRECTIONS } from "./directions.js";
 import { listInputImages, ensureDir, readFileBuffer, writeJson, writeText, writeBuffer, outputDirectoryForAsset, extensionFromMimeType } from "./fs-utils.js";
 import { generateEditedImage } from "./google-image-client.js";
 import { build3DMapPrompt } from "./prompts.js";
-import { FailureCollector, renderDeduplicatedFailuresMarkdown } from "./reporting.js";
+import { FailureCollector, renderDeduplicatedFailuresMarkdown, renderFailureReadme } from "./reporting.js";
+import { RAISED_RENDER_PROFILE } from "./render-profile.js";
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -89,6 +90,8 @@ async function persistRender({ asset, direction, renderResult, outputDir }) {
     asset: asset.relativePath,
     direction: direction.id,
     prompt: renderResult.prompt,
+    renderProfile: RAISED_RENDER_PROFILE.id,
+    tricks: RAISED_RENDER_PROFILE.tricks,
     modelText: renderResult.modelText,
     modelResponse: renderResult.responseMeta,
     generatedAt: new Date().toISOString(),
@@ -148,6 +151,8 @@ export async function runPipeline(config) {
     inputDir: config.inputDir,
     outputDir: config.outputDir,
     reportsDir: config.reportsDir,
+    renderProfile: RAISED_RENDER_PROFILE.id,
+    tricks: RAISED_RENDER_PROFILE.tricks,
     assetsDiscovered: assets.length,
     directionsPerAsset: DIRECTIONS.length,
     rendersCompleted: completedRenders.length,
@@ -168,6 +173,14 @@ export async function runPipeline(config) {
   await writeText(
     path.join(config.reportsDir, "deduplicated-failures.md"),
     renderDeduplicatedFailuresMarkdown(deduplicatedFailures),
+  );
+  await writeText(
+    path.join(config.reportsDir, "README.md"),
+    renderFailureReadme({
+      retryLimit: config.retryLimit,
+      profileLabel: RAISED_RENDER_PROFILE.label,
+      uniqueFailures: deduplicatedFailures,
+    }),
   );
 
   return summary;

@@ -1,9 +1,9 @@
 import { buildConfig } from "./config.js";
-import { loadDotEnv } from "./load-env.js";
+import { loadConfiguredEnv } from "./load-env.js";
 import { runPipeline } from "./pipeline.js";
 
 async function main() {
-  loadDotEnv();
+  loadConfiguredEnv();
   const config = buildConfig();
   const summary = await runPipeline(config);
 

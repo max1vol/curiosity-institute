@@ -86,9 +86,11 @@ What it does:
   - `northwest-oblique`
   - `northeast-oblique`
   - `southwest-oblique`
+- pushes the model toward stronger 3D cues with angled views, cast shadows, inferred land-height data, terraces, retaining walls, and explicit 3D building massing
 - retries failed generations up to three times
 - writes every failed attempt to `output/reports/attempt-failures.json`
 - deduplicates repeated final failures in `output/reports/deduplicated-failures.json`
+- writes a repo-visible Markdown summary of unique failures to `output/reports/README.md`
 - saves per-render metadata next to each generated image
 
 ### Model Choice
@@ -97,6 +99,7 @@ The default model is `gemini-3-pro-image-preview`. You can override it with `GEM
 
 Supported auth modes:
 
+- Vertex AI via `GOOGLE_SERVICE_ACCOUNT_JSON`
 - Gemini Developer API with `GEMINI_API_KEY`
 - Vertex AI REST with `GOOGLE_ACCESS_TOKEN`, `GOOGLE_CLOUD_PROJECT`, and `GOOGLE_CLOUD_LOCATION`
 
@@ -105,6 +108,10 @@ Supported auth modes:
 1. Copy `.env.example` to `.env`.
 2. Set your Google credentials.
 3. Run `npm run render`.
+
+You can also keep credentials outside the repo in a shell-style keys file and run with `KEYS_FILE=/absolute/path/to/keys.txt npm run render`.
+
+If that keys file contains `GOOGLE_SERVICE_ACCOUNT_JSON`, you can force Vertex-style auth with `GOOGLE_AUTH_MODE=service-account`.
 
 For a no-network pipeline pass that preserves directory layout and writes placeholder outputs:
 
@@ -120,6 +127,7 @@ npm run render:dry
 - `output/reports/attempt-failures.json`
 - `output/reports/deduplicated-failures.json`
 - `output/reports/deduplicated-failures.md`
+- `output/reports/README.md`
 
 ## Files
 

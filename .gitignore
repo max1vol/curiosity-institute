@@ -82,6 +82,7 @@ out
 # Generated render artifacts
 output/reports/*
 !output/reports/.gitkeep
+!output/reports/README.md
 output/renders/*
 !output/.gitkeep
 !output/renders/.gitkeep

@@ -37,3 +37,24 @@ export function loadDotEnv(envPath = path.resolve(".env"), env = process.env) {
 
   return true;
 }
+
+export function loadConfiguredEnv({ cwd = process.cwd(), env = process.env } = {}) {
+  const loadedFiles = [];
+  const defaultEnvPath = path.resolve(cwd, ".env");
+
+  if (loadDotEnv(defaultEnvPath, env)) {
+    loadedFiles.push(defaultEnvPath);
+  }
+
+  if (env.KEYS_FILE) {
+    const keysPath = path.isAbsolute(env.KEYS_FILE)
+      ? env.KEYS_FILE
+      : path.resolve(cwd, env.KEYS_FILE);
+
+    if (loadDotEnv(keysPath, env)) {
+      loadedFiles.push(keysPath);
+    }
+  }
+
+  return loadedFiles;
+}
