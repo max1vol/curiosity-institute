@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { loadConfiguredEnv } from "../src/load-env.js";
+import { loadConfiguredEnv } from "../core/load-env.js";
 
 test("loadConfiguredEnv loads .env and KEYS_FILE without overriding existing values", () => {
   const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "curiosity-env-"));

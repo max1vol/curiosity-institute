@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { DIRECTIONS } from "../src/directions.js";
-import { build3DMapPrompt } from "../src/prompts.js";
+import { DIRECTIONS } from "../core/directions.js";
+import { build3DMapPrompt } from "../core/prompts.js";
 
 test("3D prompt includes raised-map tricks", () => {
   const prompt = build3DMapPrompt({

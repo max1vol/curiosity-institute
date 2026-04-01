@@ -149,9 +149,9 @@ Pipeline entrypoint:
 
 - `scripts/render-concept-art-3d.js`
 
-## Playable Build
+## Playable App
 
-This repo now also contains a playable browser prototype that turns the concept art, generated render libraries, and side-game ideas into a lightweight museum-management game.
+This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a lightweight museum-management game.
 
 What it includes:
 
@@ -160,25 +160,50 @@ What it includes:
 - a live `Call The Curator` hotline event loop
 - mini-games for quiz, estimation, curator checks, and match pairs
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
+- an opaque, non-blurred interface so the deployed app stays readable instead of smearing the whole screen
 
-To build the full deployable game app from the repo assets:
+## App Structure
+
+- `src/` is the SvelteKit app
+- `core/` contains the existing render-pipeline and content-generation modules
+- `docs/` remains the source-of-truth for concept art
+- `output/` remains the source-of-truth for generated render libraries and reports
+- `static/` is build-time generated from those source directories for the app
+
+## Local Development
+
+SvelteKit now requires a newer Node runtime than the original prototype. Use Node `^20.19 || ^22.12 || >=24`.
+
+To sync the repo assets into the app and start the local dev server:
 
 ```bash
-npm run game:build
+npm run dev
 ```
 
-That writes a static bundle to `dist/` with the game at `/`, plus the concept art and render-library assets the app uses.
+The app sync happens automatically before `dev`, `build`, `preview`, and `check`.
 
-If you only want to refresh the raw asset manifest under `game/data/assets.json`, run:
+If you want to manually refresh the static app assets first:
+
+```bash
+npm run app:sync
+```
+
+If you only want to refresh the raw asset manifest under `static/game/data/assets.json`, run:
 
 ```bash
 npm run game:data
 ```
 
-To play it locally:
+To produce a production build:
 
 ```bash
-npm run game
+npm run build
 ```
 
-Then open `http://localhost:4173`.
+To preview the production build locally:
+
+```bash
+npm run preview
+```
+
+The app loads concept art from `/docs/concept-art/`, render libraries from `/output/renders/`, and the generated manifest from `/game/data/assets.json`, all served from SvelteKit `static/` after the sync step.

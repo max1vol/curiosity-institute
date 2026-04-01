@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { writeGameDataFile } from "../src/game-data.js";
+import { writeGameDataFile } from "../core/game-data.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const { data, outputFile } = await writeGameDataFile({ repoRoot });

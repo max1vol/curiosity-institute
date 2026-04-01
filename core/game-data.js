@@ -514,7 +514,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
 
 export async function writeGameDataFile({
   repoRoot = path.resolve("."),
-  outputFile = path.join(repoRoot, "game", "data", "assets.json"),
+  outputFile = path.join(repoRoot, "static", "game", "data", "assets.json"),
 } = {}) {
   const data = await buildGameData({ repoRoot });
   await fs.mkdir(path.dirname(outputFile), { recursive: true });

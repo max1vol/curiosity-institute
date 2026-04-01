@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
 
-import { buildConfig } from "../src/config.js";
+import { buildConfig } from "../core/config.js";
 
 test("buildConfig uses dry-run without credentials", () => {
   const config = buildConfig({

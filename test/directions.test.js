@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { DIRECTIONS } from "../src/directions.js";
+import { DIRECTIONS } from "../core/directions.js";
 
 test("pipeline defines exactly three distinct render directions", () => {
   assert.equal(DIRECTIONS.length, 3);

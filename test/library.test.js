@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildAssetLibrary, renderAssetLibraryReadme } from "../src/library.js";
-import { RAISED_RENDER_PROFILE } from "../src/render-profile.js";
+import { buildAssetLibrary, renderAssetLibraryReadme } from "../core/library.js";
+import { RAISED_RENDER_PROFILE } from "../core/render-profile.js";
 
 test("buildAssetLibrary marks completed and missing intersecting views", () => {
   const library = buildAssetLibrary({

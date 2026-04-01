@@ -105,6 +105,10 @@ dist
 
 # Sveltekit cache directory
 .svelte-kit/
+build
+static/docs/concept-art/
+static/output/renders/
+static/game/data/assets.json
 
 # vitepress build output
 **/.vitepress/dist

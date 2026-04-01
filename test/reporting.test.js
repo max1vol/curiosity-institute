@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { FailureCollector, normalizeFailureMessage, renderFailureReadme } from "../src/reporting.js";
+import { FailureCollector, normalizeFailureMessage, renderFailureReadme } from "../core/reporting.js";
 
 test("normalizeFailureMessage removes volatile ids and numbers", () => {
   const normalized = normalizeFailureMessage(

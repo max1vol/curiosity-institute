@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { classifyRetryDecision } from "../src/retry-policy.js";
+import { classifyRetryDecision } from "../core/retry-policy.js";
 
 test("classifyRetryDecision fails fast on leaked API keys", () => {
   const decision = classifyRetryDecision(

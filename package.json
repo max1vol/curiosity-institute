@@ -2,16 +2,37 @@
   "name": "curiosity-institute",
   "private": true,
   "type": "module",
-  "description": "Transform concept art into 3D-style map renders with Google image models.",
+  "version": "0.1.0",
+  "description": "Playable SvelteKit museum game built from concept art and Google-generated 3D-style map renders.",
   "scripts": {
-    "game": "node scripts/play-game.js",
-    "game:build": "node scripts/build-game-app.js",
+    "app:sync": "node scripts/sync-game-assets.js",
+    "predev": "npm run app:sync",
+    "dev": "vite dev",
+    "prebuild": "npm run app:sync",
+    "build": "vite build",
+    "prepreview": "npm run app:sync",
+    "preview": "vite preview",
+    "prepare": "svelte-kit sync || echo ''",
+    "precheck": "npm run app:sync",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+    "game": "npm run dev",
     "game:data": "node scripts/build-game-data.js",
     "render": "node scripts/render-concept-art-3d.js",
     "render:dry": "node scripts/render-concept-art-3d.js --dry-run --allow-empty",
     "test": "node --test"
   },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@sveltejs/adapter-vercel": "^5.10.2",
+    "@sveltejs/kit": "^2.50.2",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "svelte": "^5.54.0",
+    "svelte-check": "^4.4.2",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  },
   "engines": {
-    "node": ">=18.18"
+    "node": "^20.19 || ^22.12 || >=24"
   }
 }

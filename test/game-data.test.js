@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildGameData } from "../src/game-data.js";
+import { buildGameData } from "../core/game-data.js";
 
 test("buildGameData discovers repo art, render libraries, and themes", async () => {
   const data = await buildGameData();
