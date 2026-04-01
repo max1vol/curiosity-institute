@@ -83,6 +83,7 @@ export class MuseumGameController {
 
   selectedThemeId = $state("");
   game = $state<GameSession | null>(null);
+  viewerRoomId = $state<string | null>(null);
 
   private readonly keys = new Set<string>();
   private animationFrame = 0;
@@ -104,6 +105,14 @@ export class MuseumGameController {
     }
 
     return this.findRoom(this.game.selectedRoomId);
+  }
+
+  get viewerRoom(): RoomBlueprint | undefined {
+    if (!this.viewerRoomId) {
+      return undefined;
+    }
+
+    return this.findRoom(this.viewerRoomId);
   }
 
   get stats(): StatCard[] {
@@ -199,20 +208,31 @@ export class MuseumGameController {
           disabled: true
         });
       }
-    } else if (room.miniGameId) {
-      actions.push({
-        id: `${room.id}-mini-game`,
-        action: "mini-game",
-        label: `Play ${this.findMiniGame(room.miniGameId)?.label ?? "Mini Game"}`,
-        primary: true
-      });
     } else {
-      actions.push({
-        id: `${room.id}-tour`,
-        action: "tour",
-        label: "Host Guided Tour",
-        primary: true
-      });
+      if (room.photospherePath) {
+        actions.push({
+          id: `${room.id}-viewer`,
+          action: "viewer",
+          label: "Enter 3D View",
+          primary: true
+        });
+      }
+
+      if (room.miniGameId) {
+        actions.push({
+          id: `${room.id}-mini-game`,
+          action: "mini-game",
+          label: `Play ${this.findMiniGame(room.miniGameId)?.label ?? "Mini Game"}`,
+          primary: !room.photospherePath
+        });
+      } else {
+        actions.push({
+          id: `${room.id}-tour`,
+          action: "tour",
+          label: "Host Guided Tour",
+          primary: !room.photospherePath
+        });
+      }
     }
 
     actions.push({
@@ -325,6 +345,7 @@ export class MuseumGameController {
       pendingCall: null,
       activeModal: null
     };
+    this.viewerRoomId = null;
 
     this.logEvent(`The ${theme.label} museum day begins.`);
   }
@@ -347,6 +368,7 @@ export class MuseumGameController {
 
   openHotline(): void {
     this.ensureGameStarted();
+    this.closeRoomViewer();
 
     if (!this.game) {
       return;
@@ -357,6 +379,7 @@ export class MuseumGameController {
 
   openMiniGame(miniGameId: MiniGameId): void {
     this.ensureGameStarted();
+    this.closeRoomViewer();
 
     if (!this.game) {
       return;
@@ -432,6 +455,11 @@ export class MuseumGameController {
     }
 
     if (this.isRoomUnlocked(room.id)) {
+      if (room.photospherePath) {
+        this.openRoomViewer(room.id);
+        return;
+      }
+
       this.setCuratorTarget(roomCenter(room));
     }
   }
@@ -466,6 +494,11 @@ export class MuseumGameController {
       return;
     }
 
+    if (action === "viewer") {
+      this.openRoomViewer(roomId);
+      return;
+    }
+
     if (action === "mini-game" && room.miniGameId) {
       this.openMiniGame(room.miniGameId);
       return;
@@ -485,6 +518,25 @@ export class MuseumGameController {
     }
 
     this.game.activeModal = null;
+  }
+
+  openRoomViewer(roomId: string): void {
+    if (!this.game) {
+      return;
+    }
+
+    const room = this.findRoom(roomId);
+
+    if (!room || !this.isRoomUnlocked(room.id) || !room.photospherePath) {
+      return;
+    }
+
+    this.game.selectedRoomId = room.id;
+    this.viewerRoomId = room.id;
+  }
+
+  closeRoomViewer(): void {
+    this.viewerRoomId = null;
   }
 
   setEstimationGuess(value: number): void {
@@ -627,6 +679,11 @@ export class MuseumGameController {
     }
 
     if (key === "Escape") {
+      if (this.viewerRoomId) {
+        this.closeRoomViewer();
+        return;
+      }
+
       this.closeModal();
     }
   };
@@ -876,6 +933,7 @@ export class MuseumGameController {
       return;
     }
 
+    this.closeRoomViewer();
     this.game.activeModal = {
       type: "call",
       question
@@ -887,6 +945,7 @@ export class MuseumGameController {
       return;
     }
 
+    this.closeRoomViewer();
     this.game.activeModal = {
       type: "archive",
       focusAssetId
@@ -919,7 +978,7 @@ export class MuseumGameController {
   }
 
   private updateSimulation(deltaSeconds: number): void {
-    if (!this.game || this.game.activeModal) {
+    if (!this.game || this.game.activeModal || this.viewerRoomId) {
       return;
     }
 

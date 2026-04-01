@@ -8,6 +8,7 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
 
   assert.equal(data.summary.conceptArtCount, 16);
   assert.equal(data.summary.renderLibraryCount, 16);
+  assert.equal(typeof data.summary.photosphereCount, "number");
   assert.equal(data.themes.length, 3);
   assert.equal(data.roomBlueprints.length, 9);
   assert.equal(data.miniGames.length, 4);
@@ -15,5 +16,10 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
   for (const theme of data.themes) {
     assert.equal(theme.renderViews.length, 3);
     assert.ok(theme.heroImage.startsWith("/docs/concept-art/"));
+  }
+
+  for (const room of data.roomBlueprints) {
+    assert.equal(typeof room.photospherePath, "string");
+    assert.equal(typeof room.photosphereMetadataPath, "string");
   }
 });

@@ -1,7 +1,7 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-function parseRetryLimit(value) {
+export function parseRetryLimit(value) {
   const parsed = Number.parseInt(value, 10);
 
   if (!Number.isInteger(parsed) || parsed < 1 || parsed > 3) {
@@ -11,7 +11,7 @@ function parseRetryLimit(value) {
   return parsed;
 }
 
-function resolveAuth(env, authMode = "auto") {
+export function resolveAuth(env, authMode = "auto") {
   if (authMode === "developer-api") {
     const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
     if (apiKey) {

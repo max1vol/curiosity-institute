@@ -47,6 +47,9 @@ export interface RoomBlueprint {
   miniGameId?: MiniGameId;
   artPath: string;
   renderViews: RenderView[];
+  photospherePath: string;
+  photosphereSourcePath: string;
+  photosphereMetadataPath: string;
   previewPath: string;
   previewRenderViews: RenderView[];
 }
@@ -66,6 +69,7 @@ export interface MiniGameDefinition {
   };
   artPath: string;
   renderViews: RenderView[];
+  photospherePath: string;
 }
 
 export interface RenderLibrary {
@@ -81,6 +85,14 @@ export interface RenderLibrary {
   views: RenderView[];
 }
 
+export interface PhotosphereAsset {
+  asset: string;
+  imagePath: string;
+  sourcePath: string;
+  metadataPath: string;
+  profile: string;
+}
+
 export interface ConceptAsset {
   id: string;
   asset: string;
@@ -88,6 +100,7 @@ export interface ConceptAsset {
   category: string;
   originalPath: string;
   renderLibrary: RenderLibrary | null;
+  photosphere: PhotosphereAsset | null;
 }
 
 export interface ConceptGroup {
@@ -129,6 +142,7 @@ export interface GameContent {
   summary: {
     conceptArtCount: number;
     renderLibraryCount: number;
+    photosphereCount: number;
     themeCount: number;
     roomCount: number;
     miniGameCount: number;
@@ -251,7 +265,7 @@ export interface ObjectivePill {
 
 export interface RoomAction {
   id: string;
-  action: "unlock" | "mini-game" | "tour" | "move";
+  action: "unlock" | "mini-game" | "tour" | "move" | "viewer";
   label: string;
   primary?: boolean;
   disabled?: boolean;

@@ -160,6 +160,7 @@ What it includes:
 - a live `Call The Curator` hotline event loop
 - mini-games for quiz, estimation, curator checks, and match pairs
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
+- immersive room photospheres generated from concept art, rendered in a mouse, swipe, and arrow-key driven 3D viewer
 - an opaque, non-blurred interface so the deployed app stays readable instead of smearing the whole screen
 
 ## App Structure
@@ -169,6 +170,31 @@ What it includes:
 - `docs/` remains the source-of-truth for concept art
 - `output/` remains the source-of-truth for generated render libraries and reports
 - `static/` is build-time generated from those source directories for the app
+
+## Photosphere Pipeline
+
+This repo also contains a second Google-image pipeline that turns each playable room concept into a generated panoramic photosphere and feeds those images back into the SvelteKit app.
+
+What it does:
+
+- reads the room-driving concept art from `docs/concept-art/`
+- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic room view
+- converts that panorama into a 2:1 photosphere texture with `ffmpeg`
+- retries Google failures up to three times per room
+- records attempt failures and deduplicated final failures in `output/photospheres/reports/`
+- exposes the generated textures through `static/output/photospheres/` so clicking an unlocked room opens the 3D viewer
+
+Run it with:
+
+```bash
+KEYS_FILE=/absolute/path/to/keys.txt GOOGLE_AUTH_MODE=service-account npm run photospheres
+```
+
+For a no-network pass that keeps the same file layout:
+
+```bash
+npm run photospheres:dry
+```
 
 ## Local Development
 

@@ -1,0 +1,36 @@
+{
+  "model": "gemini-3.1-flash-image-preview",
+  "dryRun": false,
+  "inputDir": "/tmp/ci-photosphere-single",
+  "outputDir": "/home/max/curiosity-institute/output/photospheres",
+  "reportsDir": "/home/max/curiosity-institute/output/photospheres/reports",
+  "profile": "nano-banana-photosphere",
+  "tricks": [
+    "Render a seamless 360-degree museum panorama derived from the reference image.",
+    "Use a wide 4:1 panoramic composition that can be converted into a 2:1 photosphere for a sphere viewer.",
+    "Keep the camera at human eye height from the center of the room or corridor.",
+    "Wrap walls, floors, ceilings, exhibits, and doors continuously around the full scene.",
+    "Match the left and right image edges so the panorama seam feels like the same physical space.",
+    "Preserve the concept art's architecture, props, lighting, and material language.",
+    "Preserve strong depth cues with foreground objects, midground circulation, distant walls, and coherent parallax.",
+    "Avoid text overlays, split screens, black bars, visible seams, and collage layouts.",
+    "Compose the image for an immersive first-person panorama viewer with mouse or touch look controls."
+  ],
+  "assetsDiscovered": 1,
+  "photospheresCompleted": 1,
+  "uniqueFailures": 0,
+  "completedPhotospheres": [
+    {
+      "asset": "main-views/dusty-foyer-start.png",
+      "outputSubdirectory": "main-views/dusty-foyer-start",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/main-views/dusty-foyer-start/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/main-views/dusty-foyer-start/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/main-views/dusty-foyer-start/photosphere.json",
+      "attempt": 1
+    }
+  ],
+  "generatedAt": "2026-04-01T13:56:02.769Z"
+}

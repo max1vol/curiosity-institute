@@ -12,9 +12,19 @@ async function resetPath(targetPath) {
 }
 
 async function copyIntoStatic(sourceRelativePath, targetRelativePath = sourceRelativePath) {
-  await fs.cp(path.join(repoRoot, sourceRelativePath), path.join(staticRoot, targetRelativePath), {
-    recursive: true
-  });
+  try {
+    await fs.cp(path.join(repoRoot, sourceRelativePath), path.join(staticRoot, targetRelativePath), {
+      recursive: true
+    });
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return false;
+    }
+
+    throw error;
+  }
+
+  return true;
 }
 
 async function syncGameAssets() {
@@ -22,9 +32,11 @@ async function syncGameAssets() {
 
   await resetPath(path.join(staticRoot, "docs", "concept-art"));
   await resetPath(path.join(staticRoot, "output", "renders"));
+  await resetPath(path.join(staticRoot, "output", "photospheres"));
 
   await copyIntoStatic("docs/concept-art", "docs/concept-art");
   await copyIntoStatic("output/renders", "output/renders");
+  await copyIntoStatic("output/photospheres", "output/photospheres");
 
   const { data, outputFile } = await writeGameDataFile({
     repoRoot,

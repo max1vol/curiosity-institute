@@ -108,6 +108,7 @@ dist
 build
 static/docs/concept-art/
 static/output/renders/
+static/output/photospheres/
 static/game/data/assets.json
 
 # vitepress build output

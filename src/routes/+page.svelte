@@ -1,6 +1,7 @@
 <script lang="ts">
   import GameModal from "$lib/components/game/GameModal.svelte";
   import MuseumStage from "$lib/components/game/MuseumStage.svelte";
+  import RoomViewer from "$lib/components/game/RoomViewer.svelte";
   import { MuseumGameController } from "$lib/game/controller.svelte";
 
   import type { PageData } from "./$types";
@@ -55,7 +56,9 @@
           Open Full Archive
         </button>
       </div>
-      <p class="hero-note">Controls: WASD or arrow keys to move. Click anywhere to move. Click locked wings to unlock.</p>
+      <p class="hero-note">
+        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their 3D photosphere view. Click locked wings to unlock.
+      </p>
     </div>
 
     <div class="hero-preview">
@@ -232,4 +235,8 @@
     selectMatchCard={(cardId) => controller.handleMatchCard(cardId)}
     openArchiveAsset={(assetId) => controller.openArchiveAsset(assetId)}
   />
+{/if}
+
+{#if controller.viewerRoom}
+  <RoomViewer room={controller.viewerRoom} close={() => controller.closeRoomViewer()} />
 {/if}

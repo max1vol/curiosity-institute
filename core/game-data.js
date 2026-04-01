@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { walkFiles } from "./fs-utils.js";
+import { outputDirectoryForAsset, walkFiles } from "./fs-utils.js";
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 
@@ -97,7 +97,7 @@ const THEME_DEFINITIONS = [
   },
 ];
 
-const ROOM_BLUEPRINTS = [
+export const ROOM_BLUEPRINTS = [
   {
     id: "foyer",
     label: "Dusty Foyer",
@@ -338,6 +338,18 @@ async function readJsonIfPresent(filePath) {
   }
 }
 
+async function walkFilesIfPresent(directoryPath) {
+  try {
+    return await walkFiles(directoryPath);
+  } catch (error) {
+    if (error && error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
 function publicPath(...segments) {
   return `/${segments.join("/")}`;
 }
@@ -349,10 +361,11 @@ function toRelativeId(relativePath) {
 export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
   const conceptRoot = path.join(repoRoot, "docs", "concept-art");
   const renderRoot = path.join(repoRoot, "output", "renders");
+  const photosphereRoot = path.join(repoRoot, "output", "photospheres");
   const reportPath = path.join(repoRoot, "output", "reports", "run-summary.json");
   const runSummary = await readJsonIfPresent(reportPath);
 
-  const renderLibraryFiles = (await walkFiles(renderRoot))
+  const renderLibraryFiles = (await walkFilesIfPresent(renderRoot))
     .filter((filePath) => path.basename(filePath) === "library.json")
     .sort();
 
@@ -387,6 +400,26 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     renderLibrariesByAsset.set(asset, library);
   }
 
+  const photosphereFiles = (await walkFilesIfPresent(photosphereRoot))
+    .filter((filePath) => path.basename(filePath) === "photosphere.json")
+    .sort();
+
+  const photospheresByAsset = new Map();
+
+  for (const photospherePath of photosphereFiles) {
+    const parsed = JSON.parse(await fs.readFile(photospherePath, "utf8"));
+    const asset = toPosix(parsed.asset);
+    const outputDirectory = outputDirectoryForAsset(asset);
+
+    photospheresByAsset.set(asset, {
+      asset,
+      imagePath: publicPath("output", "photospheres", outputDirectory, parsed.imageFile),
+      sourcePath: publicPath("output", "photospheres", outputDirectory, parsed.sourceFile),
+      metadataPath: publicPath("output", "photospheres", outputDirectory, "photosphere.json"),
+      profile: parsed.profile,
+    });
+  }
+
   const conceptFiles = (await walkFiles(conceptRoot))
     .filter((filePath) => IMAGE_EXTENSIONS.has(path.extname(filePath).toLowerCase()))
     .sort();
@@ -394,6 +427,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
   const conceptArt = conceptFiles.map((filePath) => {
     const relativePath = toPosix(path.relative(conceptRoot, filePath));
     const renderLibrary = renderLibrariesByAsset.get(relativePath) ?? null;
+    const photosphere = photospheresByAsset.get(relativePath) ?? null;
 
     return {
       id: toRelativeId(relativePath),
@@ -402,6 +436,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       category: relativePath.split("/")[0],
       originalPath: publicPath("docs", "concept-art", relativePath),
       renderLibrary,
+      photosphere,
     };
   });
 
@@ -439,6 +474,9 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       ...room,
       artPath: concept?.originalPath ?? "",
       renderViews: concept?.renderLibrary?.views ?? [],
+      photospherePath: concept?.photosphere?.imagePath ?? "",
+      photosphereSourcePath: concept?.photosphere?.sourcePath ?? "",
+      photosphereMetadataPath: concept?.photosphere?.metadataPath ?? "",
       previewPath: preview?.originalPath ?? concept?.originalPath ?? "",
       previewRenderViews: preview?.renderLibrary?.views ?? [],
     };
@@ -483,6 +521,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       ...miniGame,
       artPath: concept?.originalPath ?? "",
       renderViews: concept?.renderLibrary?.views ?? [],
+      photospherePath: concept?.photosphere?.imagePath ?? "",
     };
   });
 
@@ -491,6 +530,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     summary: {
       conceptArtCount: conceptArt.length,
       renderLibraryCount: renderLibraries.length,
+      photosphereCount: photospheresByAsset.size,
       themeCount: themes.length,
       roomCount: roomBlueprints.length,
       miniGameCount: miniGames.length,
