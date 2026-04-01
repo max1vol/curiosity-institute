@@ -47,10 +47,19 @@
             <img src={art?.artPath} alt={art?.label ?? "Call The Curator"} />
           </figure>
           <div>
+            <div class="modal-meta-row">
+              <span class="meta-pill accent">{modal.question.style}</span>
+              <span class="meta-pill">{modal.question.difficulty}</span>
+              <span class="meta-pill">{modal.question.category}</span>
+            </div>
+            <p class="modal-brief">{modal.question.context}</p>
             <h3>{modal.question.prompt}</h3>
             <div class="choice-grid">
               {#each modal.question.choices as choice, index (`call-${choice}`)}
-                <button class="choice-button primary" type="button" onclick={() => resolveCall(index)}>{choice}</button>
+                <button class="choice-button primary challenge-button" type="button" onclick={() => resolveCall(index)}>
+                  <span class="choice-index">{String.fromCharCode(65 + index)}</span>
+                  <span class="choice-copy">{choice}</span>
+                </button>
               {/each}
             </div>
           </div>
@@ -71,8 +80,14 @@
             <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
           </figure>
           <div>
+            <div class="modal-meta-row">
+              <span class="meta-pill accent">{modal.scenario.style}</span>
+              <span class="meta-pill">{modal.scenario.difficulty}</span>
+              <span class="meta-pill">{modal.scenario.category}</span>
+            </div>
+            <p class="modal-brief">{modal.scenario.clue}</p>
             <h3>{modal.scenario.prompt}</h3>
-            <div class="slider-wrap">
+            <div class="slider-wrap challenge-slider">
               <input
                 type="range"
                 min={modal.scenario.min}
@@ -108,10 +123,19 @@
             <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
           </figure>
           <div>
+            <div class="modal-meta-row">
+              <span class="meta-pill accent">{modal.scenario.style}</span>
+              <span class="meta-pill">{modal.scenario.difficulty}</span>
+              <span class="meta-pill">{modal.scenario.category}</span>
+            </div>
+            <p class="modal-brief">{modal.scenario.context}</p>
             <h3>{modal.scenario.prompt}</h3>
             <div class="choice-grid">
               {#each modal.scenario.choices as choice, index (`curator-${choice}`)}
-                <button class="choice-button primary" type="button" onclick={() => resolveCuratorCheck(index)}>{choice}</button>
+                <button class="choice-button primary challenge-button" type="button" onclick={() => resolveCuratorCheck(index)}>
+                  <span class="choice-index">{String.fromCharCode(65 + index)}</span>
+                  <span class="choice-copy">{choice}</span>
+                </button>
               {/each}
             </div>
           </div>
@@ -132,8 +156,17 @@
             <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
           </figure>
           <div>
-            <h3>Find the six museum pairs.</h3>
-            <p class="modal-copy">Attempts: {modal.attempts}</p>
+            <div class="modal-meta-row">
+              <span class="meta-pill accent">Rotating Memory Deck</span>
+              <span class="meta-pill">{Math.floor(modal.deck.length / 2)} pairs</span>
+              <span class="meta-pill">Attempts {modal.attempts}</span>
+            </div>
+            <h3>Find the {Math.floor(modal.deck.length / 2)} museum pairs.</h3>
+            <p class="modal-copy">
+              This run pulls from a larger shuffled archive set. Cleared:
+              {" "}
+              {Math.floor(modal.deck.filter((card) => card.matched).length / 2)}/{Math.floor(modal.deck.length / 2)}.
+            </p>
             <div class="match-grid">
               {#each modal.deck as card (card.id)}
                 <button

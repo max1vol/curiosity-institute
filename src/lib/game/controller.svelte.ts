@@ -2,8 +2,10 @@ import type {
   ActivityEntry,
   CallQuestion,
   ConceptAsset,
+  CuratorCheckScenario,
   DailyGoal,
   DailyGoalView,
+  EstimationScenario,
   FloorCoin,
   GameContent,
   GameSession,
@@ -55,6 +57,24 @@ function shuffle<T>(items: T[]): T[] {
   }
 
   return next;
+}
+
+function shuffleChoiceEntry<T extends { choices: string[]; correctIndex: number }>(entry: T): T {
+  const annotated = entry.choices.map((choice, index) => ({
+    choice,
+    correct: index === entry.correctIndex
+  }));
+  const shuffled = shuffle(annotated);
+
+  return {
+    ...entry,
+    choices: shuffled.map((item) => item.choice),
+    correctIndex: shuffled.findIndex((item) => item.correct)
+  };
+}
+
+function pushRecentId(recentIds: string[], id: string, limit: number): string[] {
+  return [...recentIds.filter((entry) => entry !== id), id].slice(-limit);
 }
 
 function distance(a: Point, b: Point): number {
@@ -755,7 +775,7 @@ export class MuseumGameController {
       return;
     }
 
-    this.openCallModal(this.game.pendingCall ?? randomItem(this.content.callDeck));
+    this.openCallModal(this.game.pendingCall ?? this.nextCallQuestion());
   }
 
   openMiniGame(miniGameId: MiniGameId): void {
@@ -773,12 +793,12 @@ export class MuseumGameController {
     }
 
     if (miniGameId === "study-quiz") {
-      this.openCallModal(randomItem(this.content.callDeck));
+      this.openCallModal(this.nextCallQuestion());
       return;
     }
 
     if (miniGameId === "estimation") {
-      const scenario = randomItem(this.content.estimationDeck);
+      const scenario = this.nextEstimationScenario();
       this.game.activeModal = {
         type: "estimation",
         miniGame,
@@ -792,13 +812,15 @@ export class MuseumGameController {
       this.game.activeModal = {
         type: "curator-check",
         miniGame,
-        scenario: randomItem(this.content.curatorCheckDeck)
+        scenario: this.nextCuratorScenario()
       };
       return;
     }
 
+    const pairCount = Math.min(8, this.content.matchPairsDeck.length);
+    const selectedPairs = shuffle(this.content.matchPairsDeck).slice(0, pairCount);
     const deck = shuffle(
-      this.content.matchPairsDeck.flatMap((label) => [
+      selectedPairs.flatMap((label) => [
         { id: `${label}-a`, pair: label, label },
         { id: `${label}-b`, pair: label, label }
       ])
@@ -950,13 +972,15 @@ export class MuseumGameController {
     const distanceFromAnswer = Math.abs(guess - scenario.value);
     const range = Math.max(1, scenario.max - scenario.min);
     const accuracy = 1 - distanceFromAnswer / range;
-    const coinReward = Math.max(4, Math.round(accuracy * 22));
-    const repReward = accuracy > 0.8 ? 5 : 2;
+    const expertMultiplier = scenario.difficulty === "Expert" ? 1.22 : 1;
+    const coinReward = Math.max(6, Math.round(accuracy * 22 * expertMultiplier));
+    const repReward = accuracy > 0.82 ? (scenario.difficulty === "Expert" ? 7 : 5) : accuracy > 0.62 ? 3 : 1;
+    const curiosityReward = scenario.difficulty === "Expert" ? 6 : 4;
 
     this.game.activeModal = null;
     this.completeProgram(
-      { coins: coinReward, reputation: repReward, curiosity: 4 },
-      `Estimation lab completed with ${coinReward} bonus coins.`
+      { coins: coinReward, reputation: repReward, curiosity: curiosityReward },
+      `${scenario.style} cleared with ${coinReward} bonus coins.`
     );
   }
 
@@ -971,11 +995,16 @@ export class MuseumGameController {
     this.game.activeModal = null;
 
     if (success) {
-      this.award({ coins: 14, reputation: 6, curiosity: 8 }, question.success);
+      this.award(
+        question.difficulty === "Expert"
+          ? { coins: 18, reputation: 8, curiosity: 10 }
+          : { coins: 14, reputation: 6, curiosity: 8 },
+        question.success
+      );
       return;
     }
 
-    this.award({ reputation: -4, curiosity: -2 }, question.failure);
+    this.award(question.difficulty === "Expert" ? { reputation: -5, curiosity: -3 } : { reputation: -4, curiosity: -2 }, question.failure);
   }
 
   resolveCuratorCheckChoice(choiceIndex: number): void {
@@ -989,13 +1018,18 @@ export class MuseumGameController {
 
     if (success) {
       this.completeProgram(
-        { coins: 10, reputation: 8, curiosity: 5 },
-        "Curator check solved cleanly. Visitor flow improves."
+        scenario.difficulty === "Expert"
+          ? { coins: 14, reputation: 10, curiosity: 6 }
+          : { coins: 10, reputation: 8, curiosity: 5 },
+        `${scenario.style} solved cleanly. Visitor flow improves.`
       );
       return;
     }
 
-    this.award({ reputation: -3, curiosity: -1 }, "The curator check slipped. The museum loses a little confidence.");
+    this.award(
+      scenario.difficulty === "Expert" ? { reputation: -4, curiosity: -2 } : { reputation: -3, curiosity: -1 },
+      "The curator check slipped. The museum loses a little confidence."
+    );
   }
 
   handleMatchCard(cardId: string): void {
@@ -1032,7 +1066,7 @@ export class MuseumGameController {
       modal.locked = false;
 
       if (modal.deck.every((entry) => entry.matched)) {
-        const reward = Math.max(8, 22 - modal.attempts);
+        const reward = Math.max(12, 32 - modal.attempts);
         this.game.activeModal = null;
         this.completeProgram({ coins: reward, reputation: 5, curiosity: 7 }, `Match Pairs cleared in ${modal.attempts} tries.`);
       }
@@ -1122,6 +1156,9 @@ export class MuseumGameController {
       selectedRoomId: startingRoom.id,
       unlockedRoomIds,
       viewedRoomIds: [],
+      recentQuestionIds: [],
+      recentEstimationIds: [],
+      recentCuratorCheckIds: [],
       roomLevels: createRoomNumberMap(this.content.roomBlueprints, 0),
       roomVisitCounts: createRoomNumberMap(this.content.roomBlueprints, 0),
       dailyGoals: buildDailyGoals(theme.id),
@@ -1199,6 +1236,65 @@ export class MuseumGameController {
 
   private findMiniGame(miniGameId: MiniGameId): MiniGameDefinition | undefined {
     return this.content.miniGames.find((miniGame) => miniGame.id === miniGameId);
+  }
+
+  private pickFreshDeckItem<T extends { id: string }>(
+    items: T[],
+    recentIds: string[],
+    getWeight: (item: T) => number = () => 1
+  ): T {
+    const recent = new Set(recentIds);
+    const freshItems = items.filter((item) => !recent.has(item.id));
+    const pool = freshItems.length ? freshItems : items;
+
+    return pickWeightedItem(
+      pool.map((item) => ({
+        item,
+        weight: getWeight(item)
+      }))
+    );
+  }
+
+  private nextCallQuestion(): CallQuestion {
+    if (!this.game) {
+      return shuffleChoiceEntry(randomItem(this.content.callDeck));
+    }
+
+    const expertBias = 1 + this.completedGoalsCount * 0.35 + this.game.programsHosted * 0.1;
+    const question = this.pickFreshDeckItem(this.content.callDeck, this.game.recentQuestionIds, (item) =>
+      item.difficulty === "Expert" ? expertBias + 0.9 : 1.25
+    );
+
+    this.game.recentQuestionIds = pushRecentId(this.game.recentQuestionIds, question.id, 7);
+    return shuffleChoiceEntry(question);
+  }
+
+  private nextEstimationScenario(): EstimationScenario {
+    if (!this.game) {
+      return randomItem(this.content.estimationDeck);
+    }
+
+    const expertBias = 1 + this.completedGoalsCount * 0.25 + this.roomLevel(this.game.selectedRoomId) * 0.12;
+    const scenario = this.pickFreshDeckItem(this.content.estimationDeck, this.game.recentEstimationIds, (item) =>
+      item.difficulty === "Expert" ? expertBias + 0.5 : 1.1
+    );
+
+    this.game.recentEstimationIds = pushRecentId(this.game.recentEstimationIds, scenario.id, 5);
+    return scenario;
+  }
+
+  private nextCuratorScenario(): CuratorCheckScenario {
+    if (!this.game) {
+      return shuffleChoiceEntry(randomItem(this.content.curatorCheckDeck));
+    }
+
+    const expertBias = 1 + this.completedGoalsCount * 0.4 + Math.max(0, (this.game.reputation - 50) / 25);
+    const scenario = this.pickFreshDeckItem(this.content.curatorCheckDeck, this.game.recentCuratorCheckIds, (item) =>
+      item.difficulty === "Expert" ? expertBias + 0.75 : 1.15
+    );
+
+    this.game.recentCuratorCheckIds = pushRecentId(this.game.recentCuratorCheckIds, scenario.id, 5);
+    return shuffleChoiceEntry(scenario);
   }
 
   private roomLevel(roomId: string): number {
@@ -1542,7 +1638,7 @@ export class MuseumGameController {
       return;
     }
 
-    this.game.pendingCall = randomItem(this.content.callDeck);
+    this.game.pendingCall = this.nextCallQuestion();
   }
 
   private tourRoom(roomId: string): void {
@@ -1670,6 +1766,9 @@ export class MuseumGameController {
       selectedRoomId,
       unlockedRoomIds: unlockedRoomIds.length ? Array.from(new Set(unlockedRoomIds)) : fallback.unlockedRoomIds,
       viewedRoomIds: asStringArray(raw.viewedRoomIds).filter((roomId) => validRoomIds.has(roomId)),
+      recentQuestionIds: asStringArray(raw.recentQuestionIds).slice(-7),
+      recentEstimationIds: asStringArray(raw.recentEstimationIds).slice(-5),
+      recentCuratorCheckIds: asStringArray(raw.recentCuratorCheckIds).slice(-5),
       roomLevels: asNumberRecord(raw.roomLevels, this.content.roomBlueprints),
       roomVisitCounts: asNumberRecord(raw.roomVisitCounts, this.content.roomBlueprints),
       dailyGoals,

@@ -88,15 +88,16 @@
 
 <section class="stage-card">
   <div class="stage-topline">
-    <div>
+    <div class="stage-topline-copy">
       <p class="eyebrow">Live Floor</p>
       <h2>{theme ? `${theme.label} Floor` : "Museum Floor"}</h2>
+      <p class="stage-caption">Quiz format, answer order, and memory decks now rotate from larger challenge pools.</p>
     </div>
     <div class="topline-actions">
-      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("match-pairs")}>Match Pairs</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("estimation")}>Estimation</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("curator-check")}>Curator Check</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={openHotline}>Call The Curator</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("match-pairs")}>Memory Deck</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("estimation")}>Blind Estimate</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("curator-check")}>Triage Drill</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={openHotline}>Hotline Quiz</button>
     </div>
   </div>
 

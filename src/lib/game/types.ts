@@ -62,6 +62,8 @@ export interface MiniGameDefinition {
   roomId: string;
   artAsset: string;
   description: string;
+  formatNote: string;
+  difficultyLabel: string;
   reward: {
     coins: number;
     reputation: number;
@@ -71,6 +73,8 @@ export interface MiniGameDefinition {
   renderViews: RenderView[];
   photospherePath: string;
 }
+
+export type ChallengeDifficulty = "Advanced" | "Expert";
 
 export interface RenderLibrary {
   id: string;
@@ -111,6 +115,11 @@ export interface ConceptGroup {
 }
 
 export interface CallQuestion {
+  id: string;
+  style: string;
+  difficulty: ChallengeDifficulty;
+  category: string;
+  context: string;
   prompt: string;
   choices: string[];
   correctIndex: number;
@@ -119,6 +128,11 @@ export interface CallQuestion {
 }
 
 export interface EstimationScenario {
+  id: string;
+  style: string;
+  difficulty: ChallengeDifficulty;
+  category: string;
+  clue: string;
   prompt: string;
   min: number;
   max: number;
@@ -127,6 +141,11 @@ export interface EstimationScenario {
 }
 
 export interface CuratorCheckScenario {
+  id: string;
+  style: string;
+  difficulty: ChallengeDifficulty;
+  category: string;
+  context: string;
   prompt: string;
   choices: string[];
   correctIndex: number;
@@ -276,6 +295,9 @@ export interface GameSession {
   selectedRoomId: string;
   unlockedRoomIds: string[];
   viewedRoomIds: string[];
+  recentQuestionIds: string[];
+  recentEstimationIds: string[];
+  recentCuratorCheckIds: string[];
   roomLevels: Record<string, number>;
   roomVisitCounts: Record<string, number>;
   dailyGoals: DailyGoal[];

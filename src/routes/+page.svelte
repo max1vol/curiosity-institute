@@ -65,7 +65,7 @@
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their 3D photosphere view. The game now autosaves locally, supports room upgrades, and tracks a daily director brief.
+        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their 3D photosphere view. Hotline quizzes now rotate through harder randomized formats with shuffled answers, and the game still autosaves locally between sessions.
       </p>
     </div>
 
@@ -220,6 +220,40 @@
             >
               {action.label}
             </button>
+          {/each}
+        </div>
+      </section>
+
+      <section class="panel program-panel">
+        <div class="section-heading compact">
+          <p class="eyebrow">Program Board</p>
+          <h2>Rotating Challenges</h2>
+        </div>
+        <div class="program-grid">
+          {#each data.content.miniGames as miniGame (miniGame.id)}
+            <article class="program-card">
+              <figure class="program-card-image">
+                <img src={miniGame.artPath} alt={miniGame.label} />
+              </figure>
+              <div class="program-card-copy">
+                <div class="program-card-topline">
+                  <div>
+                    <p class="eyebrow">{miniGame.difficultyLabel}</p>
+                    <h3>{miniGame.label}</h3>
+                  </div>
+                  <button class="ghost-button" type="button" onclick={() => controller.openMiniGame(miniGame.id)}>
+                    Launch
+                  </button>
+                </div>
+                <p>{miniGame.description}</p>
+                <div class="program-chip-row">
+                  <span class="program-chip">{miniGame.formatNote}</span>
+                  <span class="program-chip">
+                    {miniGame.reward.coins} coins · {miniGame.reward.reputation}% rep · {miniGame.reward.curiosity}% curiosity
+                  </span>
+                </div>
+              </div>
+            </article>
           {/each}
         </div>
       </section>
