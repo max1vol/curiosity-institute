@@ -7,6 +7,7 @@ import { buildAssetLibrary, libraryFilePaths, renderAssetLibraryReadme } from ".
 import { build3DMapPrompt } from "./prompts.js";
 import { FailureCollector, renderDeduplicatedFailuresMarkdown, renderFailureReadme } from "./reporting.js";
 import { RAISED_RENDER_PROFILE } from "./render-profile.js";
+import { classifyRetryDecision } from "./retry-policy.js";
 
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -41,8 +42,11 @@ async function renderDirection({ asset, direction, config, failureCollector }) {
   };
 
   let lastError = null;
+  let lastAttempt = 0;
 
   for (let attempt = 1; attempt <= config.retryLimit; attempt += 1) {
+    lastAttempt = attempt;
+
     try {
       const result = await generateEditedImage({
         auth: config.auth,
@@ -63,15 +67,29 @@ async function renderDirection({ asset, direction, config, failureCollector }) {
       };
     } catch (error) {
       lastError = error;
-      failureCollector.recordAttempt(context, error, attempt);
+      const retryDecision = classifyRetryDecision(error, attempt);
 
-      if (attempt < config.retryLimit) {
-        await sleep(500 * attempt);
+      failureCollector.recordAttempt(
+        {
+          ...context,
+          retryable: retryDecision.retryable,
+          retryCategory: retryDecision.category,
+          retryDelayMs: retryDecision.delayMs,
+        },
+        error,
+        attempt,
+      );
+
+      if (attempt < config.retryLimit && retryDecision.retryable) {
+        await sleep(retryDecision.delayMs);
+        continue;
       }
+
+      break;
     }
   }
 
-  failureCollector.recordFinalFailure(context, lastError);
+  failureCollector.recordFinalFailure(context, lastError, lastAttempt);
 
   return {
     success: false,

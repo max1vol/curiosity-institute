@@ -89,6 +89,8 @@ What it does:
 - keeps those three outputs aligned as intersecting views of the same place, like a reusable shared 3D map capture set
 - pushes the model toward stronger 3D cues with angled views, cast shadows, inferred land-height data, terraces, retaining walls, and explicit 3D building massing
 - retries failed generations up to three times
+- uses stronger exponential backoff for transient Google failures such as timeouts and quota exhaustion
+- fails fast on non-retryable auth and safety errors instead of wasting all three attempts
 - writes every failed attempt to `output/reports/attempt-failures.json`
 - deduplicates repeated final failures in `output/reports/deduplicated-failures.json`
 - writes a repo-visible Markdown summary of unique failures to `output/reports/README.md`
@@ -114,6 +116,8 @@ Supported auth modes:
 You can also keep credentials outside the repo in a shell-style keys file and run with `KEYS_FILE=/absolute/path/to/keys.txt npm run render`.
 
 If that keys file contains `GOOGLE_SERVICE_ACCOUNT_JSON`, you can force Vertex-style auth with `GOOGLE_AUTH_MODE=service-account`.
+
+If Google is slow in your environment, you can raise the per-request timeout with `GOOGLE_REQUEST_TIMEOUT_MS`.
 
 For a no-network pipeline pass that preserves directory layout and writes placeholder outputs:
 

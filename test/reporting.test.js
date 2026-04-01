@@ -23,14 +23,20 @@ test("FailureCollector deduplicates repeated final failures", () => {
   collector.recordFinalFailure(
     { asset: "castle.png", direction: "northwest-oblique", retryLimit: 3 },
     error,
+    2,
   );
   collector.recordFinalFailure(
     { asset: "castle.png", direction: "northeast-oblique", retryLimit: 3 },
     new Error("Rate limit exceeded for request 67890"),
+    1,
   );
 
   assert.equal(collector.attemptFailures.length, 1);
   assert.equal(collector.uniqueFailures.size, 1);
+  assert.deepEqual(collector.uniqueFailures.get("rate limit exceeded for request <n>").targets, [
+    { asset: "castle.png", direction: "northwest-oblique", attempt: 2 },
+    { asset: "castle.png", direction: "northeast-oblique", attempt: 1 },
+  ]);
 });
 
 test("renderFailureReadme lists only unique failures", () => {
@@ -43,8 +49,8 @@ test("renderFailureReadme lists only unique failures", () => {
         normalizedMessage: "rate limit exceeded",
         occurrences: 2,
         targets: [
-          { asset: "castle.png", direction: "northwest-oblique" },
-          { asset: "castle.png", direction: "northeast-oblique" },
+          { asset: "castle.png", direction: "northwest-oblique", attempt: 2 },
+          { asset: "castle.png", direction: "northeast-oblique", attempt: 1 },
         ],
       },
     ],
@@ -53,5 +59,6 @@ test("renderFailureReadme lists only unique failures", () => {
   assert.match(readme, /Retry policy: up to 3 attempts/i);
   assert.match(readme, /Unique failures recorded: 1/i);
   assert.match(readme, /Rate limit exceeded/i);
+  assert.match(readme, /attempt 2/i);
   assert.equal((readme.match(/## Rate limit exceeded/g) || []).length, 1);
 });

@@ -9,7 +9,7 @@ export function normalizeFailureMessage(message) {
 }
 
 function toFailureRecord(context, error, attempt) {
-  return {
+  const record = {
     asset: context.asset,
     direction: context.direction,
     attempt,
@@ -19,6 +19,20 @@ function toFailureRecord(context, error, attempt) {
     ),
     timestamp: new Date().toISOString(),
   };
+
+  if (typeof context.retryable === "boolean") {
+    record.retryable = context.retryable;
+  }
+
+  if (context.retryCategory) {
+    record.retryCategory = context.retryCategory;
+  }
+
+  if (typeof context.retryDelayMs === "number") {
+    record.retryDelayMs = context.retryDelayMs;
+  }
+
+  return record;
 }
 
 export class FailureCollector {
@@ -33,8 +47,8 @@ export class FailureCollector {
     return record;
   }
 
-  recordFinalFailure(context, error) {
-    const record = toFailureRecord(context, error, context.retryLimit);
+  recordFinalFailure(context, error, attempt = context.retryLimit) {
+    const record = toFailureRecord(context, error, attempt);
     const existing = this.uniqueFailures.get(record.normalizedMessage);
 
     if (existing) {
@@ -42,6 +56,7 @@ export class FailureCollector {
       existing.targets.push({
         asset: context.asset,
         direction: context.direction,
+        attempt,
       });
       return;
     }
@@ -54,6 +69,7 @@ export class FailureCollector {
         {
           asset: context.asset,
           direction: context.direction,
+          attempt,
         },
       ],
     });
@@ -81,7 +97,7 @@ export function renderDeduplicatedFailuresMarkdown(uniqueFailures) {
     lines.push(`- Normalized key: \`${failure.normalizedMessage}\``);
     lines.push("- Affected renders:");
     for (const target of failure.targets) {
-      lines.push(`  - ${target.asset} :: ${target.direction}`);
+      lines.push(`  - ${target.asset} :: ${target.direction} (attempt ${target.attempt ?? "?"})`);
     }
     lines.push("");
   }
@@ -117,7 +133,7 @@ export function renderFailureReadme({ retryLimit, profileLabel, uniqueFailures }
     lines.push(`- Normalized key: \`${failure.normalizedMessage}\``);
     lines.push("- Affected renders:");
     for (const target of failure.targets) {
-      lines.push(`  - ${target.asset} :: ${target.direction}`);
+      lines.push(`  - ${target.asset} :: ${target.direction} (attempt ${target.attempt ?? "?"})`);
     }
     lines.push("");
   }
