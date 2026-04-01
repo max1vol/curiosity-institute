@@ -4,6 +4,8 @@
   "type": "module",
   "description": "Transform concept art into 3D-style map renders with Google image models.",
   "scripts": {
+    "game": "node scripts/play-game.js",
+    "game:build": "node scripts/build-game-data.js",
     "render": "node scripts/render-concept-art-3d.js",
     "render:dry": "node scripts/render-concept-art-3d.js --dry-run --allow-empty",
     "test": "node --test"

@@ -148,3 +148,29 @@ Main gameplay directions live in:
 Pipeline entrypoint:
 
 - `scripts/render-concept-art-3d.js`
+
+## Playable Build
+
+This repo now also contains a playable browser prototype that turns the concept art, generated render libraries, and side-game ideas into a lightweight museum-management game.
+
+What it includes:
+
+- direct curator movement with `WASD`, arrow keys, or click-to-move
+- coin collection, visitor flow, room unlocking, and guided expansion
+- a live `Call The Curator` hotline event loop
+- mini-games for quiz, estimation, curator checks, and match pairs
+- an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
+
+To build the game data manifest from the repo assets:
+
+```bash
+npm run game:build
+```
+
+To play it locally:
+
+```bash
+npm run game
+```
+
+Then open `http://localhost:4173`.
