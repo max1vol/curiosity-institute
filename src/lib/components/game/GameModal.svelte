@@ -188,20 +188,20 @@
         <div class="modal-header">
           <div>
             <p class="eyebrow">Repo Archive</p>
-            <h2>Concept Art And Intersecting Libraries</h2>
-            <p class="modal-subtitle">Every tracked concept image plus the three-view render library when available.</p>
+            <h2>Generated Museum Library</h2>
+            <p class="modal-subtitle">Generated imagery derived from the source concept art, plus the tracked intersecting render library.</p>
           </div>
           <button class="modal-close" type="button" onclick={close}>Close</button>
         </div>
 
         <section class="modal-feature">
           <figure class="modal-feature-image">
-            <img src={focusAsset.originalPath} alt={focusAsset.label} />
+            <img src={focusAsset.displayPath} alt={focusAsset.label} />
           </figure>
           <div>
             <p class="eyebrow">{focusAsset.category.replace(/-/g, " ")}</p>
             <h3>{focusAsset.label}</h3>
-            <p class="modal-copy">{focusAsset.renderLibrary?.coverageGoal ?? "Original concept art only."}</p>
+            <p class="modal-copy">{focusAsset.renderLibrary?.coverageGoal ?? "Generated from the tracked source concept art."}</p>
             <div class="archive-render-row">
               {#each focusAsset.renderLibrary?.views ?? [] as view (view.id)}
                 <img src={view.imagePath} alt={`${focusAsset.label} ${view.label}`} />
@@ -221,10 +221,10 @@
                 {#each group.items as item (item.id)}
                   <article class="archive-modal-card">
                     <figure>
-                      <img src={item.originalPath} alt={item.label} loading="lazy" />
+                      <img src={item.displayPath} alt={item.label} loading="lazy" />
                     </figure>
                     <h4>{item.label}</h4>
-                    <p>{group.label}</p>
+                    <p>{group.label} · generated from source art</p>
                     <div class="archive-render-row">
                       {#each item.renderLibrary?.views ?? [] as view (view.id)}
                         <img src={view.imagePath} alt={`${item.label} ${view.label}`} loading="lazy" />

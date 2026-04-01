@@ -8,6 +8,32 @@ export interface RenderView {
   intersectsWith: string[];
 }
 
+export interface PhotosphereEdge {
+  id: string;
+  toNodeId: string;
+  roomId: string;
+  label: string;
+  headingDeg: number;
+  targetHeadingDeg: number;
+  imagePath: string;
+}
+
+export interface PhotosphereNode {
+  id: string;
+  roomId: string;
+  label: string;
+  imagePath: string;
+  sourcePath: string;
+  metadataPath: string;
+  edges: PhotosphereEdge[];
+}
+
+export interface PhotosphereMap {
+  roomId: string;
+  startNodeId: string;
+  nodes: PhotosphereNode[];
+}
+
 export interface ThemePalette {
   accent: string;
   deep: string;
@@ -42,11 +68,13 @@ export interface RoomBlueprint {
   cost: number;
   startUnlocked: boolean;
   requiredRoomIds: string[];
+  immersiveNeighbors?: string[];
   position: RoomPosition;
   rewardRate: number;
   miniGameId?: MiniGameId;
   artPath: string;
   renderViews: RenderView[];
+  photosphereMap: PhotosphereMap | null;
   photospherePath: string;
   photosphereSourcePath: string;
   photosphereMetadataPath: string;
@@ -102,6 +130,7 @@ export interface ConceptAsset {
   asset: string;
   label: string;
   category: string;
+  displayPath: string;
   originalPath: string;
   renderLibrary: RenderLibrary | null;
   photosphere: PhotosphereAsset | null;
@@ -316,6 +345,15 @@ export interface StatCard {
   value: string | number;
 }
 
+export interface ViewerState {
+  roomId: string;
+  nodeId: string;
+  yaw: number;
+  pitch: number;
+}
+
+export type ViewerMoveDirection = "forward" | "back";
+
 export interface ObjectivePill {
   label: string;
   value: string;
@@ -333,4 +371,5 @@ export interface RoomAction {
   label: string;
   primary?: boolean;
   disabled?: boolean;
+  tone?: "glow" | "dim";
 }

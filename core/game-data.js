@@ -58,6 +58,86 @@ function toRelativeId(relativePath) {
   return relativePath.replace(/\.[^.]+$/u, "");
 }
 
+function nodeIdForRoom(roomId) {
+  return `${roomId}:anchor`;
+}
+
+function roomCenter(room) {
+  return {
+    x: room.position.x + room.position.width / 2,
+    y: room.position.y + room.position.height / 2,
+  };
+}
+
+function headingBetweenRooms(sourceRoom, targetRoom) {
+  const source = roomCenter(sourceRoom);
+  const target = roomCenter(targetRoom);
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  return normalizeHeading((Math.atan2(dx, -dy) * 180) / Math.PI);
+}
+
+function normalizeHeading(value) {
+  return ((value % 360) + 360) % 360;
+}
+
+function buildRoomPhotosphereMap(room, roomsById) {
+  if (!room.photospherePath) {
+    return null;
+  }
+
+  const nodeId = nodeIdForRoom(room.id);
+  const edges = (room.immersiveNeighbors ?? [])
+    .map((neighborId) => roomsById.get(neighborId))
+    .filter((neighbor) => neighbor && neighbor.photospherePath)
+    .map((neighbor) => {
+      const headingDeg = normalizeHeading(headingBetweenRooms(room, neighbor));
+      const returnHeadingDeg = normalizeHeading(headingBetweenRooms(neighbor, room) + 180);
+
+      return {
+        id: `${room.id}-to-${neighbor.id}`,
+        toNodeId: nodeIdForRoom(neighbor.id),
+        roomId: neighbor.id,
+        label: neighbor.label,
+        headingDeg,
+        targetHeadingDeg: returnHeadingDeg,
+        imagePath: neighbor.photospherePath,
+      };
+    });
+
+  return {
+    roomId: room.id,
+    startNodeId: nodeId,
+    nodes: [
+      {
+        id: nodeId,
+        roomId: room.id,
+        label: room.label,
+        imagePath: room.photospherePath,
+        sourcePath: room.photosphereSourcePath,
+        metadataPath: room.photosphereMetadataPath,
+        edges,
+      },
+    ],
+  };
+}
+
+function generatedDisplayPath(concept, preferredViewIndex = 0) {
+  if (!concept) {
+    return "";
+  }
+
+  const renderViews = concept.renderLibrary?.views ?? [];
+
+  return (
+    renderViews[preferredViewIndex]?.imagePath ??
+    renderViews[0]?.imagePath ??
+    concept.photosphere?.imagePath ??
+    concept.originalPath ??
+    ""
+  );
+}
+
 export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
   const conceptRoot = path.join(repoRoot, "docs", "concept-art");
   const renderRoot = path.join(repoRoot, "output", "renders");
@@ -128,13 +208,18 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     const relativePath = toPosix(path.relative(conceptRoot, filePath));
     const renderLibrary = renderLibrariesByAsset.get(relativePath) ?? null;
     const photosphere = photospheresByAsset.get(relativePath) ?? null;
+    const originalPath = publicPath("docs", "concept-art", relativePath);
 
     return {
       id: toRelativeId(relativePath),
       asset: relativePath,
       label: titleFromFile(relativePath),
       category: relativePath.split("/")[0],
-      originalPath: publicPath("docs", "concept-art", relativePath),
+      displayPath:
+        renderLibrary?.views[0]?.imagePath ??
+        photosphere?.imagePath ??
+        originalPath,
+      originalPath,
       renderLibrary,
       photosphere,
     };
@@ -160,27 +245,34 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
 
     return {
       ...definition,
-      heroImage: concept?.originalPath ?? "",
+      heroImage: generatedDisplayPath(concept, 1),
       renderViews: renderLibrary?.views ?? [],
       archiveAssetId: concept?.id ?? "",
     };
   });
 
-  const roomBlueprints = ROOM_BLUEPRINTS.map((room) => {
+  const baseRoomBlueprints = ROOM_BLUEPRINTS.map((room) => {
     const concept = conceptArtByAsset.get(room.artAsset);
     const preview = conceptArtByAsset.get(room.previewAsset);
 
     return {
       ...room,
-      artPath: concept?.originalPath ?? "",
+      artPath: generatedDisplayPath(concept),
       renderViews: concept?.renderLibrary?.views ?? [],
+      photosphereMap: null,
       photospherePath: concept?.photosphere?.imagePath ?? "",
       photosphereSourcePath: concept?.photosphere?.sourcePath ?? "",
       photosphereMetadataPath: concept?.photosphere?.metadataPath ?? "",
-      previewPath: preview?.originalPath ?? concept?.originalPath ?? "",
+      previewPath: generatedDisplayPath(preview) || generatedDisplayPath(concept),
       previewRenderViews: preview?.renderLibrary?.views ?? [],
     };
   });
+
+  const roomBlueprintsById = new Map(baseRoomBlueprints.map((room) => [room.id, room]));
+  const roomBlueprints = baseRoomBlueprints.map((room) => ({
+    ...room,
+    photosphereMap: buildRoomPhotosphereMap(room, roomBlueprintsById),
+  }));
 
   const miniGames = [
     {
@@ -227,7 +319,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     const concept = conceptArtByAsset.get(miniGame.artAsset);
     return {
       ...miniGame,
-      artPath: concept?.originalPath ?? "",
+      artPath: generatedDisplayPath(concept),
       renderViews: concept?.renderLibrary?.views ?? [],
       photospherePath: concept?.photosphere?.imagePath ?? "",
     };

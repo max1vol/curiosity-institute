@@ -50,7 +50,7 @@
   <title>The Curiosity Institute</title>
   <meta
     name="description"
-    content="Guide the curator through a playable museum built from the concept art and Google-generated render libraries in this repo."
+    content="Guide the curator through a playable museum built from generated imagery derived from the original concept art in this repo."
   />
 </svelte:head>
 
@@ -61,7 +61,7 @@
       <h1>The Curiosity Institute</h1>
       <p class="hero-lede">
         Guide the curator across a growing museum floor, collect coins, open new wings, and answer live public
-        questions while using the concept art and intersecting render libraries already in this repo.
+        questions while using generated museum imagery derived from the original concept art and render libraries already in this repo.
       </p>
       <div class="hero-actions">
         <button class="primary-button" type="button" onclick={() => controller.startGame()}>
@@ -80,7 +80,7 @@
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their 3D photosphere view. Hotline quizzes now rotate through harder randomized formats with shuffled answers, and the game still autosaves locally between sessions.
+        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their walkthrough, then drag to pivot and use Forward or Back to travel between connected wings. Hotline quizzes now rotate through harder randomized formats with shuffled answers, and wrong answers dock coins without ever taking the last one.
       </p>
     </div>
 
@@ -228,6 +228,8 @@
           {#each controller.roomActions as action (action.id)}
             <button
               class:primary={action.primary}
+              class:glow={action.tone === "glow"}
+              class:dimmed={action.tone === "dim"}
               class="room-button"
               type="button"
               disabled={action.disabled}
@@ -306,17 +308,17 @@
   <section class="archive-panel panel">
     <div class="section-heading compact">
       <p class="eyebrow">Repo Archive</p>
-      <h2>Every Concept Art Asset</h2>
+      <h2>Generated Asset Library</h2>
     </div>
     <div class="archive-strip">
       {#each data.content.conceptArt as item (item.id)}
         <article class="archive-card">
           <figure>
-            <img src={item.originalPath} alt={item.label} loading="lazy" />
+            <img src={item.displayPath} alt={item.label} loading="lazy" />
           </figure>
           <div>
             <h3>{item.label}</h3>
-            <p>{item.category.replace(/-/g, " ")}</p>
+            <p>{item.category.replace(/-/g, " ")} · generated from source art</p>
           </div>
           <button class="archive-button" type="button" onclick={() => controller.openArchiveAsset(item.id)}>Inspect</button>
         </article>
@@ -341,8 +343,20 @@
   {/await}
 {/if}
 
-{#if controller.viewerRoom && roomViewerLoader}
+{#if controller.viewerRoom && controller.viewerState && controller.viewerNode && roomViewerLoader}
   {#await roomViewerLoader then RoomViewer}
-    <RoomViewer.default room={controller.viewerRoom} close={() => controller.closeRoomViewer()} />
+    <RoomViewer.default
+      room={controller.viewerRoom}
+      node={controller.viewerNode}
+      yaw={controller.viewerState.yaw}
+      pitch={controller.viewerState.pitch}
+      backEdge={controller.viewerBackEdge}
+      forwardEdge={controller.viewerForwardEdge}
+      canMoveBack={controller.canMoveViewerBack}
+      canMoveForward={controller.canMoveViewerForward}
+      close={() => controller.closeRoomViewer()}
+      move={(direction) => controller.moveViewer(direction)}
+      setPose={(yaw, pitch) => controller.setViewerPose(yaw, pitch)}
+    />
   {/await}
 {/if}

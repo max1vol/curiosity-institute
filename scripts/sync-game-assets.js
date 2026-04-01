@@ -34,7 +34,7 @@ async function copyIntoStatic(sourceRelativePath, targetRelativePath = sourceRel
   return true;
 }
 
-async function withSyncLock(action, { timeoutMs = 30_000, pollMs = 200 } = {}) {
+async function withSyncLock(action, { timeoutMs = 30_000, pollMs = 200, staleAfterMs = timeoutMs } = {}) {
   await fs.mkdir(path.dirname(syncLockPath), { recursive: true });
   const startedAt = Date.now();
 
@@ -45,6 +45,19 @@ async function withSyncLock(action, { timeoutMs = 30_000, pollMs = 200 } = {}) {
     } catch (error) {
       if (!error || error.code !== "EEXIST") {
         throw error;
+      }
+
+      try {
+        const lockStat = await fs.stat(syncLockPath);
+
+        if (Date.now() - lockStat.mtimeMs >= staleAfterMs) {
+          await fs.rm(syncLockPath, { recursive: true, force: true });
+          continue;
+        }
+      } catch (statError) {
+        if (!statError || statError.code !== "ENOENT") {
+          throw statError;
+        }
       }
 
       if (Date.now() - startedAt >= timeoutMs) {

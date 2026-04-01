@@ -13,11 +13,14 @@ import type {
   ModalState,
   ObjectivePill,
   Point,
+  PhotosphereEdge,
+  PhotosphereNode,
   RoomAction,
   RoomBlueprint,
   RoomDetail,
   StatCard,
   ThemeDefinition,
+  ViewerState,
   VisitorState
 } from "./types";
 import {
@@ -39,6 +42,7 @@ export const WORLD = {
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
 const STORAGE_KEY = "curiosity-institute-save-v3";
 const SAVE_INTERVAL_MS = 2500;
+const MIN_QUESTION_COINS = 1;
 
 interface SavedGamePayload {
   version: number;
@@ -182,16 +186,44 @@ function pickWeightedItem<T>(entries: Array<{ item: T; weight: number }>): T {
   return entries[entries.length - 1].item;
 }
 
+function normalizeHeading(value: number): number {
+  return ((value % 360) + 360) % 360;
+}
+
+function headingDelta(from: number, to: number): number {
+  return Math.abs((((to - from) % 360) + 540) % 360 - 180);
+}
+
+function formatCompactReward(rewards: { coins?: number; reputation?: number; curiosity?: number }): string {
+  const parts: string[] = [];
+
+  if (rewards.coins) {
+    parts.push(`${rewards.coins} coins`);
+  }
+
+  if (rewards.reputation) {
+    parts.push(`${rewards.reputation}% rep`);
+  }
+
+  if (rewards.curiosity) {
+    parts.push(`${rewards.curiosity}% curiosity`);
+  }
+
+  return parts.join(" / ");
+}
+
 export class MuseumGameController {
   readonly content: GameContent;
 
   selectedThemeId = $state("");
   game = $state<GameSession | null>(null);
   viewerRoomId = $state<string | null>(null);
+  viewerState = $state<ViewerState | null>(null);
   savedGameAvailable = $state(false);
   lastSavedAt = $state<string | null>(null);
 
   private readonly keys = new Set<string>();
+  private viewerHistory: string[] = [];
   private animationFrame = 0;
   private lastFrame = 0;
   private lastPersistAt = 0;
@@ -220,6 +252,41 @@ export class MuseumGameController {
     }
 
     return this.findRoom(this.viewerRoomId);
+  }
+
+  get viewerNode(): PhotosphereNode | undefined {
+    if (!this.viewerState) {
+      return undefined;
+    }
+
+    return this.findPhotosphereNode(this.viewerState.nodeId);
+  }
+
+  get viewerBackEdge(): PhotosphereEdge | undefined {
+    const currentNode = this.viewerNode;
+    const previousNodeId = this.previousViewerNodeId();
+
+    if (!currentNode || !previousNodeId) {
+      return undefined;
+    }
+
+    return currentNode.edges.find((edge) => edge.toNodeId === previousNodeId);
+  }
+
+  get viewerForwardEdge(): PhotosphereEdge | undefined {
+    if (!this.viewerNode || !this.viewerState) {
+      return undefined;
+    }
+
+    return this.preferredForwardEdge(this.viewerNode, this.previousViewerNodeId(), this.viewerState.yaw);
+  }
+
+  get canMoveViewerBack(): boolean {
+    return Boolean(this.viewerBackEdge);
+  }
+
+  get canMoveViewerForward(): boolean {
+    return this.canTraverseViewerEdge(this.viewerForwardEdge);
   }
 
   get canResumeSavedGame(): boolean {
@@ -321,6 +388,10 @@ export class MuseumGameController {
         accent: true
       },
       {
+        label: "Available Reward",
+        value: this.roomRewardPreview(room)
+      },
+      {
         label: "Drop Yield",
         value: `~${this.roomCoinValue(room)} coins`
       },
@@ -329,8 +400,16 @@ export class MuseumGameController {
         value: `${visitCount} routed`
       },
       {
-        label: "Next Upgrade",
-        value: upgradeCost ? `${upgradeCost} coins` : "Max tier"
+        label: "Walkthrough",
+        value: room.photosphereMap?.nodes[0]?.edges.length
+          ? `${room.photosphereMap.nodes[0].edges.length} connected wings`
+          : this.hasWalkthrough(room)
+            ? "Standalone room"
+            : "Not generated"
+      },
+      {
+        label: this.isRoomUnlocked(room.id) ? "Next Upgrade" : "Unlock Cost",
+        value: this.isRoomUnlocked(room.id) ? (upgradeCost ? `${upgradeCost} coins` : "Max tier") : `${room.cost} coins`
       }
     ];
   }
@@ -420,7 +499,8 @@ export class MuseumGameController {
           id: `${room.id}-unlock`,
           action: "unlock",
           label: `Unlock For ${room.cost} Coins`,
-          primary: true
+          primary: true,
+          tone: "glow"
         });
       } else {
         actions.push({
@@ -429,32 +509,36 @@ export class MuseumGameController {
           label: !prerequisitesMet
             ? `Open ${room.requiredRoomIds.map((requiredId) => this.findRoom(requiredId)?.label ?? requiredId).join(" and ")} first`
             : `Need ${room.cost - this.game.coins} more coins`,
-          disabled: true
+          disabled: true,
+          tone: "dim"
         });
       }
     } else {
-      if (room.photospherePath) {
+      if (this.hasWalkthrough(room)) {
         actions.push({
           id: `${room.id}-viewer`,
           action: "viewer",
-          label: "Enter 3D View",
-          primary: true
+          label: "Enter Walkthrough",
+          primary: true,
+          tone: "glow"
         });
       }
 
       if (room.miniGameId) {
+        const miniGame = this.findMiniGame(room.miniGameId);
+
         actions.push({
           id: `${room.id}-mini-game`,
           action: "mini-game",
-          label: `Play ${this.findMiniGame(room.miniGameId)?.label ?? "Mini Game"}`,
-          primary: !room.photospherePath
+          label: `Play ${miniGame?.label ?? "Mini Game"}${miniGame ? ` (${formatCompactReward(miniGame.reward)})` : ""}`,
+          primary: !this.hasWalkthrough(room)
         });
       } else {
         actions.push({
           id: `${room.id}-tour`,
           action: "tour",
-          label: "Host Guided Tour",
-          primary: !room.photospherePath
+          label: `Host Guided Tour (+${this.roomTourRewardValue(room)} coins)`,
+          primary: !this.hasWalkthrough(room)
         });
       }
 
@@ -469,7 +553,8 @@ export class MuseumGameController {
           id: `${room.id}-upgrade`,
           action: "upgrade",
           label: canAfford ? `Upgrade To Tier ${nextTier} (${upgradeCost} Coins)` : `Need ${Math.max(0, upgradeCost - this.game.coins)} coins for Tier ${nextTier}`,
-          disabled: !canAfford
+          disabled: !canAfford,
+          tone: canAfford ? "glow" : "dim"
         });
       }
     }
@@ -552,6 +637,8 @@ export class MuseumGameController {
 
     this.game = this.createGameSession(theme);
     this.viewerRoomId = null;
+    this.viewerState = null;
+    this.viewerHistory = [];
     this.logEvent(`The ${theme.label} museum day begins.`);
     this.checkGoals();
     this.persistGameSnapshot();
@@ -578,6 +665,8 @@ export class MuseumGameController {
 
     this.game = restored;
     this.viewerRoomId = null;
+    this.viewerState = null;
+    this.viewerHistory = [];
     this.lastSavedAt = snapshot.savedAt;
     this.savedGameAvailable = true;
     this.logEvent("Resumed a saved museum day.");
@@ -701,7 +790,7 @@ export class MuseumGameController {
     }
 
     if (this.isRoomUnlocked(room.id)) {
-      if (room.photospherePath) {
+      if (this.hasWalkthrough(room)) {
         this.openRoomViewer(room.id);
         return;
       }
@@ -777,25 +866,92 @@ export class MuseumGameController {
     }
 
     const room = this.findRoom(roomId);
+    const startNode = room ? this.startViewerNode(room) : undefined;
 
-    if (!room || !this.isRoomUnlocked(room.id) || !room.photospherePath) {
+    if (!room || !startNode || !this.isRoomUnlocked(room.id)) {
       return;
     }
 
     this.game.selectedRoomId = room.id;
     this.viewerRoomId = room.id;
-
-    if (!this.game.viewedRoomIds.includes(room.id)) {
-      this.game.viewedRoomIds = [...this.game.viewedRoomIds, room.id];
-      this.game.photospheresVisited += 1;
-      this.game.programsHosted += 1;
-      this.logEvent(`Immersive walkthrough opened for ${room.label}.`);
-      this.checkGoals();
-    }
+    this.viewerState = {
+      roomId: room.id,
+      nodeId: startNode.id,
+      yaw: startNode.edges[0]?.headingDeg ?? 180,
+      pitch: 0
+    };
+    this.viewerHistory = [startNode.id];
+    this.markWalkthroughVisited(room);
   }
 
   closeRoomViewer(): void {
     this.viewerRoomId = null;
+    this.viewerState = null;
+    this.viewerHistory = [];
+  }
+
+  setViewerPose(yaw: number, pitch: number): void {
+    if (!this.viewerState) {
+      return;
+    }
+
+    this.viewerState = {
+      ...this.viewerState,
+      yaw: normalizeHeading(yaw),
+      pitch: clamp(pitch, -80, 80)
+    };
+  }
+
+  moveViewer(direction: "forward" | "back"): void {
+    if (!this.viewerState) {
+      return;
+    }
+
+    if (direction === "back") {
+      const currentNodeId = this.viewerHistory[this.viewerHistory.length - 1];
+      const previousNodeId = this.previousViewerNodeId();
+      const previousNode = previousNodeId ? this.findPhotosphereNode(previousNodeId) : undefined;
+
+      if (!currentNodeId || !previousNode) {
+        return;
+      }
+
+      const reentryEdge = previousNode.edges.find((edge) => edge.toNodeId === currentNodeId);
+      this.viewerHistory = this.viewerHistory.slice(0, -1);
+      this.viewerRoomId = previousNode.roomId;
+      this.viewerState = {
+        roomId: previousNode.roomId,
+        nodeId: previousNode.id,
+        yaw: reentryEdge?.targetHeadingDeg ?? this.viewerState.yaw,
+        pitch: this.viewerState.pitch
+      };
+      if (this.game) {
+        this.game.selectedRoomId = previousNode.roomId;
+      }
+      return;
+    }
+
+    const currentNode = this.viewerNode;
+    const edge = currentNode && this.viewerState
+      ? this.preferredForwardEdge(currentNode, this.previousViewerNodeId(), this.viewerState.yaw)
+      : undefined;
+    const nextNode = edge ? this.findPhotosphereNode(edge.toNodeId) : undefined;
+    const nextRoom = nextNode ? this.findRoom(nextNode.roomId) : undefined;
+
+    if (!edge || !nextNode || !nextRoom || !this.game || !this.isRoomUnlocked(nextRoom.id)) {
+      return;
+    }
+
+    this.viewerHistory = [...this.viewerHistory, nextNode.id];
+    this.viewerRoomId = nextRoom.id;
+    this.viewerState = {
+      roomId: nextRoom.id,
+      nodeId: nextNode.id,
+      yaw: edge.targetHeadingDeg,
+      pitch: this.viewerState.pitch
+    };
+    this.game.selectedRoomId = nextRoom.id;
+    this.markWalkthroughVisited(nextRoom);
   }
 
   setEstimationGuess(value: number): void {
@@ -847,7 +1003,12 @@ export class MuseumGameController {
       return;
     }
 
-    this.award(question.difficulty === "Expert" ? { reputation: -5, curiosity: -3 } : { reputation: -4, curiosity: -2 }, question.failure);
+    this.award(
+      question.difficulty === "Expert"
+        ? { coins: -6, reputation: -5, curiosity: -3 }
+        : { coins: -4, reputation: -4, curiosity: -2 },
+      `${question.failure} Museum funds take a small hit, but losses stop at 1 coin.`
+    );
   }
 
   resolveCuratorCheckChoice(choiceIndex: number): void {
@@ -870,8 +1031,10 @@ export class MuseumGameController {
     }
 
     this.award(
-      scenario.difficulty === "Expert" ? { reputation: -4, curiosity: -2 } : { reputation: -3, curiosity: -1 },
-      "The curator check slipped. The museum loses a little confidence."
+      scenario.difficulty === "Expert"
+        ? { coins: -5, reputation: -4, curiosity: -2 }
+        : { coins: -3, reputation: -3, curiosity: -1 },
+      "The curator check slipped. The museum loses a little confidence and a few coins, but never the last one."
     );
   }
 
@@ -1060,6 +1223,53 @@ export class MuseumGameController {
     return this.content.miniGames.find((miniGame) => miniGame.id === miniGameId);
   }
 
+  private findPhotosphereNode(nodeId: string): PhotosphereNode | undefined {
+    for (const room of this.content.roomBlueprints) {
+      const node = room.photosphereMap?.nodes.find((entry) => entry.id === nodeId);
+      if (node) {
+        return node;
+      }
+    }
+
+    return undefined;
+  }
+
+  private startViewerNode(room: RoomBlueprint): PhotosphereNode | undefined {
+    if (!room.photosphereMap) {
+      return undefined;
+    }
+
+    return room.photosphereMap.nodes.find((node) => node.id === room.photosphereMap?.startNodeId) ?? room.photosphereMap.nodes[0];
+  }
+
+  private previousViewerNodeId(): string | null {
+    return this.viewerHistory.length > 1 ? this.viewerHistory[this.viewerHistory.length - 2] : null;
+  }
+
+  private preferredForwardEdge(
+    node: PhotosphereNode,
+    previousNodeId: string | null,
+    currentYaw: number
+  ): PhotosphereEdge | undefined {
+    const forwardEdges = node.edges.filter((edge) => edge.toNodeId !== previousNodeId);
+    if (!forwardEdges.length) {
+      return undefined;
+    }
+
+    return [...forwardEdges].sort((left, right) => {
+      const delta = headingDelta(currentYaw, left.headingDeg) - headingDelta(currentYaw, right.headingDeg);
+      return delta || left.label.localeCompare(right.label);
+    })[0];
+  }
+
+  private canTraverseViewerEdge(edge: PhotosphereEdge | undefined): boolean {
+    if (!edge) {
+      return false;
+    }
+
+    return this.isRoomUnlocked(edge.roomId);
+  }
+
   private nextCallQuestion(): CallQuestion {
     if (!this.game) {
       return fallbackCallQuestion(this.content);
@@ -1112,6 +1322,10 @@ export class MuseumGameController {
     return this.game?.roomLevels[roomId] ?? 0;
   }
 
+  private hasWalkthrough(room: RoomBlueprint): boolean {
+    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath);
+  }
+
   private roomUpgradeCost(room: RoomBlueprint): number {
     const level = this.roomLevel(room.id);
     return Math.round(Math.max(24, room.cost * 0.55 + 24 + level * 18));
@@ -1131,6 +1345,22 @@ export class MuseumGameController {
 
   private roomCoinValue(room: RoomBlueprint): number {
     return Math.round(6 + this.effectiveRewardRate(room) * 2);
+  }
+
+  private roomTourRewardValue(room: RoomBlueprint): number {
+    const level = this.roomLevel(room.id);
+    return Math.round(12 + this.effectiveRewardRate(room) * 2 + level * 4);
+  }
+
+  private roomRewardPreview(room: RoomBlueprint): string {
+    if (room.miniGameId) {
+      const miniGame = this.findMiniGame(room.miniGameId);
+      if (miniGame) {
+        return formatCompactReward(miniGame.reward);
+      }
+    }
+
+    return `Tour +${this.roomTourRewardValue(room)} coins`;
   }
 
   private isRoomUnlocked(roomId: string): boolean {
@@ -1167,10 +1397,18 @@ export class MuseumGameController {
     }
 
     const coinDelta = rewards.coins ?? 0;
+    const previousCoins = this.game.coins;
+    const nextCoins =
+      coinDelta >= 0
+        ? previousCoins + coinDelta
+        : previousCoins <= MIN_QUESTION_COINS
+          ? previousCoins
+          : Math.max(MIN_QUESTION_COINS, previousCoins + coinDelta);
+    const appliedCoinDelta = nextCoins - previousCoins;
 
-    this.game.coins += coinDelta;
-    if (coinDelta > 0) {
-      this.game.revenueEarned += coinDelta;
+    this.game.coins = nextCoins;
+    if (appliedCoinDelta > 0) {
+      this.game.revenueEarned += appliedCoinDelta;
     }
 
     this.game.reputation = clamp(this.game.reputation + (rewards.reputation ?? 0), 0, 100);
@@ -1332,7 +1570,7 @@ export class MuseumGameController {
     return pickWeightedItem(
       candidates.map((room) => ({
         item: room,
-        weight: room.rewardRate + this.roomLevel(room.id) * 2 + (room.miniGameId ? 1.4 : 0) + (room.photospherePath ? 0.8 : 0)
+        weight: room.rewardRate + this.roomLevel(room.id) * 2 + (room.miniGameId ? 1.4 : 0) + (this.hasWalkthrough(room) ? 0.8 : 0)
       }))
     );
   }
@@ -1452,6 +1690,18 @@ export class MuseumGameController {
     this.game.pendingCall = this.nextCallQuestion();
   }
 
+  private markWalkthroughVisited(room: RoomBlueprint): void {
+    if (!this.game || this.game.viewedRoomIds.includes(room.id)) {
+      return;
+    }
+
+    this.game.viewedRoomIds = [...this.game.viewedRoomIds, room.id];
+    this.game.photospheresVisited += 1;
+    this.game.programsHosted += 1;
+    this.logEvent(`Immersive walkthrough opened for ${room.label}.`);
+    this.checkGoals();
+  }
+
   private tourRoom(roomId: string): void {
     if (!this.game) {
       return;
@@ -1467,7 +1717,7 @@ export class MuseumGameController {
     this.game.programsHosted += 1;
     this.game.reputation = clamp(this.game.reputation + 3 + level, 0, 100);
     this.game.curiosity = clamp(this.game.curiosity + 4 + level, 0, 100);
-    this.spawnCoin(roomCenter(room), Math.round(12 + this.effectiveRewardRate(room) * 2 + level * 4));
+    this.spawnCoin(roomCenter(room), this.roomTourRewardValue(room));
     this.logEvent(`Guided tour hosted in ${room.label}.`);
     this.checkGoals();
   }

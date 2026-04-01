@@ -20,17 +20,48 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
 
   for (const theme of data.themes) {
     assert.equal(theme.renderViews.length, 3);
-    assert.ok(theme.heroImage.startsWith("/docs/concept-art/"));
+    assert.ok(theme.heroImage.startsWith("/output/"));
   }
 
   for (const room of data.roomBlueprints) {
+    assert.ok(Array.isArray(room.immersiveNeighbors));
+    assert.ok(room.artPath.startsWith("/output/"));
+    assert.ok(room.previewPath.startsWith("/output/"));
     assert.equal(typeof room.photospherePath, "string");
     assert.equal(typeof room.photosphereMetadataPath, "string");
+
+    if (room.photospherePath) {
+      assert.ok(room.photosphereMap);
+      assert.equal(room.photosphereMap.roomId, room.id);
+      assert.equal(room.photosphereMap.startNodeId, `${room.id}:anchor`);
+      assert.ok(room.photosphereMap.nodes.length >= 1);
+
+      for (const node of room.photosphereMap.nodes) {
+        assert.equal(node.roomId, room.id);
+        assert.ok(node.imagePath.startsWith("/output/photospheres/"));
+
+        for (const edge of node.edges) {
+          assert.ok(data.roomBlueprints.some((candidate) => candidate.id === edge.roomId));
+          assert.ok(edge.toNodeId.endsWith(":anchor"));
+          assert.equal(typeof edge.headingDeg, "number");
+          assert.equal(typeof edge.targetHeadingDeg, "number");
+        }
+      }
+    } else {
+      assert.equal(room.photosphereMap, null);
+    }
   }
 
   for (const miniGame of data.miniGames) {
     assert.ok(miniGame.formatNote.length > 0);
     assert.ok(miniGame.difficultyLabel.length > 0);
+    assert.ok(miniGame.artPath.startsWith("/output/"));
+  }
+
+  for (const concept of data.conceptArt) {
+    assert.equal(typeof concept.displayPath, "string");
+    assert.ok(concept.originalPath.startsWith("/docs/concept-art/"));
+    assert.ok(concept.displayPath.startsWith("/output/"));
   }
 
   for (const question of data.callDeck) {

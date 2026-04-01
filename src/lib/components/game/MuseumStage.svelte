@@ -36,6 +36,26 @@
     return game?.selectedRoomId === roomId;
   }
 
+  function canUnlock(room: RoomBlueprint): boolean {
+    if (!game || isUnlocked(room.id) || game.coins < room.cost) {
+      return false;
+    }
+
+    return room.requiredRoomIds.every((requiredId) => isUnlocked(requiredId));
+  }
+
+  function roomHasWalkthrough(room: RoomBlueprint): boolean {
+    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath);
+  }
+
+  function roomReward(room: RoomBlueprint): string {
+    if (room.miniGameId) {
+      return "Program payout";
+    }
+
+    return `~${Math.round(6 + room.rewardRate * 2)} coin drops`;
+  }
+
   function roomBadge(room: RoomBlueprint): string {
     if (!game) {
       return room.cost ? `${room.cost} coins` : "Ready";
@@ -51,7 +71,7 @@
       return `Tier ${level}`;
     }
 
-    return room.miniGameId ? "Program" : room.photospherePath ? "3D" : "Open";
+    return room.miniGameId ? "Program" : roomHasWalkthrough(room) ? "Walk" : "Open";
   }
 
   function roomMeta(room: RoomBlueprint): string {
@@ -60,13 +80,17 @@
     }
 
     if (!isUnlocked(room.id)) {
-      return room.requiredRoomIds.length
-        ? `Needs ${room.requiredRoomIds.map((requiredId) => rooms.find((item) => item.id === requiredId)?.label ?? requiredId).join(" + ")}`
-        : "Ready to unlock";
+      const prerequisitesMet = room.requiredRoomIds.every((requiredId) => isUnlocked(requiredId));
+
+      if (!prerequisitesMet) {
+        return `Needs ${room.requiredRoomIds.map((requiredId) => rooms.find((item) => item.id === requiredId)?.label ?? requiredId).join(" + ")}`;
+      }
+
+      return canUnlock(room) ? `Unlock ready · ${roomReward(room)}` : `Need ${room.cost - game.coins} coins · ${roomReward(room)}`;
     }
 
     const visits = game.roomVisitCounts[room.id] ?? 0;
-    const typeLabel = room.miniGameId ? "Program wing" : room.photospherePath ? "Immersive wing" : "Gallery wing";
+    const typeLabel = room.miniGameId ? "Program wing" : roomHasWalkthrough(room) ? "Immersive wing" : "Gallery wing";
 
     return `${visits} visits · ${typeLabel}`;
   }
@@ -83,6 +107,41 @@
 
   function entityStyle(x: number, y: number): string {
     return `left:${(x / WORLD.width) * 100}%;top:${(y / WORLD.height) * 100}%`;
+  }
+
+  function connectorSegments() {
+    const seen = new Set<string>();
+    const segments: Array<{ id: string; from: { x: number; y: number }; to: { x: number; y: number } }> = [];
+
+    for (const room of rooms) {
+      for (const neighborId of room.immersiveNeighbors ?? []) {
+        const neighbor = rooms.find((item) => item.id === neighborId);
+
+        if (!neighbor) {
+          continue;
+        }
+
+        const edgeId = [room.id, neighbor.id].sort().join(":");
+        if (seen.has(edgeId)) {
+          continue;
+        }
+
+        seen.add(edgeId);
+        segments.push({
+          id: edgeId,
+          from: {
+            x: room.position.x + room.position.width / 2,
+            y: room.position.y + room.position.height / 2
+          },
+          to: {
+            x: neighbor.position.x + neighbor.position.width / 2,
+            y: neighbor.position.y + neighbor.position.height / 2
+          }
+        });
+      }
+    }
+
+    return segments;
   }
 </script>
 
@@ -120,10 +179,18 @@
       }}
     >
       {#if game}
+        <svg class="room-connectors" viewBox={`0 0 ${WORLD.width} ${WORLD.height}`} preserveAspectRatio="none" aria-hidden="true">
+          {#each connectorSegments() as segment (segment.id)}
+            <line x1={segment.from.x} y1={segment.from.y} x2={segment.to.x} y2={segment.to.y}></line>
+          {/each}
+        </svg>
+
         {#each rooms as room (room.id)}
           <button
             class:selected={isSelected(room.id)}
             class:locked={!isUnlocked(room.id)}
+            class:unlock-ready={!isUnlocked(room.id) && canUnlock(room)}
+            class:unlock-dim={!isUnlocked(room.id) && !canUnlock(room)}
             class="room-node"
             type="button"
             style={roomStyle(room)}
@@ -153,7 +220,7 @@
         <div class="stage-empty">
           <p class="eyebrow">Ready To Play</p>
           <h3>Start a museum day to activate the floor.</h3>
-          <p>The SvelteKit app keeps the concept art and Google-generated intersecting renders live in the same repo-driven world.</p>
+          <p>The SvelteKit app keeps generated museum imagery derived from the source concept art live in the same repo-driven world.</p>
         </div>
       {/if}
     </div>
