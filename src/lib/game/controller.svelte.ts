@@ -2,10 +2,8 @@ import type {
   ActivityEntry,
   CallQuestion,
   ConceptAsset,
-  CuratorCheckScenario,
   DailyGoal,
   DailyGoalView,
-  EstimationScenario,
   FloorCoin,
   GameContent,
   GameSession,
@@ -22,6 +20,16 @@ import type {
   ThemeDefinition,
   VisitorState
 } from "./types";
+import {
+  drawMatchPairsDeck,
+  fallbackCallQuestion,
+  fallbackCuratorScenario,
+  fallbackEstimationScenario,
+  selectCallQuestion,
+  selectCuratorScenario,
+  selectEstimationScenario
+} from "./challenge-selection";
+import { buildDailyGoals, formatRewardLabel, goalProgressForGame, MAX_ROOM_LEVEL } from "./progression";
 
 export const WORLD = {
   width: 1100,
@@ -31,17 +39,12 @@ export const WORLD = {
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
 const STORAGE_KEY = "curiosity-institute-save-v3";
 const SAVE_INTERVAL_MS = 2500;
-const MAX_ROOM_LEVEL = 3;
 
 interface SavedGamePayload {
   version: number;
   selectedThemeId: string;
   savedAt: string;
   game: GameSession;
-}
-
-function randomItem<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)];
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -57,24 +60,6 @@ function shuffle<T>(items: T[]): T[] {
   }
 
   return next;
-}
-
-function shuffleChoiceEntry<T extends { choices: string[]; correctIndex: number }>(entry: T): T {
-  const annotated = entry.choices.map((choice, index) => ({
-    choice,
-    correct: index === entry.correctIndex
-  }));
-  const shuffled = shuffle(annotated);
-
-  return {
-    ...entry,
-    choices: shuffled.map((item) => item.choice),
-    correctIndex: shuffled.findIndex((item) => item.correct)
-  };
-}
-
-function pushRecentId(recentIds: string[], id: string, limit: number): string[] {
-  return [...recentIds.filter((entry) => entry !== id), id].slice(-limit);
 }
 
 function distance(a: Point, b: Point): number {
@@ -145,147 +130,6 @@ function asNumberRecord(value: unknown, rooms: RoomBlueprint[]): Record<string, 
   }
 
   return fallback;
-}
-
-function buildGoal(definition: Omit<DailyGoal, "completed">): DailyGoal {
-  return {
-    ...definition,
-    completed: false
-  };
-}
-
-function buildDailyGoals(themeId: string): DailyGoal[] {
-  if (themeId === "heritage-hall") {
-    return [
-      buildGoal({
-        id: "heritage-visitors",
-        kind: "visitors-served",
-        label: "Welcome The Morning Crowd",
-        detail: "Guide at least 8 visitors cleanly through the floor.",
-        target: 8,
-        reward: { coins: 24, reputation: 5, curiosity: 3 }
-      }),
-      buildGoal({
-        id: "heritage-expansion",
-        kind: "rooms-opened",
-        label: "Reopen New Wings",
-        detail: "Unlock 2 additional rooms during the day.",
-        target: 2,
-        reward: { coins: 18, reputation: 4, curiosity: 4 }
-      }),
-      buildGoal({
-        id: "heritage-programs",
-        kind: "programs-hosted",
-        label: "Keep The Floor Active",
-        detail: "Host 3 tours, mini-games, or immersive view sessions.",
-        target: 3,
-        reward: { coins: 16, reputation: 4, curiosity: 6 }
-      })
-    ];
-  }
-
-  if (themeId === "marble-atrium") {
-    return [
-      buildGoal({
-        id: "marble-revenue",
-        kind: "revenue-earned",
-        label: "Hit Institutional Revenue",
-        detail: "Generate 120 coins from guests, pickups, and programs.",
-        target: 120,
-        reward: { coins: 28, reputation: 4, curiosity: 3 }
-      }),
-      buildGoal({
-        id: "marble-expansion",
-        kind: "rooms-opened",
-        label: "Broaden The Route",
-        detail: "Unlock 2 new spaces to raise throughput.",
-        target: 2,
-        reward: { coins: 20, reputation: 5, curiosity: 4 }
-      }),
-      buildGoal({
-        id: "marble-programs",
-        kind: "programs-hosted",
-        label: "Program The Day",
-        detail: "Complete 4 tours, mini-games, or immersive view sessions.",
-        target: 4,
-        reward: { coins: 18, reputation: 6, curiosity: 5 }
-      })
-    ];
-  }
-
-  if (themeId === "glasshouse-museum") {
-    return [
-      buildGoal({
-        id: "glasshouse-immersive",
-        kind: "photospheres-visited",
-        label: "Walk The Atmosphere",
-        detail: "Enter 2 unique immersive room views.",
-        target: 2,
-        reward: { coins: 18, reputation: 3, curiosity: 8 }
-      }),
-      buildGoal({
-        id: "glasshouse-curiosity",
-        kind: "curiosity",
-        label: "Raise Wonder",
-        detail: "Push museum curiosity to 65 or higher.",
-        target: 65,
-        reward: { coins: 20, reputation: 4, curiosity: 6 }
-      }),
-      buildGoal({
-        id: "glasshouse-programs",
-        kind: "programs-hosted",
-        label: "Keep It Lively",
-        detail: "Deliver 4 tours, mini-games, or immersive view sessions.",
-        target: 4,
-        reward: { coins: 16, reputation: 4, curiosity: 7 }
-      })
-    ];
-  }
-
-  return [
-    buildGoal({
-      id: "default-visitors",
-      kind: "visitors-served",
-      label: "Welcome Visitors",
-      detail: "Serve 8 visitors during the day.",
-      target: 8,
-      reward: { coins: 20, reputation: 4, curiosity: 3 }
-    }),
-    buildGoal({
-      id: "default-programs",
-      kind: "programs-hosted",
-      label: "Run Public Programs",
-      detail: "Complete 3 tours, mini-games, or immersive visits.",
-      target: 3,
-      reward: { coins: 18, reputation: 4, curiosity: 5 }
-    }),
-    buildGoal({
-      id: "default-expansion",
-      kind: "rooms-opened",
-      label: "Open More Of The Floor",
-      detail: "Unlock 2 new rooms.",
-      target: 2,
-      reward: { coins: 16, reputation: 3, curiosity: 5 }
-    })
-  ];
-}
-
-function formatRewardLabel(reward: DailyGoal["reward"]): string {
-  const parts: string[] = [];
-
-  if (reward.coins) {
-    parts.push(`${reward.coins} coins`);
-  }
-
-  if (reward.reputation) {
-    parts.push(`${reward.reputation}% reputation`);
-  }
-
-  if (reward.curiosity) {
-    parts.push(`${reward.curiosity}% curiosity`);
-  }
-
-  return parts.join(" · ");
 }
 
 function formatRelativeSave(isoTimestamp: string | null): string {
@@ -817,8 +661,7 @@ export class MuseumGameController {
       return;
     }
 
-    const pairCount = Math.min(8, this.content.matchPairsDeck.length);
-    const selectedPairs = shuffle(this.content.matchPairsDeck).slice(0, pairCount);
+    const selectedPairs = drawMatchPairsDeck(this.content.matchPairsDeck, 8);
     const deck = shuffle(
       selectedPairs.flatMap((label) => [
         { id: `${label}-a`, pair: label, label },
@@ -1180,28 +1023,7 @@ export class MuseumGameController {
   }
 
   private goalProgress(goal: DailyGoal): number {
-    if (!this.game) {
-      return 0;
-    }
-
-    switch (goal.kind) {
-      case "visitors-served":
-        return this.game.visitorsServed;
-      case "revenue-earned":
-        return this.game.revenueEarned;
-      case "rooms-opened":
-        return this.game.roomsOpenedToday;
-      case "programs-hosted":
-        return this.game.programsHosted;
-      case "photospheres-visited":
-        return this.game.photospheresVisited;
-      case "reputation":
-        return this.game.reputation;
-      case "curiosity":
-        return this.game.curiosity;
-      default:
-        return 0;
-    }
+    return goalProgressForGame(this.game, goal);
   }
 
   private checkGoals(): void {
@@ -1238,63 +1060,52 @@ export class MuseumGameController {
     return this.content.miniGames.find((miniGame) => miniGame.id === miniGameId);
   }
 
-  private pickFreshDeckItem<T extends { id: string }>(
-    items: T[],
-    recentIds: string[],
-    getWeight: (item: T) => number = () => 1
-  ): T {
-    const recent = new Set(recentIds);
-    const freshItems = items.filter((item) => !recent.has(item.id));
-    const pool = freshItems.length ? freshItems : items;
-
-    return pickWeightedItem(
-      pool.map((item) => ({
-        item,
-        weight: getWeight(item)
-      }))
-    );
-  }
-
   private nextCallQuestion(): CallQuestion {
     if (!this.game) {
-      return shuffleChoiceEntry(randomItem(this.content.callDeck));
+      return fallbackCallQuestion(this.content);
     }
 
-    const expertBias = 1 + this.completedGoalsCount * 0.35 + this.game.programsHosted * 0.1;
-    const question = this.pickFreshDeckItem(this.content.callDeck, this.game.recentQuestionIds, (item) =>
-      item.difficulty === "Expert" ? expertBias + 0.9 : 1.25
-    );
+    const { item, recentIds } = selectCallQuestion({
+      content: this.content,
+      recentIds: this.game.recentQuestionIds,
+      completedGoalsCount: this.completedGoalsCount,
+      programsHosted: this.game.programsHosted
+    });
 
-    this.game.recentQuestionIds = pushRecentId(this.game.recentQuestionIds, question.id, 7);
-    return shuffleChoiceEntry(question);
+    this.game.recentQuestionIds = recentIds;
+    return item;
   }
 
-  private nextEstimationScenario(): EstimationScenario {
+  private nextEstimationScenario() {
     if (!this.game) {
-      return randomItem(this.content.estimationDeck);
+      return fallbackEstimationScenario(this.content);
     }
 
-    const expertBias = 1 + this.completedGoalsCount * 0.25 + this.roomLevel(this.game.selectedRoomId) * 0.12;
-    const scenario = this.pickFreshDeckItem(this.content.estimationDeck, this.game.recentEstimationIds, (item) =>
-      item.difficulty === "Expert" ? expertBias + 0.5 : 1.1
-    );
+    const { item, recentIds } = selectEstimationScenario({
+      content: this.content,
+      recentIds: this.game.recentEstimationIds,
+      completedGoalsCount: this.completedGoalsCount,
+      selectedRoomLevel: this.roomLevel(this.game.selectedRoomId)
+    });
 
-    this.game.recentEstimationIds = pushRecentId(this.game.recentEstimationIds, scenario.id, 5);
-    return scenario;
+    this.game.recentEstimationIds = recentIds;
+    return item;
   }
 
-  private nextCuratorScenario(): CuratorCheckScenario {
+  private nextCuratorScenario() {
     if (!this.game) {
-      return shuffleChoiceEntry(randomItem(this.content.curatorCheckDeck));
+      return fallbackCuratorScenario(this.content);
     }
 
-    const expertBias = 1 + this.completedGoalsCount * 0.4 + Math.max(0, (this.game.reputation - 50) / 25);
-    const scenario = this.pickFreshDeckItem(this.content.curatorCheckDeck, this.game.recentCuratorCheckIds, (item) =>
-      item.difficulty === "Expert" ? expertBias + 0.75 : 1.15
-    );
+    const { item, recentIds } = selectCuratorScenario({
+      content: this.content,
+      recentIds: this.game.recentCuratorCheckIds,
+      completedGoalsCount: this.completedGoalsCount,
+      reputation: this.game.reputation
+    });
 
-    this.game.recentCuratorCheckIds = pushRecentId(this.game.recentCuratorCheckIds, scenario.id, 5);
-    return shuffleChoiceEntry(scenario);
+    this.game.recentCuratorCheckIds = recentIds;
+    return item;
   }
 
   private roomLevel(roomId: string): number {

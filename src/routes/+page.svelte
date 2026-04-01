@@ -1,14 +1,17 @@
 <script lang="ts">
-  import GameModal from "$lib/components/game/GameModal.svelte";
   import MuseumStage from "$lib/components/game/MuseumStage.svelte";
-  import RoomViewer from "$lib/components/game/RoomViewer.svelte";
   import { MuseumGameController } from "$lib/game/controller.svelte";
 
   import type { PageData } from "./$types";
 
+  type GameModalModule = typeof import("$lib/components/game/GameModal.svelte");
+  type RoomViewerModule = typeof import("$lib/components/game/RoomViewer.svelte");
+
   let { data }: { data: PageData } = $props();
 
   let mountedController: MuseumGameController | null = null;
+  let gameModalLoader = $state<Promise<GameModalModule> | null>(null);
+  let roomViewerLoader = $state<Promise<RoomViewerModule> | null>(null);
 
   const controller = $derived.by(() => new MuseumGameController(data.content));
 
@@ -28,6 +31,18 @@
         mountedController = null;
       }
     };
+  });
+
+  $effect(() => {
+    if (controller.game?.activeModal && !gameModalLoader) {
+      gameModalLoader = import("$lib/components/game/GameModal.svelte");
+    }
+  });
+
+  $effect(() => {
+    if (controller.viewerRoom && !roomViewerLoader) {
+      roomViewerLoader = import("$lib/components/game/RoomViewer.svelte");
+    }
   });
 </script>
 
@@ -310,20 +325,24 @@
   </section>
 </div>
 
-{#if controller.game?.activeModal}
-  <GameModal
-    modal={controller.game.activeModal}
-    content={data.content}
-    close={() => controller.closeModal()}
-    finishEstimation={() => controller.finishEstimation()}
-    setEstimationGuess={(value) => controller.setEstimationGuess(value)}
-    resolveCall={(choiceIndex) => controller.resolveCallChoice(choiceIndex)}
-    resolveCuratorCheck={(choiceIndex) => controller.resolveCuratorCheckChoice(choiceIndex)}
-    selectMatchCard={(cardId) => controller.handleMatchCard(cardId)}
-    openArchiveAsset={(assetId) => controller.openArchiveAsset(assetId)}
-  />
+{#if controller.game?.activeModal && gameModalLoader}
+  {#await gameModalLoader then GameModal}
+    <GameModal.default
+      modal={controller.game.activeModal}
+      content={data.content}
+      close={() => controller.closeModal()}
+      finishEstimation={() => controller.finishEstimation()}
+      setEstimationGuess={(value) => controller.setEstimationGuess(value)}
+      resolveCall={(choiceIndex) => controller.resolveCallChoice(choiceIndex)}
+      resolveCuratorCheck={(choiceIndex) => controller.resolveCuratorCheckChoice(choiceIndex)}
+      selectMatchCard={(cardId) => controller.handleMatchCard(cardId)}
+      openArchiveAsset={(assetId) => controller.openArchiveAsset(assetId)}
+    />
+  {/await}
 {/if}
 
-{#if controller.viewerRoom}
-  <RoomViewer room={controller.viewerRoom} close={() => controller.closeRoomViewer()} />
+{#if controller.viewerRoom && roomViewerLoader}
+  {#await roomViewerLoader then RoomViewer}
+    <RoomViewer.default room={controller.viewerRoom} close={() => controller.closeRoomViewer()} />
+  {/await}
 {/if}

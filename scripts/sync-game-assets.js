@@ -6,6 +6,13 @@ import { writeGameDataFile } from "../core/game-data.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const staticRoot = path.join(repoRoot, "static");
+const syncLockPath = path.join(repoRoot, ".tmp", "sync-game-assets.lock");
+
+function sleep(durationMs) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, durationMs);
+  });
+}
 
 async function resetPath(targetPath) {
   await fs.rm(targetPath, { recursive: true, force: true });
@@ -27,26 +34,56 @@ async function copyIntoStatic(sourceRelativePath, targetRelativePath = sourceRel
   return true;
 }
 
+async function withSyncLock(action, { timeoutMs = 30_000, pollMs = 200 } = {}) {
+  await fs.mkdir(path.dirname(syncLockPath), { recursive: true });
+  const startedAt = Date.now();
+
+  for (;;) {
+    try {
+      await fs.mkdir(syncLockPath);
+      break;
+    } catch (error) {
+      if (!error || error.code !== "EEXIST") {
+        throw error;
+      }
+
+      if (Date.now() - startedAt >= timeoutMs) {
+        throw new Error(`Timed out waiting for sync lock at ${syncLockPath}`);
+      }
+
+      await sleep(pollMs);
+    }
+  }
+
+  try {
+    return await action();
+  } finally {
+    await fs.rm(syncLockPath, { recursive: true, force: true });
+  }
+}
+
 async function syncGameAssets() {
-  await fs.mkdir(staticRoot, { recursive: true });
+  return withSyncLock(async () => {
+    await fs.mkdir(staticRoot, { recursive: true });
 
-  await resetPath(path.join(staticRoot, "docs", "concept-art"));
-  await resetPath(path.join(staticRoot, "output", "renders"));
-  await resetPath(path.join(staticRoot, "output", "photospheres"));
+    await resetPath(path.join(staticRoot, "docs", "concept-art"));
+    await resetPath(path.join(staticRoot, "output", "renders"));
+    await resetPath(path.join(staticRoot, "output", "photospheres"));
 
-  await copyIntoStatic("docs/concept-art", "docs/concept-art");
-  await copyIntoStatic("output/renders", "output/renders");
-  await copyIntoStatic("output/photospheres", "output/photospheres");
+    await copyIntoStatic("docs/concept-art", "docs/concept-art");
+    await copyIntoStatic("output/renders", "output/renders");
+    await copyIntoStatic("output/photospheres", "output/photospheres");
 
-  const { data, outputFile } = await writeGameDataFile({
-    repoRoot,
-    outputFile: path.join(staticRoot, "game", "data", "assets.json")
+    const { data, outputFile } = await writeGameDataFile({
+      repoRoot,
+      outputFile: path.join(staticRoot, "game", "data", "assets.json")
+    });
+
+    return {
+      data,
+      outputFile
+    };
   });
-
-  return {
-    data,
-    outputFile
-  };
 }
 
 const { data, outputFile } = await syncGameAssets();
