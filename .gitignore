@@ -148,3 +148,5 @@ vite.config.ts.timestamp-*
 
 # Local image-generation scratch output
 nanobanana-output/
+.vercel
+.env*.local

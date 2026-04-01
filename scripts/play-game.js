@@ -3,9 +3,8 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { writeGameDataFile } from "../src/game-data.js";
-
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const distRoot = path.join(repoRoot, "dist");
 const port = Number.parseInt(process.env.PORT ?? "4173", 10);
 
 const MIME_TYPES = {
@@ -25,19 +24,15 @@ function safePathname(requestUrl) {
   const url = new URL(requestUrl, "http://localhost");
 
   if (url.pathname === "/") {
-    return "/game/index.html";
-  }
-
-  if (url.pathname === "/game") {
-    return "/game/index.html";
+    return "/index.html";
   }
 
   return decodeURIComponent(url.pathname);
 }
 
 function resolveFilePath(pathname) {
-  const normalized = path.normalize(path.join(repoRoot, pathname));
-  if (!normalized.startsWith(repoRoot)) {
+  const normalized = path.normalize(path.join(distRoot, pathname));
+  if (!normalized.startsWith(distRoot)) {
     return null;
   }
   return normalized;
@@ -76,7 +71,7 @@ async function serve(request, response) {
   }
 }
 
-await writeGameDataFile({ repoRoot });
+await import("./build-game-app.js");
 
 const server = http.createServer(serve);
 

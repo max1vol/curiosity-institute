@@ -161,10 +161,18 @@ What it includes:
 - mini-games for quiz, estimation, curator checks, and match pairs
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
 
-To build the game data manifest from the repo assets:
+To build the full deployable game app from the repo assets:
 
 ```bash
 npm run game:build
+```
+
+That writes a static bundle to `dist/` with the game at `/`, plus the concept art and render-library assets the app uses.
+
+If you only want to refresh the raw asset manifest under `game/data/assets.json`, run:
+
+```bash
+npm run game:data
 ```
 
 To play it locally:
