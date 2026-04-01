@@ -217,7 +217,6 @@ export class MuseumGameController {
 
   selectedThemeId = $state("");
   game = $state<GameSession | null>(null);
-  viewerRoomId = $state<string | null>(null);
   viewerState = $state<ViewerState | null>(null);
   savedGameAvailable = $state(false);
   lastSavedAt = $state<string | null>(null);
@@ -247,11 +246,13 @@ export class MuseumGameController {
   }
 
   get viewerRoom(): RoomBlueprint | undefined {
-    if (!this.viewerRoomId) {
+    const roomId = this.viewerNode?.roomId;
+
+    if (!roomId) {
       return undefined;
     }
 
-    return this.findRoom(this.viewerRoomId);
+    return this.findRoom(roomId);
   }
 
   get viewerNode(): PhotosphereNode | undefined {
@@ -278,7 +279,9 @@ export class MuseumGameController {
       return undefined;
     }
 
-    return this.preferredForwardEdge(this.viewerNode, this.previousViewerNodeId(), this.viewerState.yaw);
+    return this.preferredForwardEdge(this.viewerNode, this.previousViewerNodeId(), this.viewerState.yaw, {
+      preferTraversable: true
+    });
   }
 
   get canMoveViewerBack(): boolean {
@@ -636,9 +639,7 @@ export class MuseumGameController {
     }
 
     this.game = this.createGameSession(theme);
-    this.viewerRoomId = null;
-    this.viewerState = null;
-    this.viewerHistory = [];
+    this.closeRoomViewer();
     this.logEvent(`The ${theme.label} museum day begins.`);
     this.checkGoals();
     this.persistGameSnapshot();
@@ -664,9 +665,7 @@ export class MuseumGameController {
     }
 
     this.game = restored;
-    this.viewerRoomId = null;
-    this.viewerState = null;
-    this.viewerHistory = [];
+    this.closeRoomViewer();
     this.lastSavedAt = snapshot.savedAt;
     this.savedGameAvailable = true;
     this.logEvent("Resumed a saved museum day.");
@@ -858,6 +857,7 @@ export class MuseumGameController {
     }
 
     this.game.activeModal = null;
+    this.clearMovementKeys();
   }
 
   openRoomViewer(roomId: string): void {
@@ -873,11 +873,13 @@ export class MuseumGameController {
     }
 
     this.game.selectedRoomId = room.id;
-    this.viewerRoomId = room.id;
+    const entryEdge =
+      this.preferredForwardEdge(startNode, null, 180, { preferTraversable: true }) ??
+      this.preferredForwardEdge(startNode, null, 180);
+    this.clearMovementKeys();
     this.viewerState = {
-      roomId: room.id,
       nodeId: startNode.id,
-      yaw: startNode.edges[0]?.headingDeg ?? 180,
+      yaw: entryEdge?.headingDeg ?? 180,
       pitch: 0
     };
     this.viewerHistory = [startNode.id];
@@ -885,9 +887,9 @@ export class MuseumGameController {
   }
 
   closeRoomViewer(): void {
-    this.viewerRoomId = null;
     this.viewerState = null;
     this.viewerHistory = [];
+    this.clearMovementKeys();
   }
 
   setViewerPose(yaw: number, pitch: number): void {
@@ -918,9 +920,7 @@ export class MuseumGameController {
 
       const reentryEdge = previousNode.edges.find((edge) => edge.toNodeId === currentNodeId);
       this.viewerHistory = this.viewerHistory.slice(0, -1);
-      this.viewerRoomId = previousNode.roomId;
       this.viewerState = {
-        roomId: previousNode.roomId,
         nodeId: previousNode.id,
         yaw: reentryEdge?.targetHeadingDeg ?? this.viewerState.yaw,
         pitch: this.viewerState.pitch
@@ -931,10 +931,7 @@ export class MuseumGameController {
       return;
     }
 
-    const currentNode = this.viewerNode;
-    const edge = currentNode && this.viewerState
-      ? this.preferredForwardEdge(currentNode, this.previousViewerNodeId(), this.viewerState.yaw)
-      : undefined;
+    const edge = this.viewerForwardEdge;
     const nextNode = edge ? this.findPhotosphereNode(edge.toNodeId) : undefined;
     const nextRoom = nextNode ? this.findRoom(nextNode.roomId) : undefined;
 
@@ -943,9 +940,7 @@ export class MuseumGameController {
     }
 
     this.viewerHistory = [...this.viewerHistory, nextNode.id];
-    this.viewerRoomId = nextRoom.id;
     this.viewerState = {
-      roomId: nextRoom.id,
       nodeId: nextNode.id,
       yaw: edge.targetHeadingDeg,
       pitch: this.viewerState.pitch
@@ -1116,12 +1111,16 @@ export class MuseumGameController {
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
 
     if (MOVEMENT_KEYS.has(key)) {
-      this.keys.add(key);
-      event.preventDefault();
+      if (this.game?.activeModal || this.viewerState) {
+        this.keys.delete(key);
+      } else {
+        this.keys.add(key);
+        event.preventDefault();
+      }
     }
 
     if (key === "Escape") {
-      if (this.viewerRoomId) {
+      if (this.viewerState) {
         this.closeRoomViewer();
         return;
       }
@@ -1242,6 +1241,10 @@ export class MuseumGameController {
     return room.photosphereMap.nodes.find((node) => node.id === room.photosphereMap?.startNodeId) ?? room.photosphereMap.nodes[0];
   }
 
+  private clearMovementKeys(): void {
+    this.keys.clear();
+  }
+
   private previousViewerNodeId(): string | null {
     return this.viewerHistory.length > 1 ? this.viewerHistory[this.viewerHistory.length - 2] : null;
   }
@@ -1249,14 +1252,22 @@ export class MuseumGameController {
   private preferredForwardEdge(
     node: PhotosphereNode,
     previousNodeId: string | null,
-    currentYaw: number
+    currentYaw: number,
+    options: {
+      preferTraversable?: boolean;
+    } = {}
   ): PhotosphereEdge | undefined {
     const forwardEdges = node.edges.filter((edge) => edge.toNodeId !== previousNodeId);
     if (!forwardEdges.length) {
       return undefined;
     }
 
-    return [...forwardEdges].sort((left, right) => {
+    const traversableEdges = options.preferTraversable
+      ? forwardEdges.filter((edge) => this.canTraverseViewerEdge(edge))
+      : [];
+    const candidateEdges = traversableEdges.length ? traversableEdges : forwardEdges;
+
+    return [...candidateEdges].sort((left, right) => {
       const delta = headingDelta(currentYaw, left.headingDeg) - headingDelta(currentYaw, right.headingDeg);
       return delta || left.label.localeCompare(right.label);
     })[0];
@@ -1723,7 +1734,7 @@ export class MuseumGameController {
   }
 
   private updateSimulation(deltaSeconds: number): void {
-    if (!this.game || this.game.activeModal || this.viewerRoomId) {
+    if (!this.game || this.game.activeModal || this.viewerState) {
       return;
     }
 

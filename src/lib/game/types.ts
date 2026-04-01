@@ -346,7 +346,6 @@ export interface StatCard {
 }
 
 export interface ViewerState {
-  roomId: string;
   nodeId: string;
   yaw: number;
   pitch: number;

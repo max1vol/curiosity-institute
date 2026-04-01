@@ -133,7 +133,6 @@ function generatedDisplayPath(concept, preferredViewIndex = 0) {
     renderViews[preferredViewIndex]?.imagePath ??
     renderViews[0]?.imagePath ??
     concept.photosphere?.imagePath ??
-    concept.originalPath ??
     ""
   );
 }
@@ -215,10 +214,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       asset: relativePath,
       label: titleFromFile(relativePath),
       category: relativePath.split("/")[0],
-      displayPath:
-        renderLibrary?.views[0]?.imagePath ??
-        photosphere?.imagePath ??
-        originalPath,
+      displayPath: generatedDisplayPath({ renderLibrary, photosphere }),
       originalPath,
       renderLibrary,
       photosphere,

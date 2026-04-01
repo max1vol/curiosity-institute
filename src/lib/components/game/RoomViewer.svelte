@@ -45,8 +45,10 @@
   let material: THREE.MeshBasicMaterial | null = null;
   let textureLoader: THREE.TextureLoader | null = null;
   let loadGeneration = 0;
+  let viewerDisposed = false;
 
-  const textureCache = new Map<string, Promise<THREE.Texture>>();
+  const textureCache = new Map<string, THREE.Texture>();
+  const pendingTextureLoads = new Map<string, Promise<THREE.Texture>>();
 
   function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
@@ -105,17 +107,33 @@
 
     const cached = textureCache.get(imagePath);
     if (cached) {
-      return cached;
+      return Promise.resolve(cached);
     }
 
-    const promise = textureLoader.loadAsync(imagePath).then((texture) => {
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.minFilter = THREE.LinearFilter;
-      texture.magFilter = THREE.LinearFilter;
-      return texture;
-    });
+    const pending = pendingTextureLoads.get(imagePath);
+    if (pending) {
+      return pending;
+    }
 
-    textureCache.set(imagePath, promise);
+    const promise = textureLoader.loadAsync(imagePath)
+      .then((texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.minFilter = THREE.LinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+
+        if (viewerDisposed) {
+          texture.dispose();
+          throw new Error("Viewer is no longer mounted.");
+        }
+
+        textureCache.set(imagePath, texture);
+        return texture;
+      })
+      .finally(() => {
+        pendingTextureLoads.delete(imagePath);
+      });
+
+    pendingTextureLoads.set(imagePath, promise);
     return promise;
   }
 
@@ -159,17 +177,20 @@
   }
 
   function disposeTextures(): void {
-    for (const promise of textureCache.values()) {
-      void promise.then((texture) => texture.dispose()).catch(() => {});
+    for (const texture of textureCache.values()) {
+      texture.dispose();
     }
 
     textureCache.clear();
+    pendingTextureLoads.clear();
   }
 
   onMount(() => {
     if (!stageElement) {
       return;
     }
+
+    viewerDisposed = false;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(fov, 1, 1, 1100);
@@ -278,6 +299,7 @@
     viewerReady = true;
 
     return () => {
+      viewerDisposed = true;
       viewerReady = false;
       loadGeneration += 1;
       window.cancelAnimationFrame(animationFrame);
