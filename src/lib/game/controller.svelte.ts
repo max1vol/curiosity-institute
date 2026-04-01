@@ -2,8 +2,8 @@ import type {
   ActivityEntry,
   CallQuestion,
   ConceptAsset,
-  CuratorCheckScenario,
-  EstimationScenario,
+  DailyGoal,
+  DailyGoalView,
   FloorCoin,
   GameContent,
   GameSession,
@@ -15,6 +15,7 @@ import type {
   Point,
   RoomAction,
   RoomBlueprint,
+  RoomDetail,
   StatCard,
   ThemeDefinition,
   VisitorState
@@ -26,6 +27,16 @@ export const WORLD = {
 } as const;
 
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
+const STORAGE_KEY = "curiosity-institute-save-v3";
+const SAVE_INTERVAL_MS = 2500;
+const MAX_ROOM_LEVEL = 3;
+
+interface SavedGamePayload {
+  version: number;
+  selectedThemeId: string;
+  savedAt: string;
+  game: GameSession;
+}
 
 function randomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
@@ -78,16 +89,248 @@ function moveToward(entity: Point, target: Point, speed: number, deltaSeconds: n
   return distanceToTarget - travel <= 1;
 }
 
+function createRoomNumberMap(rooms: RoomBlueprint[], initialValue = 0): Record<string, number> {
+  const result: Record<string, number> = {};
+
+  for (const room of rooms) {
+    result[room.id] = initialValue;
+  }
+
+  return result;
+}
+
+function asFiniteNumber(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
+
+function asNumberRecord(value: unknown, rooms: RoomBlueprint[]): Record<string, number> {
+  const fallback = createRoomNumberMap(rooms, 0);
+
+  if (!value || typeof value !== "object") {
+    return fallback;
+  }
+
+  for (const room of rooms) {
+    const nextValue = asFiniteNumber((value as Record<string, unknown>)[room.id], 0);
+    fallback[room.id] = Math.max(0, nextValue);
+  }
+
+  return fallback;
+}
+
+function buildGoal(definition: Omit<DailyGoal, "completed">): DailyGoal {
+  return {
+    ...definition,
+    completed: false
+  };
+}
+
+function buildDailyGoals(themeId: string): DailyGoal[] {
+  if (themeId === "heritage-hall") {
+    return [
+      buildGoal({
+        id: "heritage-visitors",
+        kind: "visitors-served",
+        label: "Welcome The Morning Crowd",
+        detail: "Guide at least 8 visitors cleanly through the floor.",
+        target: 8,
+        reward: { coins: 24, reputation: 5, curiosity: 3 }
+      }),
+      buildGoal({
+        id: "heritage-expansion",
+        kind: "rooms-opened",
+        label: "Reopen New Wings",
+        detail: "Unlock 2 additional rooms during the day.",
+        target: 2,
+        reward: { coins: 18, reputation: 4, curiosity: 4 }
+      }),
+      buildGoal({
+        id: "heritage-programs",
+        kind: "programs-hosted",
+        label: "Keep The Floor Active",
+        detail: "Host 3 tours, mini-games, or immersive view sessions.",
+        target: 3,
+        reward: { coins: 16, reputation: 4, curiosity: 6 }
+      })
+    ];
+  }
+
+  if (themeId === "marble-atrium") {
+    return [
+      buildGoal({
+        id: "marble-revenue",
+        kind: "revenue-earned",
+        label: "Hit Institutional Revenue",
+        detail: "Generate 120 coins from guests, pickups, and programs.",
+        target: 120,
+        reward: { coins: 28, reputation: 4, curiosity: 3 }
+      }),
+      buildGoal({
+        id: "marble-expansion",
+        kind: "rooms-opened",
+        label: "Broaden The Route",
+        detail: "Unlock 2 new spaces to raise throughput.",
+        target: 2,
+        reward: { coins: 20, reputation: 5, curiosity: 4 }
+      }),
+      buildGoal({
+        id: "marble-programs",
+        kind: "programs-hosted",
+        label: "Program The Day",
+        detail: "Complete 4 tours, mini-games, or immersive view sessions.",
+        target: 4,
+        reward: { coins: 18, reputation: 6, curiosity: 5 }
+      })
+    ];
+  }
+
+  if (themeId === "glasshouse-museum") {
+    return [
+      buildGoal({
+        id: "glasshouse-immersive",
+        kind: "photospheres-visited",
+        label: "Walk The Atmosphere",
+        detail: "Enter 2 unique immersive room views.",
+        target: 2,
+        reward: { coins: 18, reputation: 3, curiosity: 8 }
+      }),
+      buildGoal({
+        id: "glasshouse-curiosity",
+        kind: "curiosity",
+        label: "Raise Wonder",
+        detail: "Push museum curiosity to 65 or higher.",
+        target: 65,
+        reward: { coins: 20, reputation: 4, curiosity: 6 }
+      }),
+      buildGoal({
+        id: "glasshouse-programs",
+        kind: "programs-hosted",
+        label: "Keep It Lively",
+        detail: "Deliver 4 tours, mini-games, or immersive view sessions.",
+        target: 4,
+        reward: { coins: 16, reputation: 4, curiosity: 7 }
+      })
+    ];
+  }
+
+  return [
+    buildGoal({
+      id: "default-visitors",
+      kind: "visitors-served",
+      label: "Welcome Visitors",
+      detail: "Serve 8 visitors during the day.",
+      target: 8,
+      reward: { coins: 20, reputation: 4, curiosity: 3 }
+    }),
+    buildGoal({
+      id: "default-programs",
+      kind: "programs-hosted",
+      label: "Run Public Programs",
+      detail: "Complete 3 tours, mini-games, or immersive visits.",
+      target: 3,
+      reward: { coins: 18, reputation: 4, curiosity: 5 }
+    }),
+    buildGoal({
+      id: "default-expansion",
+      kind: "rooms-opened",
+      label: "Open More Of The Floor",
+      detail: "Unlock 2 new rooms.",
+      target: 2,
+      reward: { coins: 16, reputation: 3, curiosity: 5 }
+    })
+  ];
+}
+
+function formatRewardLabel(reward: DailyGoal["reward"]): string {
+  const parts: string[] = [];
+
+  if (reward.coins) {
+    parts.push(`${reward.coins} coins`);
+  }
+
+  if (reward.reputation) {
+    parts.push(`${reward.reputation}% reputation`);
+  }
+
+  if (reward.curiosity) {
+    parts.push(`${reward.curiosity}% curiosity`);
+  }
+
+  return parts.join(" · ");
+}
+
+function formatRelativeSave(isoTimestamp: string | null): string {
+  if (!isoTimestamp) {
+    return "Autosave starts after your first day begins.";
+  }
+
+  const elapsedMs = Date.now() - Date.parse(isoTimestamp);
+
+  if (!Number.isFinite(elapsedMs) || elapsedMs < 0) {
+    return "Local autosave is ready.";
+  }
+
+  const elapsedMinutes = Math.floor(elapsedMs / 60_000);
+
+  if (elapsedMinutes < 1) {
+    return "Autosaved just now.";
+  }
+
+  if (elapsedMinutes < 60) {
+    return `Autosaved ${elapsedMinutes}m ago.`;
+  }
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+
+  if (elapsedHours < 24) {
+    return `Autosaved ${elapsedHours}h ago.`;
+  }
+
+  return `Autosaved ${Math.floor(elapsedHours / 24)}d ago.`;
+}
+
+function pickWeightedItem<T>(entries: Array<{ item: T; weight: number }>): T {
+  const totalWeight = entries.reduce((sum, entry) => sum + Math.max(0, entry.weight), 0);
+
+  if (totalWeight <= 0) {
+    return entries[0].item;
+  }
+
+  let remaining = Math.random() * totalWeight;
+
+  for (const entry of entries) {
+    remaining -= Math.max(0, entry.weight);
+
+    if (remaining <= 0) {
+      return entry.item;
+    }
+  }
+
+  return entries[entries.length - 1].item;
+}
+
 export class MuseumGameController {
   readonly content: GameContent;
 
   selectedThemeId = $state("");
   game = $state<GameSession | null>(null);
   viewerRoomId = $state<string | null>(null);
+  savedGameAvailable = $state(false);
+  lastSavedAt = $state<string | null>(null);
 
   private readonly keys = new Set<string>();
   private animationFrame = 0;
   private lastFrame = 0;
+  private lastPersistAt = 0;
   private mounted = false;
 
   constructor(content: GameContent) {
@@ -115,24 +358,137 @@ export class MuseumGameController {
     return this.findRoom(this.viewerRoomId);
   }
 
+  get canResumeSavedGame(): boolean {
+    return this.savedGameAvailable;
+  }
+
+  get saveSummary(): string {
+    return formatRelativeSave(this.lastSavedAt);
+  }
+
+  get completedGoalsCount(): number {
+    return this.dailyGoals.filter((goal) => goal.completed).length;
+  }
+
+  get museumGrade(): string {
+    if (!this.game) {
+      return "Preview";
+    }
+
+    const score =
+      this.game.reputation * 0.42 +
+      this.game.curiosity * 0.34 +
+      this.game.unlockedRoomIds.length * 4 +
+      this.completedGoalsCount * 8 +
+      this.game.programsHosted * 2.5;
+
+    if (score >= 90) {
+      return "A";
+    }
+    if (score >= 80) {
+      return "A-";
+    }
+    if (score >= 70) {
+      return "B+";
+    }
+    if (score >= 60) {
+      return "B";
+    }
+    if (score >= 50) {
+      return "C+";
+    }
+
+    return "C";
+  }
+
+  get gradeSummary(): string {
+    if (!this.game) {
+      return "Choose a direction, then start or resume a museum day.";
+    }
+
+    if (this.completedGoalsCount === this.dailyGoals.length) {
+      return "Director brief complete. Use the rest of the day to polish the floor and raise the grade.";
+    }
+
+    if (this.game.pendingCall) {
+      return "A live caller is waiting. Clear the hotline before confidence dips.";
+    }
+
+    return "Balance expansion, visitor flow, and public programming to lift the museum grade.";
+  }
+
+  get dailyGoals(): DailyGoalView[] {
+    const goals = this.game?.dailyGoals ?? buildDailyGoals(this.activeTheme?.id ?? "");
+
+    return goals.map((goal) => ({
+      ...goal,
+      progress: Math.min(this.goalProgress(goal), goal.target),
+      rewardLabel: formatRewardLabel(goal.reward)
+    }));
+  }
+
+  get selectedRoomLevel(): number {
+    if (!this.selectedRoom) {
+      return 0;
+    }
+
+    return this.roomLevel(this.selectedRoom.id);
+  }
+
+  get maxRoomLevel(): number {
+    return MAX_ROOM_LEVEL;
+  }
+
+  get selectedRoomDetails(): RoomDetail[] {
+    const room = this.selectedRoom;
+
+    if (!room) {
+      return [];
+    }
+
+    const level = this.roomLevel(room.id);
+    const visitCount = this.game?.roomVisitCounts[room.id] ?? 0;
+    const upgradeCost = level < MAX_ROOM_LEVEL ? this.roomUpgradeCost(room) : null;
+
+    return [
+      {
+        label: "Curation",
+        value: `Tier ${level + 1}/${MAX_ROOM_LEVEL + 1}`,
+        accent: true
+      },
+      {
+        label: "Drop Yield",
+        value: `~${this.roomCoinValue(room)} coins`
+      },
+      {
+        label: "Footfall",
+        value: `${visitCount} routed`
+      },
+      {
+        label: "Next Upgrade",
+        value: upgradeCost ? `${upgradeCost} coins` : "Max tier"
+      }
+    ];
+  }
+
   get stats(): StatCard[] {
     if (!this.game) {
       return [
         { label: "Coins", value: 0 },
+        { label: "Revenue", value: 0 },
         { label: "Reputation", value: "0%" },
         { label: "Curiosity", value: "0%" },
         { label: "Visitors Served", value: 0 },
-        { label: "Visitors On Floor", value: 0 },
         { label: "Rooms Open", value: `0/${this.content.roomBlueprints.length}` }
       ];
     }
 
     return [
       { label: "Coins", value: this.game.coins },
+      { label: "Revenue", value: this.game.revenueEarned },
       { label: "Reputation", value: `${this.game.reputation}%` },
       { label: "Curiosity", value: `${this.game.curiosity}%` },
       { label: "Visitors Served", value: this.game.visitorsServed },
-      { label: "Visitors On Floor", value: this.game.visitors.length },
       { label: "Rooms Open", value: `${this.game.unlockedRoomIds.length}/${this.content.roomBlueprints.length}` }
     ];
   }
@@ -142,22 +498,24 @@ export class MuseumGameController {
       return "Start a museum day, pick a direction, and begin opening wings.";
     }
 
-    const lockedRooms = this.content.roomBlueprints.filter((room) => !this.isRoomUnlocked(room.id));
-    const unlockable = lockedRooms.find((room) => this.canUnlockRoom(room));
-
     if (this.game.pendingCall) {
       return "Answer the incoming hotline question before visitor confidence dips.";
     }
 
+    const nextGoal = this.dailyGoals.find((goal) => !goal.completed);
+
+    if (nextGoal) {
+      return `${nextGoal.label}: ${nextGoal.progress}/${nextGoal.target}. ${nextGoal.detail}`;
+    }
+
+    const lockedRooms = this.content.roomBlueprints.filter((room) => !this.isRoomUnlocked(room.id));
+    const unlockable = lockedRooms.find((room) => this.canUnlockRoom(room));
+
     if (unlockable) {
-      return `Collect enough coins to open ${unlockable.label}.`;
+      return `Director brief complete. Use spare funds to open ${unlockable.label}.`;
     }
 
-    if (lockedRooms.length) {
-      return "Grow visitor traffic and reputation until the next branch becomes affordable.";
-    }
-
-    return "All wings are open. Keep the floor moving and push for a high-curiosity museum day.";
+    return "All core goals are complete. Keep the floor moving and chase a higher museum grade.";
   }
 
   get objectivePills(): ObjectivePill[] {
@@ -166,15 +524,17 @@ export class MuseumGameController {
     if (!this.game) {
       return [
         { label: "Direction", value: themeLabel },
-        { label: "Day Timer", value: "Ready" },
-        { label: "Hotline", value: "Quiet" }
+        { label: "Grade", value: "Preview" },
+        { label: "Goals", value: `0/${buildDailyGoals(this.activeTheme?.id ?? "").length}` },
+        { label: "Autosave", value: this.savedGameAvailable ? "Ready" : "None" }
       ];
     }
 
     return [
       { label: "Direction", value: themeLabel },
-      { label: "Day Timer", value: `${Math.floor(this.game.timer)}s` },
-      { label: "Hotline", value: this.game.pendingCall ? "Live" : "Quiet" }
+      { label: "Grade", value: this.museumGrade },
+      { label: "Goals", value: `${this.completedGoalsCount}/${this.dailyGoals.length}` },
+      { label: "Autosave", value: "Live" }
     ];
   }
 
@@ -233,6 +593,21 @@ export class MuseumGameController {
           primary: !room.photospherePath
         });
       }
+
+      const level = this.roomLevel(room.id);
+
+      if (level < MAX_ROOM_LEVEL) {
+        const nextTier = level + 2;
+        const upgradeCost = this.roomUpgradeCost(room);
+        const canAfford = this.canUpgradeRoom(room);
+
+        actions.push({
+          id: `${room.id}-upgrade`,
+          action: "upgrade",
+          label: canAfford ? `Upgrade To Tier ${nextTier} (${upgradeCost} Coins)` : `Need ${Math.max(0, upgradeCost - this.game.coins)} coins for Tier ${nextTier}`,
+          disabled: !canAfford
+        });
+      }
     }
 
     actions.push({
@@ -275,6 +650,7 @@ export class MuseumGameController {
     }
 
     this.mounted = true;
+    this.refreshSavedGameAvailability();
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
     this.animationFrame = window.requestAnimationFrame(this.tick);
@@ -285,6 +661,7 @@ export class MuseumGameController {
       return;
     }
 
+    this.persistGameSnapshot();
     this.mounted = false;
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
@@ -309,45 +686,49 @@ export class MuseumGameController {
       return;
     }
 
-    const startingRoom = this.findRoom(theme.starterRoomId) ?? this.content.roomBlueprints[0];
-    const startingPosition = roomCenter(startingRoom);
-    const unlockedRoomIds = Array.from(
-      new Set(
-        this.content.roomBlueprints
-          .filter((room) => room.startUnlocked)
-          .map((room) => room.id)
-          .concat(theme.starterRoomId)
-      )
-    );
-
-    this.game = {
-      day: 1,
-      timer: 0,
-      coins: 34,
-      reputation: 52,
-      curiosity: 48,
-      visitorsServed: 0,
-      visitorsSeen: 0,
-      selectedRoomId: startingRoom.id,
-      unlockedRoomIds,
-      visitors: [],
-      floorCoins: [],
-      curator: {
-        x: startingPosition.x,
-        y: startingPosition.y,
-        target: { ...startingPosition },
-        speed: 240,
-        radius: 18
-      },
-      activity: [],
-      nextVisitorSpawnAt: 3,
-      nextCallAt: 18,
-      pendingCall: null,
-      activeModal: null
-    };
+    this.game = this.createGameSession(theme);
     this.viewerRoomId = null;
-
     this.logEvent(`The ${theme.label} museum day begins.`);
+    this.checkGoals();
+    this.persistGameSnapshot();
+  }
+
+  resumeSavedGame(): void {
+    const snapshot = this.readSavedSnapshot();
+
+    if (!snapshot) {
+      this.refreshSavedGameAvailability();
+      return;
+    }
+
+    if (this.content.themes.some((theme) => theme.id === snapshot.selectedThemeId)) {
+      this.selectedThemeId = snapshot.selectedThemeId;
+    }
+
+    const restored = this.normalizeSavedGame(snapshot.game, this.selectedThemeId);
+
+    if (!restored) {
+      this.clearSavedGame();
+      return;
+    }
+
+    this.game = restored;
+    this.viewerRoomId = null;
+    this.lastSavedAt = snapshot.savedAt;
+    this.savedGameAvailable = true;
+    this.logEvent("Resumed a saved museum day.");
+    this.checkGoals();
+    this.persistGameSnapshot();
+  }
+
+  clearSavedGame(): void {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.removeItem(STORAGE_KEY);
+    this.savedGameAvailable = false;
+    this.lastSavedAt = null;
   }
 
   ensureGameStarted(): void {
@@ -499,6 +880,11 @@ export class MuseumGameController {
       return;
     }
 
+    if (action === "upgrade") {
+      this.upgradeRoom(roomId);
+      return;
+    }
+
     if (action === "mini-game" && room.miniGameId) {
       this.openMiniGame(room.miniGameId);
       return;
@@ -533,6 +919,14 @@ export class MuseumGameController {
 
     this.game.selectedRoomId = room.id;
     this.viewerRoomId = room.id;
+
+    if (!this.game.viewedRoomIds.includes(room.id)) {
+      this.game.viewedRoomIds = [...this.game.viewedRoomIds, room.id];
+      this.game.photospheresVisited += 1;
+      this.game.programsHosted += 1;
+      this.logEvent(`Immersive walkthrough opened for ${room.label}.`);
+      this.checkGoals();
+    }
   }
 
   closeRoomViewer(): void {
@@ -560,7 +954,7 @@ export class MuseumGameController {
     const repReward = accuracy > 0.8 ? 5 : 2;
 
     this.game.activeModal = null;
-    this.award(
+    this.completeProgram(
       { coins: coinReward, reputation: repReward, curiosity: 4 },
       `Estimation lab completed with ${coinReward} bonus coins.`
     );
@@ -594,7 +988,10 @@ export class MuseumGameController {
     this.game.activeModal = null;
 
     if (success) {
-      this.award({ coins: 10, reputation: 8, curiosity: 5 }, "Curator check solved cleanly. Visitor flow improves.");
+      this.completeProgram(
+        { coins: 10, reputation: 8, curiosity: 5 },
+        "Curator check solved cleanly. Visitor flow improves."
+      );
       return;
     }
 
@@ -637,7 +1034,7 @@ export class MuseumGameController {
       if (modal.deck.every((entry) => entry.matched)) {
         const reward = Math.max(8, 22 - modal.attempts);
         this.game.activeModal = null;
-        this.award({ coins: reward, reputation: 5, curiosity: 7 }, `Match Pairs cleared in ${modal.attempts} tries.`);
+        this.completeProgram({ coins: reward, reputation: 5, curiosity: 7 }, `Match Pairs cleared in ${modal.attempts} tries.`);
       }
 
       return;
@@ -665,6 +1062,11 @@ export class MuseumGameController {
 
     if (this.game) {
       this.updateSimulation(deltaSeconds);
+
+      if (timestamp - this.lastPersistAt >= SAVE_INTERVAL_MS) {
+        this.persistGameSnapshot();
+        this.lastPersistAt = timestamp;
+      }
     }
 
     this.animationFrame = window.requestAnimationFrame(this.tick);
@@ -693,12 +1095,135 @@ export class MuseumGameController {
     this.keys.delete(key);
   };
 
+  private createGameSession(theme: ThemeDefinition): GameSession {
+    const startingRoom = this.findRoom(theme.starterRoomId) ?? this.content.roomBlueprints[0];
+    const startingPosition = roomCenter(startingRoom);
+    const unlockedRoomIds = Array.from(
+      new Set(
+        this.content.roomBlueprints
+          .filter((room) => room.startUnlocked)
+          .map((room) => room.id)
+          .concat(theme.starterRoomId)
+      )
+    );
+
+    return {
+      day: 1,
+      timer: 0,
+      coins: 34,
+      reputation: 52,
+      curiosity: 48,
+      revenueEarned: 0,
+      visitorsServed: 0,
+      visitorsSeen: 0,
+      roomsOpenedToday: 0,
+      programsHosted: 0,
+      photospheresVisited: 0,
+      selectedRoomId: startingRoom.id,
+      unlockedRoomIds,
+      viewedRoomIds: [],
+      roomLevels: createRoomNumberMap(this.content.roomBlueprints, 0),
+      roomVisitCounts: createRoomNumberMap(this.content.roomBlueprints, 0),
+      dailyGoals: buildDailyGoals(theme.id),
+      visitors: [],
+      floorCoins: [],
+      curator: {
+        x: startingPosition.x,
+        y: startingPosition.y,
+        target: { ...startingPosition },
+        speed: 240,
+        radius: 18
+      },
+      activity: [],
+      nextVisitorSpawnAt: 3,
+      nextCallAt: 18,
+      pendingCall: null,
+      activeModal: null
+    };
+  }
+
+  private goalProgress(goal: DailyGoal): number {
+    if (!this.game) {
+      return 0;
+    }
+
+    switch (goal.kind) {
+      case "visitors-served":
+        return this.game.visitorsServed;
+      case "revenue-earned":
+        return this.game.revenueEarned;
+      case "rooms-opened":
+        return this.game.roomsOpenedToday;
+      case "programs-hosted":
+        return this.game.programsHosted;
+      case "photospheres-visited":
+        return this.game.photospheresVisited;
+      case "reputation":
+        return this.game.reputation;
+      case "curiosity":
+        return this.game.curiosity;
+      default:
+        return 0;
+    }
+  }
+
+  private checkGoals(): void {
+    if (!this.game) {
+      return;
+    }
+
+    for (const goal of this.game.dailyGoals) {
+      if (goal.completed || this.goalProgress(goal) < goal.target) {
+        continue;
+      }
+
+      goal.completed = true;
+      this.applyGoalReward(goal);
+    }
+  }
+
+  private applyGoalReward(goal: DailyGoal): void {
+    if (!this.game) {
+      return;
+    }
+
+    this.game.coins += goal.reward.coins;
+    this.game.reputation = clamp(this.game.reputation + goal.reward.reputation, 0, 100);
+    this.game.curiosity = clamp(this.game.curiosity + goal.reward.curiosity, 0, 100);
+    this.logEvent(`${goal.label} complete. Bonus secured: ${formatRewardLabel(goal.reward)}.`);
+  }
+
   private findRoom(roomId: string): RoomBlueprint | undefined {
     return this.content.roomBlueprints.find((room) => room.id === roomId);
   }
 
   private findMiniGame(miniGameId: MiniGameId): MiniGameDefinition | undefined {
     return this.content.miniGames.find((miniGame) => miniGame.id === miniGameId);
+  }
+
+  private roomLevel(roomId: string): number {
+    return this.game?.roomLevels[roomId] ?? 0;
+  }
+
+  private roomUpgradeCost(room: RoomBlueprint): number {
+    const level = this.roomLevel(room.id);
+    return Math.round(Math.max(24, room.cost * 0.55 + 24 + level * 18));
+  }
+
+  private canUpgradeRoom(room: RoomBlueprint): boolean {
+    if (!this.game || !this.isRoomUnlocked(room.id)) {
+      return false;
+    }
+
+    return this.roomLevel(room.id) < MAX_ROOM_LEVEL && this.game.coins >= this.roomUpgradeCost(room);
+  }
+
+  private effectiveRewardRate(room: RoomBlueprint): number {
+    return room.rewardRate + this.roomLevel(room.id) * 1.4;
+  }
+
+  private roomCoinValue(room: RoomBlueprint): number {
+    return Math.round(6 + this.effectiveRewardRate(room) * 2);
   }
 
   private isRoomUnlocked(roomId: string): boolean {
@@ -734,10 +1259,29 @@ export class MuseumGameController {
       return;
     }
 
-    this.game.coins += rewards.coins ?? 0;
+    const coinDelta = rewards.coins ?? 0;
+
+    this.game.coins += coinDelta;
+    if (coinDelta > 0) {
+      this.game.revenueEarned += coinDelta;
+    }
+
     this.game.reputation = clamp(this.game.reputation + (rewards.reputation ?? 0), 0, 100);
     this.game.curiosity = clamp(this.game.curiosity + (rewards.curiosity ?? 0), 0, 100);
     this.logEvent(message);
+    this.checkGoals();
+  }
+
+  private completeProgram(
+    rewards: { coins?: number; reputation?: number; curiosity?: number },
+    message: string
+  ): void {
+    if (!this.game) {
+      return;
+    }
+
+    this.game.programsHosted += 1;
+    this.award(rewards, message);
   }
 
   private unlockRoom(roomId: string): void {
@@ -754,7 +1298,27 @@ export class MuseumGameController {
     this.game.coins -= room.cost;
     this.game.unlockedRoomIds = [...this.game.unlockedRoomIds, room.id];
     this.game.selectedRoomId = room.id;
+    this.game.roomsOpenedToday += 1;
     this.logEvent(`${room.label} opened for visitors.`);
+    this.checkGoals();
+  }
+
+  private upgradeRoom(roomId: string): void {
+    if (!this.game) {
+      return;
+    }
+
+    const room = this.findRoom(roomId);
+
+    if (!room || !this.canUpgradeRoom(room)) {
+      return;
+    }
+
+    const cost = this.roomUpgradeCost(room);
+    this.game.coins -= cost;
+    this.game.roomLevels[room.id] = this.roomLevel(room.id) + 1;
+    this.logEvent(`${room.label} upgraded to Tier ${this.roomLevel(room.id) + 1}.`);
+    this.checkGoals();
   }
 
   private setCuratorTarget(target: Point): void {
@@ -807,7 +1371,9 @@ export class MuseumGameController {
 
     const total = collected.reduce((sum, coin) => sum + coin.value, 0);
     this.game.coins += total;
+    this.game.revenueEarned += total;
     this.logEvent(`Collected ${total} museum coins from the floor.`);
+    this.checkGoals();
   }
 
   private updateCurator(deltaSeconds: number): void {
@@ -850,7 +1416,18 @@ export class MuseumGameController {
 
   private pickUnlockedDestination(): RoomBlueprint {
     const unlockedRooms = this.content.roomBlueprints.filter((room) => this.isRoomUnlocked(room.id));
-    return randomItem(unlockedRooms.filter((room) => room.id !== "foyer")) ?? this.findRoom("foyer") ?? unlockedRooms[0];
+    const candidates = unlockedRooms.filter((room) => room.id !== "foyer");
+
+    if (!candidates.length) {
+      return this.findRoom("foyer") ?? unlockedRooms[0];
+    }
+
+    return pickWeightedItem(
+      candidates.map((room) => ({
+        item: room,
+        weight: room.rewardRate + this.roomLevel(room.id) * 2 + (room.miniGameId ? 1.4 : 0) + (room.photospherePath ? 0.8 : 0)
+      }))
+    );
   }
 
   private spawnVisitor(): void {
@@ -869,7 +1446,7 @@ export class MuseumGameController {
         speed: 80 + Math.random() * 35,
         state: "to-room",
         roomId: targetRoom.id,
-        dwell: 2.5 + Math.random() * 3,
+        dwell: 2.5 + Math.random() * 3 + this.roomLevel(targetRoom.id) * 0.45,
         coinDropped: false
       }
     ];
@@ -883,6 +1460,7 @@ export class MuseumGameController {
 
     const entrance = { x: 54, y: 340 };
     const survivors: VisitorState[] = [];
+    let progressed = false;
 
     for (const visitor of this.game.visitors) {
       if (visitor.state === "to-room") {
@@ -890,6 +1468,8 @@ export class MuseumGameController {
 
         if (room && moveToward(visitor, roomCenter(room), visitor.speed, deltaSeconds)) {
           visitor.state = "dwelling";
+          this.game.roomVisitCounts[room.id] = (this.game.roomVisitCounts[room.id] ?? 0) + 1;
+          progressed = true;
         }
       } else if (visitor.state === "dwelling") {
         visitor.dwell -= deltaSeconds;
@@ -897,7 +1477,7 @@ export class MuseumGameController {
         if (!visitor.coinDropped && visitor.dwell <= 1.2) {
           visitor.coinDropped = true;
           const room = this.findRoom(visitor.roomId);
-          this.spawnCoin({ x: visitor.x, y: visitor.y }, 6 + (room?.rewardRate ?? 1) * 2);
+          this.spawnCoin({ x: visitor.x, y: visitor.y }, room ? this.roomCoinValue(room) : 8);
         }
 
         if (visitor.dwell <= 0) {
@@ -906,6 +1486,7 @@ export class MuseumGameController {
       } else if (moveToward(visitor, entrance, visitor.speed, deltaSeconds)) {
         this.game.visitorsServed += 1;
         this.game.reputation = clamp(this.game.reputation + 1, 0, 100);
+        progressed = true;
         continue;
       }
 
@@ -913,6 +1494,10 @@ export class MuseumGameController {
     }
 
     this.game.visitors = survivors;
+
+    if (progressed) {
+      this.checkGoals();
+    }
   }
 
   private updateFloorCoins(deltaSeconds: number): void {
@@ -971,10 +1556,13 @@ export class MuseumGameController {
       return;
     }
 
-    this.game.reputation = clamp(this.game.reputation + 3, 0, 100);
-    this.game.curiosity = clamp(this.game.curiosity + 4, 0, 100);
-    this.spawnCoin(roomCenter(room), 12 + room.rewardRate * 2);
+    const level = this.roomLevel(room.id);
+    this.game.programsHosted += 1;
+    this.game.reputation = clamp(this.game.reputation + 3 + level, 0, 100);
+    this.game.curiosity = clamp(this.game.curiosity + 4 + level, 0, 100);
+    this.spawnCoin(roomCenter(room), Math.round(12 + this.effectiveRewardRate(room) * 2 + level * 4));
     this.logEvent(`Guided tour hosted in ${room.label}.`);
+    this.checkGoals();
   }
 
   private updateSimulation(deltaSeconds: number): void {
@@ -987,24 +1575,193 @@ export class MuseumGameController {
     this.game.nextCallAt -= deltaSeconds;
 
     if (this.game.nextVisitorSpawnAt <= 0) {
-      const maxVisitors = 3 + this.game.unlockedRoomIds.length;
+      const maxVisitors = 3 + this.game.unlockedRoomIds.length + Math.floor(this.game.programsHosted / 2);
 
       if (this.game.visitors.length < maxVisitors) {
         this.spawnVisitor();
       }
 
-      this.game.nextVisitorSpawnAt = Math.max(2.4, 5.4 - this.game.unlockedRoomIds.length * 0.22);
+      this.game.nextVisitorSpawnAt = Math.max(2.2, 5.3 - this.game.unlockedRoomIds.length * 0.24 - this.completedGoalsCount * 0.1);
     }
 
     if (this.game.nextCallAt <= 0 && !this.game.pendingCall) {
       this.triggerCallEvent();
-      this.game.nextCallAt = 28;
+      this.game.nextCallAt = Math.max(22, 28 - this.completedGoalsCount * 2);
     }
 
     this.updateCurator(deltaSeconds);
     this.updateVisitors(deltaSeconds);
     this.updateFloorCoins(deltaSeconds);
     this.maybeCollectCoins();
+  }
+
+  private hasLocalStorage(): boolean {
+    return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+  }
+
+  private readSavedSnapshot(): SavedGamePayload | null {
+    if (!this.hasLocalStorage()) {
+      return null;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+
+      if (!raw) {
+        return null;
+      }
+
+      const parsed = JSON.parse(raw) as SavedGamePayload;
+
+      if (!parsed || typeof parsed !== "object" || !parsed.game) {
+        return null;
+      }
+
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  private refreshSavedGameAvailability(): void {
+    const snapshot = this.readSavedSnapshot();
+    this.savedGameAvailable = !!snapshot;
+    this.lastSavedAt = snapshot?.savedAt ?? null;
+  }
+
+  private normalizeSavedGame(rawGame: unknown, themeId: string): GameSession | null {
+    if (!rawGame || typeof rawGame !== "object") {
+      return null;
+    }
+
+    const theme = this.content.themes.find((entry) => entry.id === themeId) ?? this.content.themes[0];
+    const fallback = this.createGameSession(theme);
+    const validRoomIds = new Set(this.content.roomBlueprints.map((room) => room.id));
+    const raw = rawGame as Record<string, unknown>;
+
+    const unlockedRoomIds = asStringArray(raw.unlockedRoomIds).filter((roomId) => validRoomIds.has(roomId));
+    const selectedRoomId = typeof raw.selectedRoomId === "string" && validRoomIds.has(raw.selectedRoomId)
+      ? raw.selectedRoomId
+      : unlockedRoomIds[0] ?? fallback.selectedRoomId;
+
+    const dailyGoals = buildDailyGoals(theme.id).map((goal) => {
+      const rawGoals = Array.isArray(raw.dailyGoals) ? raw.dailyGoals : [];
+      const matchingGoal = rawGoals.find((entry) => entry && typeof entry === "object" && (entry as Record<string, unknown>).id === goal.id);
+
+      return {
+        ...goal,
+        completed: Boolean(matchingGoal && (matchingGoal as Record<string, unknown>).completed)
+      };
+    });
+
+    return {
+      ...fallback,
+      day: Math.max(1, asFiniteNumber(raw.day, fallback.day)),
+      timer: Math.max(0, asFiniteNumber(raw.timer, fallback.timer)),
+      coins: Math.max(0, asFiniteNumber(raw.coins, fallback.coins)),
+      reputation: clamp(asFiniteNumber(raw.reputation, fallback.reputation), 0, 100),
+      curiosity: clamp(asFiniteNumber(raw.curiosity, fallback.curiosity), 0, 100),
+      revenueEarned: Math.max(0, asFiniteNumber(raw.revenueEarned, 0)),
+      visitorsServed: Math.max(0, asFiniteNumber(raw.visitorsServed, 0)),
+      visitorsSeen: Math.max(0, asFiniteNumber(raw.visitorsSeen, 0)),
+      roomsOpenedToday: Math.max(0, asFiniteNumber(raw.roomsOpenedToday, 0)),
+      programsHosted: Math.max(0, asFiniteNumber(raw.programsHosted, 0)),
+      photospheresVisited: Math.max(0, asFiniteNumber(raw.photospheresVisited, 0)),
+      selectedRoomId,
+      unlockedRoomIds: unlockedRoomIds.length ? Array.from(new Set(unlockedRoomIds)) : fallback.unlockedRoomIds,
+      viewedRoomIds: asStringArray(raw.viewedRoomIds).filter((roomId) => validRoomIds.has(roomId)),
+      roomLevels: asNumberRecord(raw.roomLevels, this.content.roomBlueprints),
+      roomVisitCounts: asNumberRecord(raw.roomVisitCounts, this.content.roomBlueprints),
+      dailyGoals,
+      visitors: Array.isArray(raw.visitors)
+        ? raw.visitors
+            .filter((entry) => entry && typeof entry === "object")
+            .map((entry) => {
+              const visitor = entry as Record<string, unknown>;
+              return {
+                id: typeof visitor.id === "string" ? visitor.id : createId(),
+                x: clamp(asFiniteNumber(visitor.x, 54), 20, WORLD.width - 20),
+                y: clamp(asFiniteNumber(visitor.y, 340), 20, WORLD.height - 20),
+                speed: Math.max(40, asFiniteNumber(visitor.speed, 80)),
+                state: visitor.state === "dwelling" || visitor.state === "exit" ? visitor.state : "to-room",
+                roomId: typeof visitor.roomId === "string" && validRoomIds.has(visitor.roomId) ? visitor.roomId : fallback.selectedRoomId,
+                dwell: Math.max(0, asFiniteNumber(visitor.dwell, 2)),
+                coinDropped: Boolean(visitor.coinDropped)
+              } as VisitorState;
+            })
+        : [],
+      floorCoins: Array.isArray(raw.floorCoins)
+        ? raw.floorCoins
+            .filter((entry) => entry && typeof entry === "object")
+            .map((entry) => {
+              const coin = entry as Record<string, unknown>;
+              return {
+                id: typeof coin.id === "string" ? coin.id : createId(),
+                x: clamp(asFiniteNumber(coin.x, 54), 20, WORLD.width - 20),
+                y: clamp(asFiniteNumber(coin.y, 340), 20, WORLD.height - 20),
+                ttl: Math.max(0, asFiniteNumber(coin.ttl, 4)),
+                value: Math.max(1, asFiniteNumber(coin.value, 6))
+              } as FloorCoin;
+            })
+        : [],
+      curator: raw.curator && typeof raw.curator === "object"
+        ? {
+            x: clamp(asFiniteNumber((raw.curator as Record<string, unknown>).x, fallback.curator.x), 20, WORLD.width - 20),
+            y: clamp(asFiniteNumber((raw.curator as Record<string, unknown>).y, fallback.curator.y), 20, WORLD.height - 20),
+            target:
+              (raw.curator as Record<string, unknown>).target &&
+              typeof (raw.curator as Record<string, unknown>).target === "object"
+                ? {
+                    x: clamp(
+                      asFiniteNumber(((raw.curator as Record<string, unknown>).target as Record<string, unknown>).x, fallback.curator.x),
+                      20,
+                      WORLD.width - 20
+                    ),
+                    y: clamp(
+                      asFiniteNumber(((raw.curator as Record<string, unknown>).target as Record<string, unknown>).y, fallback.curator.y),
+                      20,
+                      WORLD.height - 20
+                    )
+                  }
+                : null,
+            speed: Math.max(120, asFiniteNumber((raw.curator as Record<string, unknown>).speed, fallback.curator.speed)),
+            radius: Math.max(12, asFiniteNumber((raw.curator as Record<string, unknown>).radius, fallback.curator.radius))
+          }
+        : fallback.curator,
+      activity: Array.isArray(raw.activity)
+        ? raw.activity
+            .filter((entry) => entry && typeof entry === "object")
+            .map((entry) => ({
+              id: typeof (entry as Record<string, unknown>).id === "string" ? (entry as Record<string, unknown>).id as string : createId(),
+              message:
+                typeof (entry as Record<string, unknown>).message === "string"
+                  ? (entry as Record<string, unknown>).message as string
+                  : "Museum log restored."
+            }))
+            .slice(0, 8)
+        : [],
+      nextVisitorSpawnAt: Math.max(0.5, asFiniteNumber(raw.nextVisitorSpawnAt, fallback.nextVisitorSpawnAt)),
+      nextCallAt: Math.max(4, asFiniteNumber(raw.nextCallAt, fallback.nextCallAt)),
+      pendingCall: null,
+      activeModal: null
+    };
+  }
+
+  private persistGameSnapshot(): void {
+    if (!this.hasLocalStorage() || !this.game) {
+      return;
+    }
+
+    const payload: SavedGamePayload = {
+      version: 3,
+      selectedThemeId: this.selectedThemeId,
+      savedAt: new Date().toISOString(),
+      game: JSON.parse(JSON.stringify(this.game)) as GameSession
+    };
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    this.savedGameAvailable = true;
+    this.lastSavedAt = payload.savedAt;
   }
 }
 

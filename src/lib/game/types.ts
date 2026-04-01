@@ -132,6 +132,34 @@ export interface CuratorCheckScenario {
   correctIndex: number;
 }
 
+export type DailyGoalKind =
+  | "visitors-served"
+  | "revenue-earned"
+  | "rooms-opened"
+  | "programs-hosted"
+  | "photospheres-visited"
+  | "reputation"
+  | "curiosity";
+
+export interface DailyGoal {
+  id: string;
+  kind: DailyGoalKind;
+  label: string;
+  detail: string;
+  target: number;
+  reward: {
+    coins: number;
+    reputation: number;
+    curiosity: number;
+  };
+  completed: boolean;
+}
+
+export interface DailyGoalView extends DailyGoal {
+  progress: number;
+  rewardLabel: string;
+}
+
 export interface RenderLabSummary {
   profile: string | null;
   tricks: string[];
@@ -239,10 +267,18 @@ export interface GameSession {
   coins: number;
   reputation: number;
   curiosity: number;
+  revenueEarned: number;
   visitorsServed: number;
   visitorsSeen: number;
+  roomsOpenedToday: number;
+  programsHosted: number;
+  photospheresVisited: number;
   selectedRoomId: string;
   unlockedRoomIds: string[];
+  viewedRoomIds: string[];
+  roomLevels: Record<string, number>;
+  roomVisitCounts: Record<string, number>;
+  dailyGoals: DailyGoal[];
   visitors: VisitorState[];
   floorCoins: FloorCoin[];
   curator: CuratorState;
@@ -263,9 +299,15 @@ export interface ObjectivePill {
   value: string;
 }
 
+export interface RoomDetail {
+  label: string;
+  value: string;
+  accent?: boolean;
+}
+
 export interface RoomAction {
   id: string;
-  action: "unlock" | "mini-game" | "tour" | "move" | "viewer";
+  action: "unlock" | "mini-game" | "tour" | "move" | "viewer" | "upgrade";
   label: string;
   primary?: boolean;
   disabled?: boolean;

@@ -50,14 +50,22 @@
       </p>
       <div class="hero-actions">
         <button class="primary-button" type="button" onclick={() => controller.startGame()}>
-          Start {controller.activeTheme?.label ?? "Day"}
+          Start New {controller.activeTheme?.label ?? "Day"}
         </button>
+        {#if controller.canResumeSavedGame}
+          <button class="ghost-button" type="button" onclick={() => controller.resumeSavedGame()}>
+            Resume Saved Day
+          </button>
+          <button class="ghost-button subtle-button" type="button" onclick={() => controller.clearSavedGame()}>
+            Clear Saved Day
+          </button>
+        {/if}
         <button class="ghost-button" type="button" onclick={() => controller.openArchive()}>
           Open Full Archive
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their 3D photosphere view. Click locked wings to unlock.
+        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their 3D photosphere view. The game now autosaves locally, supports room upgrades, and tracks a daily director brief.
       </p>
     </div>
 
@@ -118,6 +126,38 @@
     />
 
     <aside class="sidebar">
+      <section class="panel briefing-panel">
+        <div class="section-heading compact">
+          <p class="eyebrow">Director Brief</p>
+          <h2>Day Goals</h2>
+        </div>
+        <div class="briefing-summary">
+          <div class="grade-card">
+            <span class="grade-chip">{controller.museumGrade}</span>
+            <p>{controller.gradeSummary}</p>
+          </div>
+          <p class="briefing-save">{controller.saveSummary}</p>
+        </div>
+        <div class="goal-grid">
+          {#each controller.dailyGoals as goal (goal.id)}
+            <article class:completed={goal.completed} class="goal-card">
+              <div class="goal-topline">
+                <h3>{goal.label}</h3>
+                <strong>{goal.progress}/{goal.target}</strong>
+              </div>
+              <p>{goal.detail}</p>
+              <div class="goal-track">
+                <span style={`width:${Math.min(100, (goal.progress / goal.target) * 100)}%`}></span>
+              </div>
+              <div class="goal-footer">
+                <span>{goal.rewardLabel}</span>
+                <span>{goal.completed ? "Complete" : "In Progress"}</span>
+              </div>
+            </article>
+          {/each}
+        </div>
+      </section>
+
       <section class="panel stats-panel">
         <div class="section-heading compact">
           <p class="eyebrow">Museum Health</p>
@@ -135,8 +175,13 @@
 
       <section class="panel room-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Selected Room</p>
-          <h2>{controller.selectedRoom?.label ?? "Choose a wing"}</h2>
+          <div>
+            <p class="eyebrow">Selected Room</p>
+            <h2>{controller.selectedRoom?.label ?? "Choose a wing"}</h2>
+          </div>
+          {#if controller.selectedRoom}
+            <p class="room-tier-note">Tier {controller.selectedRoomLevel + 1} of {controller.maxRoomLevel + 1}</p>
+          {/if}
         </div>
         <div class="room-media">
           {#if controller.selectedRoom}
@@ -148,6 +193,14 @@
         <p class="room-copy">
           {controller.selectedRoom?.blurb ?? "Select a room on the museum floor to inspect it, move the curator, or unlock it."}
         </p>
+        <div class="room-detail-grid">
+          {#each controller.selectedRoomDetails as detail (detail.label)}
+            <div class:accent={detail.accent} class="room-detail-card">
+              <span>{detail.label}</span>
+              <strong>{detail.value}</strong>
+            </div>
+          {/each}
+        </div>
         <div class="room-render-strip">
           {#each controller.selectedRoomRenderViews as view (view.id)}
             <figure class="render-thumb">

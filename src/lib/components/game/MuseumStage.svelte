@@ -45,7 +45,30 @@
       return `${room.cost} coins`;
     }
 
-    return room.miniGameId ? "Open" : "Active";
+    const level = (game.roomLevels[room.id] ?? 0) + 1;
+
+    if (level > 1) {
+      return `Tier ${level}`;
+    }
+
+    return room.miniGameId ? "Program" : room.photospherePath ? "3D" : "Open";
+  }
+
+  function roomMeta(room: RoomBlueprint): string {
+    if (!game) {
+      return room.requiredRoomIds.length ? `${room.requiredRoomIds.length} prerequisite wing` : "Starter room";
+    }
+
+    if (!isUnlocked(room.id)) {
+      return room.requiredRoomIds.length
+        ? `Needs ${room.requiredRoomIds.map((requiredId) => rooms.find((item) => item.id === requiredId)?.label ?? requiredId).join(" + ")}`
+        : "Ready to unlock";
+    }
+
+    const visits = game.roomVisitCounts[room.id] ?? 0;
+    const typeLabel = room.miniGameId ? "Program wing" : room.photospherePath ? "Immersive wing" : "Gallery wing";
+
+    return `${visits} visits · ${typeLabel}`;
   }
 
   function roomStyle(room: RoomBlueprint): string {
@@ -111,6 +134,7 @@
             <div class="room-node-header">
               <span class="room-node-title">{room.label}</span>
               <span class="room-node-badge">{roomBadge(room)}</span>
+              <span class="room-node-meta">{roomMeta(room)}</span>
             </div>
           </button>
         {/each}
