@@ -62,7 +62,6 @@
   let textureLoader: THREE.TextureLoader | null = null;
   let loadGeneration = 0;
   let viewerDisposed = false;
-  let requestRender = () => {};
 
   const textureCache = new Map<string, THREE.Texture>();
   const pendingTextureLoads = new Map<string, Promise<THREE.Texture>>();
@@ -177,7 +176,6 @@
       material.map = texture;
       material.needsUpdate = true;
       loadMessage = "";
-      requestRender();
     } catch {
       if (currentLoad !== loadGeneration) {
         return;
@@ -234,13 +232,19 @@
 
     const target = new THREE.Vector3();
     let animationFrame = 0;
-    let renderQueued = false;
+    let renderingActive = false;
+
+    function stopRendering(): void {
+      renderingActive = false;
+
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+        animationFrame = 0;
+      }
+    }
 
     function renderFrame(): void {
-      renderQueued = false;
-      animationFrame = 0;
-
-      if (viewerDisposed || !stageElement) {
+      if (viewerDisposed || !stageElement || !renderingActive) {
         return;
       }
 
@@ -258,16 +262,17 @@
 
       camera.lookAt(target);
       renderer.render(scene, camera);
+      animationFrame = window.requestAnimationFrame(renderFrame);
     }
 
-    requestRender = () => {
-      if (viewerDisposed || renderQueued || (typeof document !== "undefined" && document.hidden)) {
+    function startRendering(): void {
+      if (viewerDisposed || renderingActive || document.hidden) {
         return;
       }
 
-      renderQueued = true;
+      renderingActive = true;
       animationFrame = window.requestAnimationFrame(renderFrame);
-    };
+    }
 
     function resizeRenderer(): void {
       if (!stageElement) {
@@ -281,7 +286,6 @@
       camera.fov = fov;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
-      requestRender();
     }
 
     const resizeObserver = new ResizeObserver(() => {
@@ -290,9 +294,12 @@
     resizeObserver.observe(stageElement);
 
     const handleVisibilityChange = (): void => {
-      if (!document.hidden) {
-        requestRender();
+      if (document.hidden) {
+        stopRendering();
+        return;
       }
+
+      startRendering();
     };
 
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -342,13 +349,13 @@
     document.addEventListener("visibilitychange", handleVisibilityChange);
     resizeRenderer();
     viewerReady = true;
-    requestRender();
+    startRendering();
 
     return () => {
       viewerDisposed = true;
       viewerReady = false;
       loadGeneration += 1;
-      window.cancelAnimationFrame(animationFrame);
+      stopRendering();
       window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       resizeObserver.disconnect();
@@ -359,19 +366,7 @@
       renderer.domElement.remove();
       material = null;
       textureLoader = null;
-      requestRender = () => {};
     };
-  });
-
-  $effect(() => {
-    if (!viewerReady) {
-      return;
-    }
-
-    yaw;
-    pitch;
-    fov;
-    requestRender();
   });
 
   $effect(() => {
