@@ -40,3 +40,14 @@ test("classifyRetryDecision retries timeouts with escalating delays", () => {
   assert.equal(decision.category, "timeout");
   assert.equal(decision.delayMs, 8000);
 });
+
+test("classifyRetryDecision treats worker branch failures as transient server errors", () => {
+  const decision = classifyRetryDecision(
+    new Error("Request failed. All manager-directed worker branches failed."),
+    2,
+  );
+
+  assert.equal(decision.retryable, true);
+  assert.equal(decision.category, "server");
+  assert.equal(decision.delayMs, 6000);
+});

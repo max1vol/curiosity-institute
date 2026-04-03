@@ -1,7 +1,8 @@
 {
   "model": "gemini-3.1-flash-image-preview",
-  "dryRun": false,
-  "inputDir": "/tmp/ci-photosphere-single",
+  "dryRun": true,
+  "retryLimit": 5,
+  "inputDir": "/home/max/curiosity-institute/docs/concept-art",
   "outputDir": "/home/max/curiosity-institute/output/photospheres",
   "reportsDir": "/home/max/curiosity-institute/output/photospheres/reports",
   "profile": "nano-banana-photosphere",
@@ -16,10 +17,76 @@
     "Avoid text overlays, split screens, black bars, visible seams, and collage layouts.",
     "Compose the image for an immersive first-person panorama viewer with mouse or touch look controls."
   ],
-  "assetsDiscovered": 1,
-  "photospheresCompleted": 1,
+  "assetsDiscovered": 9,
+  "photospheresCompleted": 9,
   "uniqueFailures": 0,
   "completedPhotospheres": [
+    {
+      "asset": "detail-sheets/museum-style-details.png",
+      "outputSubdirectory": "detail-sheets/museum-style-details",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/detail-sheets/museum-style-details/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/detail-sheets/museum-style-details/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/detail-sheets/museum-style-details/photosphere.json",
+      "attempt": 1
+    },
+    {
+      "asset": "detail-sheets/review-board-development-cards.png",
+      "outputSubdirectory": "detail-sheets/review-board-development-cards",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/detail-sheets/review-board-development-cards/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/detail-sheets/review-board-development-cards/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/detail-sheets/review-board-development-cards/photosphere.json",
+      "attempt": 1
+    },
+    {
+      "asset": "developed-views/coin-mint-demo-day2.png",
+      "outputSubdirectory": "developed-views/coin-mint-demo-day2",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/developed-views/coin-mint-demo-day2/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/developed-views/coin-mint-demo-day2/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/developed-views/coin-mint-demo-day2/photosphere.json",
+      "attempt": 1
+    },
+    {
+      "asset": "gameplay-directions/direction-1-heritage-hall.png",
+      "outputSubdirectory": "gameplay-directions/direction-1-heritage-hall",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-1-heritage-hall/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-1-heritage-hall/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-1-heritage-hall/photosphere.json",
+      "attempt": 1
+    },
+    {
+      "asset": "gameplay-directions/direction-2-marble-atrium.png",
+      "outputSubdirectory": "gameplay-directions/direction-2-marble-atrium",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-2-marble-atrium/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-2-marble-atrium/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-2-marble-atrium/photosphere.json",
+      "attempt": 1
+    },
+    {
+      "asset": "gameplay-directions/direction-3-glasshouse-museum.png",
+      "outputSubdirectory": "gameplay-directions/direction-3-glasshouse-museum",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-3-glasshouse-museum/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-3-glasshouse-museum/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/gameplay-directions/direction-3-glasshouse-museum/photosphere.json",
+      "attempt": 1
+    },
     {
       "asset": "main-views/dusty-foyer-start.png",
       "outputSubdirectory": "main-views/dusty-foyer-start",
@@ -30,7 +97,29 @@
       "imagePath": "/home/max/curiosity-institute/output/photospheres/main-views/dusty-foyer-start/photosphere.png",
       "metadataPath": "/home/max/curiosity-institute/output/photospheres/main-views/dusty-foyer-start/photosphere.json",
       "attempt": 1
+    },
+    {
+      "asset": "main-views/roman-gallery-open-day1.png",
+      "outputSubdirectory": "main-views/roman-gallery-open-day1",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/main-views/roman-gallery-open-day1/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/main-views/roman-gallery-open-day1/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/main-views/roman-gallery-open-day1/photosphere.json",
+      "attempt": 1
+    },
+    {
+      "asset": "references/curator-style-anchor.png",
+      "outputSubdirectory": "references/curator-style-anchor",
+      "sourceFile": "photosphere-source.png",
+      "imageFile": "photosphere.png",
+      "metadataFile": "photosphere.json",
+      "sourcePath": "/home/max/curiosity-institute/output/photospheres/references/curator-style-anchor/photosphere-source.png",
+      "imagePath": "/home/max/curiosity-institute/output/photospheres/references/curator-style-anchor/photosphere.png",
+      "metadataPath": "/home/max/curiosity-institute/output/photospheres/references/curator-style-anchor/photosphere.json",
+      "attempt": 1
     }
   ],
-  "generatedAt": "2026-04-01T13:56:02.769Z"
+  "generatedAt": "2026-04-03T18:51:54.470Z"
 }

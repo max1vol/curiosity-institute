@@ -18,6 +18,8 @@ export interface PhotosphereEdge {
   imagePath: string;
 }
 
+export type SplatFormat = "ply" | "splat" | "ksplat" | "spz";
+
 export interface PhotosphereNode {
   id: string;
   roomId: string;
@@ -25,6 +27,9 @@ export interface PhotosphereNode {
   imagePath: string;
   sourcePath: string;
   metadataPath: string;
+  splatPath?: string;
+  splatMetadataPath?: string;
+  splatFormat?: SplatFormat;
   edges: PhotosphereEdge[];
 }
 
@@ -78,6 +83,9 @@ export interface RoomBlueprint {
   photospherePath: string;
   photosphereSourcePath: string;
   photosphereMetadataPath: string;
+  splatPath?: string;
+  splatMetadataPath?: string;
+  splatFormat?: SplatFormat;
   previewPath: string;
   previewRenderViews: RenderView[];
 }
@@ -125,6 +133,13 @@ export interface PhotosphereAsset {
   profile: string;
 }
 
+export interface SplatAsset {
+  asset: string;
+  splatPath: string;
+  metadataPath: string;
+  format: SplatFormat;
+}
+
 export interface ConceptAsset {
   id: string;
   asset: string;
@@ -134,6 +149,7 @@ export interface ConceptAsset {
   originalPath: string;
   renderLibrary: RenderLibrary | null;
   photosphere: PhotosphereAsset | null;
+  splat: SplatAsset | null;
 }
 
 export interface ConceptGroup {
@@ -219,6 +235,7 @@ export interface GameContent {
     conceptArtCount: number;
     renderLibraryCount: number;
     photosphereCount: number;
+    splatCount: number;
     themeCount: number;
     roomCount: number;
     miniGameCount: number;

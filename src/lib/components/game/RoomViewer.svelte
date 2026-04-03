@@ -4,6 +4,9 @@
 
   import type { PhotosphereEdge, PhotosphereNode, RoomBlueprint, ViewerMoveDirection } from "$lib/game/types";
 
+  type GaussianSplatsModule = typeof import("@mkkellogg/gaussian-splats-3d");
+  type ImmersiveRenderMode = "panorama" | "splat" | "none";
+
   interface Props {
     room: RoomBlueprint;
     node: PhotosphereNode;
@@ -49,22 +52,31 @@
   }: Props = $props();
 
   let stageElement: HTMLDivElement | null = null;
-  let loadMessage = $state("Loading walkthrough node...");
+  let loadMessage = $state("Loading immersive scene...");
   let errorMessage = $state("");
   let fov = $state(72);
   let viewerReady = $state(false);
+  let activeRenderMode = $state<ImmersiveRenderMode>("none");
 
   let pointerId: number | null = null;
   let lastPointerX = 0;
   let lastPointerY = 0;
 
+  let scene: THREE.Scene | null = null;
+  let camera: THREE.PerspectiveCamera | null = null;
+  let renderer: THREE.WebGLRenderer | null = null;
   let material: THREE.MeshBasicMaterial | null = null;
   let textureLoader: THREE.TextureLoader | null = null;
+  let sphereGeometry: THREE.SphereGeometry | null = null;
+  let splatViewer: import("@mkkellogg/gaussian-splats-3d").Viewer | null = null;
+  let gaussianSplatsModulePromise: Promise<GaussianSplatsModule> | null = null;
   let loadGeneration = 0;
   let viewerDisposed = false;
 
   const textureCache = new Map<string, THREE.Texture>();
   const pendingTextureLoads = new Map<string, Promise<THREE.Texture>>();
+  const panoramaTarget = new THREE.Vector3();
+  const splatTarget = new THREE.Vector3();
 
   function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
@@ -120,6 +132,35 @@
     fov = clamp(fov + event.deltaY * 0.02, 48, 92);
   }
 
+  async function loadGaussianSplatsModule(): Promise<GaussianSplatsModule> {
+    gaussianSplatsModulePromise ??= import("@mkkellogg/gaussian-splats-3d");
+    return gaussianSplatsModulePromise;
+  }
+
+  async function disposeSplatViewer(): Promise<void> {
+    const viewer = splatViewer;
+    splatViewer = null;
+
+    if (!viewer) {
+      return;
+    }
+
+    try {
+      await viewer.dispose();
+    } catch {
+      // Ignore disposal failures from interrupted loads.
+    }
+  }
+
+  function clearPanoramaMaterial(): void {
+    if (!material) {
+      return;
+    }
+
+    material.map = null;
+    material.needsUpdate = true;
+  }
+
   function loadTexture(imagePath: string): Promise<THREE.Texture> {
     if (!textureLoader) {
       return Promise.reject(new Error("Viewer is not ready yet."));
@@ -157,32 +198,97 @@
     return promise;
   }
 
-  async function showNodeTexture(imagePath: string): Promise<void> {
+  async function showNodeTexture(imagePath: string, currentLoad: number): Promise<boolean> {
     if (!material) {
-      return;
+      return false;
     }
 
-    const currentLoad = ++loadGeneration;
-    loadMessage = "Loading walkthrough node...";
+    loadMessage = "Loading immersive scene...";
     errorMessage = "";
+    activeRenderMode = "panorama";
+    clearPanoramaMaterial();
 
     try {
       const texture = await loadTexture(imagePath);
 
       if (currentLoad !== loadGeneration || !material) {
-        return;
+        return false;
       }
 
       material.map = texture;
       material.needsUpdate = true;
       loadMessage = "";
+      return true;
     } catch {
       if (currentLoad !== loadGeneration) {
-        return;
+        return false;
       }
 
       loadMessage = "";
-      errorMessage = "Unable to load this walkthrough node.";
+      errorMessage = "Unable to load this immersive scene.";
+      activeRenderMode = "none";
+      return false;
+    }
+  }
+
+  async function showSplatScene(splatPath: string, currentLoad: number): Promise<boolean> {
+    if (!renderer || !camera) {
+      return false;
+    }
+
+    const GaussianSplats3D = await loadGaussianSplatsModule();
+
+    if (currentLoad !== loadGeneration || viewerDisposed || !renderer || !camera) {
+      return false;
+    }
+
+    const viewer = new GaussianSplats3D.Viewer({
+      selfDrivenMode: false,
+      renderer,
+      camera,
+      useBuiltInControls: false,
+      ignoreDevicePixelRatio: false,
+      gpuAcceleratedSort: false,
+      sharedMemoryForWorkers: false,
+      dynamicScene: false,
+      renderMode: GaussianSplats3D.RenderMode.OnChange,
+      antialiased: true,
+    });
+
+    splatViewer = viewer;
+
+    try {
+      await viewer.addSplatScene(splatPath, {
+        showLoadingUI: false,
+        progressiveLoad: true,
+        splatAlphaRemovalThreshold: 5,
+      });
+
+      if (currentLoad !== loadGeneration || viewerDisposed || splatViewer !== viewer) {
+        await viewer.dispose();
+        if (splatViewer === viewer) {
+          splatViewer = null;
+        }
+        return false;
+      }
+
+      clearPanoramaMaterial();
+      activeRenderMode = "splat";
+      loadMessage = "";
+      errorMessage = "";
+      return true;
+    } catch {
+      if (splatViewer === viewer) {
+        splatViewer = null;
+      }
+
+      try {
+        await viewer.dispose();
+      } catch {
+        // Ignore cleanup failures after a failed load.
+      }
+
+      return false;
     }
   }
 
@@ -205,6 +311,64 @@
     pendingTextureLoads.clear();
   }
 
+  async function showActiveNode(): Promise<void> {
+    if (!viewerReady) {
+      return;
+    }
+
+    const currentLoad = ++loadGeneration;
+    const hasSplat = Boolean(node.splatPath);
+    const hasPanorama = Boolean(node.imagePath);
+
+    errorMessage = "";
+
+    if (!hasSplat && !hasPanorama) {
+      loadMessage = "";
+      activeRenderMode = "none";
+      clearPanoramaMaterial();
+      await disposeSplatViewer();
+      if (currentLoad === loadGeneration) {
+        errorMessage = "This walkthrough node does not have a generated immersive scene yet.";
+      }
+      return;
+    }
+
+    loadMessage = "Loading immersive scene...";
+
+    if (hasSplat && node.splatPath) {
+      await disposeSplatViewer();
+
+      if (currentLoad !== loadGeneration) {
+        return;
+      }
+
+      if (await showSplatScene(node.splatPath, currentLoad)) {
+        return;
+      }
+    }
+
+    if (!hasPanorama || !node.imagePath) {
+      if (currentLoad !== loadGeneration) {
+        return;
+      }
+
+      loadMessage = "";
+      activeRenderMode = "none";
+      errorMessage = "Unable to load this immersive scene.";
+      return;
+    }
+
+    await disposeSplatViewer();
+    if (currentLoad !== loadGeneration) {
+      return;
+    }
+
+    await showNodeTexture(node.imagePath, currentLoad);
+    if (currentLoad === loadGeneration) {
+      preloadNeighborTextures();
+    }
+  }
+
   onMount(() => {
     if (!stageElement) {
       return;
@@ -212,25 +376,24 @@
 
     viewerDisposed = false;
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(fov, 1, 1, 1100);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 1100);
+    renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     stageElement.appendChild(renderer.domElement);
 
-    const geometry = new THREE.SphereGeometry(500, 80, 48);
-    geometry.scale(-1, 1, 1);
+    sphereGeometry = new THREE.SphereGeometry(500, 80, 48);
+    sphereGeometry.scale(-1, 1, 1);
 
     material = new THREE.MeshBasicMaterial({
       color: new THREE.Color("#12211f")
     });
     textureLoader = new THREE.TextureLoader();
 
-    const sphere = new THREE.Mesh(geometry, material);
+    const sphere = new THREE.Mesh(sphereGeometry, material);
     scene.add(sphere);
 
-    const target = new THREE.Vector3();
     let animationFrame = 0;
     let renderingActive = false;
 
@@ -244,7 +407,7 @@
     }
 
     function renderFrame(): void {
-      if (viewerDisposed || !stageElement || !renderingActive) {
+      if (viewerDisposed || !stageElement || !renderingActive || !camera || !renderer || !scene) {
         return;
       }
 
@@ -254,14 +417,29 @@
       const phi = THREE.MathUtils.degToRad(90 - pitch);
       const theta = THREE.MathUtils.degToRad(yaw);
 
-      target.set(
-        500 * Math.sin(phi) * Math.sin(theta),
-        500 * Math.cos(phi),
-        500 * Math.sin(phi) * Math.cos(theta)
-      );
+      if (activeRenderMode === "splat" && splatViewer) {
+        const radius = 3.2;
+        camera.position.set(
+          radius * Math.sin(phi) * Math.sin(theta),
+          radius * Math.cos(phi),
+          radius * Math.sin(phi) * Math.cos(theta)
+        );
+        camera.up.set(0, 1, 0);
+        splatTarget.set(0, 0, 0);
+        camera.lookAt(splatTarget);
+        splatViewer.update();
+        splatViewer.render();
+      } else {
+        camera.position.set(0, 0, 0);
+        panoramaTarget.set(
+          500 * Math.sin(phi) * Math.sin(theta),
+          500 * Math.cos(phi),
+          500 * Math.sin(phi) * Math.cos(theta)
+        );
+        camera.lookAt(panoramaTarget);
+        renderer.render(scene, camera);
+      }
 
-      camera.lookAt(target);
-      renderer.render(scene, camera);
       animationFrame = window.requestAnimationFrame(renderFrame);
     }
 
@@ -275,7 +453,7 @@
     }
 
     function resizeRenderer(): void {
-      if (!stageElement) {
+      if (!stageElement || !camera || !renderer) {
         return;
       }
 
@@ -359,11 +537,16 @@
       window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       resizeObserver.disconnect();
+      void disposeSplatViewer();
       disposeTextures();
       material?.dispose();
-      geometry.dispose();
-      renderer.dispose();
-      renderer.domElement.remove();
+      sphereGeometry?.dispose();
+      renderer?.dispose();
+      renderer?.domElement.remove();
+      scene = null;
+      camera = null;
+      renderer = null;
+      sphereGeometry = null;
       material = null;
       textureLoader = null;
     };
@@ -374,14 +557,7 @@
       return;
     }
 
-    if (!node.imagePath) {
-      loadMessage = "";
-      errorMessage = "This walkthrough node does not have a generated photosphere yet.";
-      return;
-    }
-
-    void showNodeTexture(node.imagePath);
-    preloadNeighborTextures();
+    void showActiveNode();
   });
 </script>
 
@@ -390,7 +566,7 @@
     <div class="viewer-stage-wrap">
       <div
         bind:this={stageElement}
-        aria-label={`${room.label} panorama`}
+        aria-label={`${room.label} immersive scene`}
         class="viewer-stage"
         role="application"
         onpointerdown={handlePointerDown}
@@ -451,7 +627,7 @@
       <div class="viewer-hint">
         <span>Current Node</span>
         <strong>{node.label}</strong>
-        <small class="viewer-subhint">Drag to look around, scroll to zoom, and use F/B or the travel buttons to move.</small>
+        <small class="viewer-subhint">Drag to explore, scroll to zoom, and use F/B or the travel buttons to move.</small>
       </div>
 
       <div class="viewer-travel" aria-label="Walkthrough travel controls">

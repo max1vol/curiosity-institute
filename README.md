@@ -180,7 +180,8 @@ What it does:
 - reads the room-driving concept art from `docs/concept-art/`
 - asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic room view
 - converts that panorama into a 2:1 photosphere texture with `ffmpeg`
-- retries Google failures up to three times per room
+- retries Google failures up to five times per room by default
+- treats transient server-side model failures, including worker-branch fanout failures, with backoff and retry
 - records attempt failures and deduplicated final failures in `output/photospheres/reports/`
 - exposes the generated textures through `static/output/photospheres/` so clicking an unlocked room opens the 3D viewer
 
@@ -195,6 +196,8 @@ For a no-network pass that keeps the same file layout:
 ```bash
 npm run photospheres:dry
 ```
+
+Override the retry budget with `--retries`, `PHOTOSPHERE_RETRY_LIMIT`, or the shared `RETRY_LIMIT` env var.
 
 ## Local Development
 

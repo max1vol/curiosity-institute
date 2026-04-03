@@ -1492,7 +1492,7 @@ export class MuseumGameController {
   }
 
   private hasWalkthrough(room: RoomBlueprint): boolean {
-    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath);
+    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath || room.splatPath);
   }
 
   private roomUpgradeCost(room: RoomBlueprint): number {

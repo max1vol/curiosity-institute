@@ -82,10 +82,12 @@ async function syncGameAssets() {
     await resetPath(path.join(staticRoot, "docs", "concept-art"));
     await resetPath(path.join(staticRoot, "output", "renders"));
     await resetPath(path.join(staticRoot, "output", "photospheres"));
+    await resetPath(path.join(staticRoot, "output", "splats"));
 
     await copyIntoStatic("docs/concept-art", "docs/concept-art");
     await copyIntoStatic("output/renders", "output/renders");
     await copyIntoStatic("output/photospheres", "output/photospheres");
+    await copyIntoStatic("output/splats", "output/splats");
 
     const { data, outputFile } = await writeGameDataFile({
       repoRoot,

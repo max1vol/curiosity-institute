@@ -1,38 +1,14 @@
 {
   "asset": "detail-sheets/review-board-development-cards.png",
   "profile": "nano-banana-photosphere",
-  "prompt": "Create a seamless 360-degree museum photosphere panorama for \"review-board-development-cards\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. No text, labels, black borders, split panels, UI, or collage composition.",
-  "modelText": "**Defining the Scene's Scope**\n\nI'm focused on the panoramic museum interior. I've begun to analyze a reference image for style and layout cues. I'm considering the desired wide aspect ratio for the final render, aiming for a complete 360-degree view.\n\n\n\n**Establishing Composition Details**\n\nI'm now detailing the museum's layout. The reference guides the exhibit's specifics, particularly the central board with its \"cards\" and feedback icons. The goal is to translate this 2D design into a cohesive 360-degree scene that maintains the reference's style. I'm focusing on the bulletin board's placement within the broader panoramic view.\n\n\n\n**Crafting the Museum Space**\n\nI'm now determining the overall architecture, focusing on a single large bulletin board as the centerpiece within the 360-degree environment. Considering the best location of the camera to view the board, ensuring it can turn around to see the entire space. I am working on the foreground, and am now leaning towards polished wood flooring or patterned tile to complement the environment's style.\n\n\n\n**Designing the 360 Scene**\n\nI'm now determining the layout, deciding on the best camera angle to showcase the central bulletin board and the other content. Extending the theme by adding additional exhibit cases. The plan is to continue the style with green-striped walls and wood framing, adding displays relevant to the \"review board\" concept.\n\n\n\n**Designing the 360 Environment**\n\nI'm now structuring the scene's layout. The plan is to place a central bulletin board as the exhibit's focal point within the 360-degree view. I'm focusing on the room's arrangement. The goal is to set the camera in the center to maintain the design's key elements. The background elements such as the museum galleries and the overall interior are being designed to fit the reference.\n\n\n\n**Developing the 360-degree Scene**\n\nI am now focusing on the implementation details for the 360-degree environment. The layout is designed to incorporate the core exhibit, extending the theme with complementary displays and features. The plan includes a 4:1 aspect ratio to ensure a seamless loop. The camera position is set, allowing a complete, immersive view.\n\n\n\n**Designing the Scene's Components**\n\nI'm now focusing on creating the individual elements that will make up the scene. This includes the central bulletin board with its various \"cards\" and feedback icons. I'm working on the design of the green striped wallpaper and the light-wood flooring. I'm also preparing details for the exhibits and cases.\n\n\n\n**Refining the 360 Scene**\n\nI am now focusing on refining the scene's prompt details. I'm ensuring seamless looping for the 360 panorama, with consistent wallpaper, flooring, and perspective. The central bulletin board, cards, and surrounding elements are crucial. The goal is to clearly define each peripheral item and its placement within the circular gallery, all in a stylized and cohesive manner.\n\n\n\n**Refining Prompt Structure**\n\nI'm organizing the final prompt, ensuring the 360-degree scene details are clear. I'm focusing on the bulletin board and its content, along with the museum environment. The plan is to create a detailed description to generate a panoramic image that matches the source image style. I am setting the scene's key features, including the central board, peripheral exhibits, and background elements.\n\n\n\n**Developing the Scene's Details**\n\nI'm now detailing the full environment to wrap around the central bulletin board. I'm focusing on the additional exhibit cases and elements that will support the \"review board\" concept. The museum theme, with its green-striped walls and wood framing, is being extended throughout the scene, and I'm adding supporting design elements. The goal is to generate a complete visual experience.\n\n\n\n**Analyzing Panoramic Consistency**\n\nI am now focusing on the panoramic image's stylistic cohesion and its ability to seamlessly wrap around. I've noted how the textures and exhibit design are implemented, expanding the reference into a full museum scene. I am now looking at the various displays and feedback elements.\n\n\n\n**Examining Seamless Transitions**\n\nI'm currently focused on the left and right edge matching to ensure a seamless rotation. The museum scene is unfolding well, drawing from the provided reference for wall textures and exhibit design. I'm checking the spatial depth of the environment.",
+  "prompt": "Create a seamless 360-degree museum photosphere panorama for \"review-board-development-cards\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. The left and right image edges must describe the same physical boundary so the seam is not noticeable in a sphere viewer. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. Do not include gameplay UI, arrows, HUD markers, player characters, callout icons, text, labels, black borders, split panels, or collage composition.",
+  "modelText": "Dry run enabled. Original input copied without network generation.",
   "modelResponse": {
-    "usageMetadata": {
-      "promptTokenCount": 1262,
-      "candidatesTokenCount": 1120,
-      "totalTokenCount": 4726,
-      "trafficType": "ON_DEMAND",
-      "promptTokensDetails": [
-        {
-          "modality": "TEXT",
-          "tokenCount": 173
-        },
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1089
-        }
-      ],
-      "candidatesTokensDetails": [
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1120
-        }
-      ],
-      "thoughtsTokenCount": 2344
-    },
-    "promptFeedback": null,
-    "finishReason": "STOP"
+    "dryRun": true
   },
   "imageSize": "1K",
   "aspectRatio": "4:1",
-  "generatedAt": "2026-04-01T13:29:48.958Z",
+  "generatedAt": "2026-04-03T18:51:53.742Z",
   "attempt": 1,
   "sourceFile": "photosphere-source.png",
   "imageFile": "photosphere.png"

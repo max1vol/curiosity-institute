@@ -1,42 +1,14 @@
 {
   "asset": "detail-sheets/museum-style-details.png",
   "profile": "nano-banana-photosphere",
-  "prompt": "Create a seamless 360-degree museum photosphere panorama for \"museum-style-details\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. No text, labels, black borders, split panels, UI, or collage composition.",
-  "modelText": "**Examining Style & Structure**\n\nI am now focusing on the style of the reference image, which is low-poly. My objective is to build a 360-degree panorama of a museum, and it seems the style will greatly influence my approach. I'm taking notes on how to best translate the low-poly style to the panorama's creation.\n\n\n\n**Expanding the Interior Design**\n\nI'm presently building upon the understanding of the reference image. The aim is to visualize exhibits inside the museum and maintain a low-poly aesthetic. I'm taking into consideration the architectural details and exhibit design of the reference image.\n\n\n\n**Developing the Panorama Blueprint**\n\nI'm presently building the layout of the 360-degree panorama, concentrating on the placement of the various elements. I am deciding the positioning of the main entrance, exhibition walls, and transition areas, following a specific architectural scheme. The goal is a seamless result.\n\n\n\n**Designing the Scene's Contents**\n\nI'm now focusing on arranging the various objects within the museum. The exhibits from the reference image are being incorporated, and I'm deciding how to distribute them across the panorama's layout. A consistent architectural style, inspired by the reference image's background panel, is emerging.\n\n\n\n**Refining Scene Composition**\n\nI am now organizing the distribution of museum exhibits, including the doorman figure and the banner, around the panoramic layout, referencing the provided image. I will keep a consistent style across the scene, ensuring the main exhibit wall has the featured exhibits. The layout will include zones for a seamless result.\n\n\n\n**Structuring the Panorama Interior**\n\nI'm presently building the museum interior, applying the features from the reference images to the central view. The floor uses the hexagonal pattern, and the wooden desk holds a call bell and a coin. I am working on the composition of the scene's key features, which involves the specific arrangement of the objects.\n\n\n\n**Developing Scene's Description**\n\nI am currently working on the complete description of the scene. I am building the precise panorama, using the reference image as a style guide. I'm focusing on the position of the exhibits.\n\n\n\n**Mapping Out the Museum's Features**\n\nMy focus has shifted toward building a complete scene description. I will now create a 360-degree panorama of the interior, using the reference image as a guide. Key features, such as the exhibits, are carefully positioned. I'm taking care to ensure the architecture is consistent throughout.\n\n\n\n**Examining Photosphere Alignment**\n\nI'm now focused on the technical aspects, specifically the horizontal alignment. I'm noting a seam where the edges should meet. The goal is to correct this. Further refinement will be required.\n\n\n\n**Troubleshooting Horizontal Seams**\n\nMy priority is the horizontal continuity of the image. The original attempt showed a visible seam. The current plan is to shift and extend the textures, ensuring they connect seamlessly. I'm repositioning elements to create a more convincing 360-degree environment.\n\n\n\n**Correcting Equirectangular Distortion**\n\nNow my focus is on equirectangular projection issues. I am addressing horizontal seam mismatches. The current process involves adjusting the textures for continuous flow. My methodology centers on shifting and extending the textures from left to right, thereby repositioning elements to create a proper 360-degree environment. Also, I must ensure the vertical lines remain straight.\n\n\n\n**Examining Horizontal Consistency**\n\nI'm focused on resolving the horizontal continuity issue. The latest attempt uses all the necessary elements: the hotelier, coins, and lock. The wide aspect ratio is still intact. But, that pesky seam and distortion remain problematic.\n\n\n\n**Reassessing Asset Integration**\n\nI've reviewed the output and still spot significant problems. While the components—hotelier, coins, lock—are present and the wide aspect is maintained, the seam continues to be noticeable and straightness is flawed. I'll need to re-evaluate the integration strategy.\n\n\n\nI have generated\n this wide panoramic scene by integrating the specific assets you provided, such as the hotelier character, the gold coins, and the lock, while maintaining the desired \"\nmuseum-style-details\" aesthetic. However, I want to point out that there is still a visible seam where the left and right edges of the panorama meet, and\n the correction for vertical straightness was only partially successful, so the environment is not yet perfectly suitable for a seamless 3D sphere viewer.",
+  "prompt": "Create a seamless 360-degree museum photosphere panorama for \"museum-style-details\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. The left and right image edges must describe the same physical boundary so the seam is not noticeable in a sphere viewer. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. Do not include gameplay UI, arrows, HUD markers, player characters, callout icons, text, labels, black borders, split panels, or collage composition.",
+  "modelText": "Dry run enabled. Original input copied without network generation.",
   "modelResponse": {
-    "usageMetadata": {
-      "promptTokenCount": 1260,
-      "candidatesTokenCount": 1217,
-      "totalTokenCount": 4807,
-      "trafficType": "ON_DEMAND",
-      "promptTokensDetails": [
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1089
-        },
-        {
-          "modality": "TEXT",
-          "tokenCount": 171
-        }
-      ],
-      "candidatesTokensDetails": [
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1120
-        },
-        {
-          "modality": "TEXT",
-          "tokenCount": 97
-        }
-      ],
-      "thoughtsTokenCount": 2330
-    },
-    "promptFeedback": null,
-    "finishReason": "STOP"
+    "dryRun": true
   },
   "imageSize": "1K",
   "aspectRatio": "4:1",
-  "generatedAt": "2026-04-01T13:29:11.275Z",
+  "generatedAt": "2026-04-03T18:51:53.705Z",
   "attempt": 1,
   "sourceFile": "photosphere-source.png",
   "imageFile": "photosphere.png"

@@ -7,6 +7,12 @@ import { CATEGORY_METADATA, ROOM_BLUEPRINTS, THEME_DEFINITIONS, TITLE_OVERRIDES 
 import { CALL_DECK, CURATOR_CHECK_DECK, ESTIMATION_DECK, MATCH_PAIRS_DECK } from "./game-content/challenges.js";
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+const SPLAT_EXTENSIONS = new Map([
+  [".ksplat", "ksplat"],
+  [".spz", "spz"],
+  [".splat", "splat"],
+  [".ply", "ply"],
+]);
 
 export { ROOM_BLUEPRINTS } from "./game-content/catalog.js";
 
@@ -81,15 +87,19 @@ function normalizeHeading(value) {
   return ((value % 360) + 360) % 360;
 }
 
+function supportedSplatFormat(filePath) {
+  return SPLAT_EXTENSIONS.get(path.extname(filePath).toLowerCase()) ?? null;
+}
+
 function buildRoomPhotosphereMap(room, roomsById) {
-  if (!room.photospherePath) {
+  if (!room.photospherePath && !room.splatPath) {
     return null;
   }
 
   const nodeId = nodeIdForRoom(room.id);
   const edges = (room.immersiveNeighbors ?? [])
     .map((neighborId) => roomsById.get(neighborId))
-    .filter((neighbor) => neighbor && neighbor.photospherePath)
+    .filter((neighbor) => neighbor && (neighbor.photospherePath || neighbor.splatPath))
     .map((neighbor) => {
       const headingDeg = normalizeHeading(headingBetweenRooms(room, neighbor));
       const returnHeadingDeg = normalizeHeading(headingBetweenRooms(neighbor, room) + 180);
@@ -116,6 +126,9 @@ function buildRoomPhotosphereMap(room, roomsById) {
         imagePath: room.photospherePath,
         sourcePath: room.photosphereSourcePath,
         metadataPath: room.photosphereMetadataPath,
+        splatPath: room.splatPath,
+        splatMetadataPath: room.splatMetadataPath,
+        splatFormat: room.splatFormat,
         edges,
       },
     ],
@@ -141,8 +154,18 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
   const conceptRoot = path.join(repoRoot, "docs", "concept-art");
   const renderRoot = path.join(repoRoot, "output", "renders");
   const photosphereRoot = path.join(repoRoot, "output", "photospheres");
+  const splatRoot = path.join(repoRoot, "output", "splats");
   const reportPath = path.join(repoRoot, "output", "reports", "run-summary.json");
   const runSummary = await readJsonIfPresent(reportPath);
+  const conceptFiles = (await walkFiles(conceptRoot))
+    .filter((filePath) => IMAGE_EXTENSIONS.has(path.extname(filePath).toLowerCase()))
+    .sort();
+  const assetByOutputDirectory = new Map(
+    conceptFiles.map((filePath) => {
+      const relativePath = toPosix(path.relative(conceptRoot, filePath));
+      return [toPosix(outputDirectoryForAsset(relativePath)), relativePath];
+    }),
+  );
 
   const renderLibraryFiles = (await walkFilesIfPresent(renderRoot))
     .filter((filePath) => path.basename(filePath) === "library.json")
@@ -199,14 +222,75 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     });
   }
 
-  const conceptFiles = (await walkFiles(conceptRoot))
-    .filter((filePath) => IMAGE_EXTENSIONS.has(path.extname(filePath).toLowerCase()))
-    .sort();
+  const splatDirectories = new Map();
+  for (const filePath of await walkFilesIfPresent(splatRoot)) {
+    const relativeDirectory = toPosix(path.relative(splatRoot, path.dirname(filePath)));
+    const entry = splatDirectories.get(relativeDirectory) ?? {
+      manifestPath: null,
+      splatFiles: [],
+    };
+
+    if (path.basename(filePath) === "splat.json") {
+      entry.manifestPath = filePath;
+    }
+
+    if (supportedSplatFormat(filePath)) {
+      entry.splatFiles.push(filePath);
+    }
+
+    splatDirectories.set(relativeDirectory, entry);
+  }
+
+  const splatsByAsset = new Map();
+
+  for (const [relativeDirectory, entry] of splatDirectories) {
+    let manifest = null;
+
+    if (entry.manifestPath) {
+      manifest = JSON.parse(await fs.readFile(entry.manifestPath, "utf8"));
+    }
+
+    const asset = toPosix(manifest?.asset ?? assetByOutputDirectory.get(relativeDirectory) ?? "");
+    if (!asset) {
+      continue;
+    }
+
+    const preferredFileName = manifest?.splatFile ?? manifest?.file ?? null;
+    const preferredFilePath = preferredFileName
+      ? path.join(splatRoot, relativeDirectory, preferredFileName)
+      : null;
+    const splatFilePath = preferredFilePath && entry.splatFiles.includes(preferredFilePath) && supportedSplatFormat(preferredFilePath)
+      ? preferredFilePath
+      : entry.splatFiles
+        .slice()
+        .sort((left, right) => {
+          const leftRank = [".ksplat", ".spz", ".splat", ".ply"].indexOf(path.extname(left).toLowerCase());
+          const rightRank = [".ksplat", ".spz", ".splat", ".ply"].indexOf(path.extname(right).toLowerCase());
+          return leftRank - rightRank || left.localeCompare(right);
+        })[0];
+
+    if (!splatFilePath) {
+      continue;
+    }
+
+    const format = supportedSplatFormat(splatFilePath);
+    if (!format) {
+      continue;
+    }
+
+    splatsByAsset.set(asset, {
+      asset,
+      splatPath: publicPath("output", "splats", relativeDirectory, path.basename(splatFilePath)),
+      metadataPath: entry.manifestPath ? publicPath("output", "splats", relativeDirectory, path.basename(entry.manifestPath)) : "",
+      format,
+    });
+  }
 
   const conceptArt = conceptFiles.map((filePath) => {
     const relativePath = toPosix(path.relative(conceptRoot, filePath));
     const renderLibrary = renderLibrariesByAsset.get(relativePath) ?? null;
     const photosphere = photospheresByAsset.get(relativePath) ?? null;
+    const splat = splatsByAsset.get(relativePath) ?? null;
     const originalPath = publicPath("docs", "concept-art", relativePath);
 
     return {
@@ -218,6 +302,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       originalPath,
       renderLibrary,
       photosphere,
+      splat,
     };
   });
 
@@ -259,6 +344,9 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       photospherePath: concept?.photosphere?.imagePath ?? "",
       photosphereSourcePath: concept?.photosphere?.sourcePath ?? "",
       photosphereMetadataPath: concept?.photosphere?.metadataPath ?? "",
+      splatPath: concept?.splat?.splatPath,
+      splatMetadataPath: concept?.splat?.metadataPath,
+      splatFormat: concept?.splat?.format,
       previewPath: generatedDisplayPath(preview) || generatedDisplayPath(concept),
       previewRenderViews: preview?.renderLibrary?.views ?? [],
     };
@@ -327,6 +415,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       conceptArtCount: conceptArt.length,
       renderLibraryCount: renderLibraries.length,
       photosphereCount: photospheresByAsset.size,
+      splatCount: splatsByAsset.size,
       themeCount: themes.length,
       roomCount: roomBlueprints.length,
       miniGameCount: miniGames.length,

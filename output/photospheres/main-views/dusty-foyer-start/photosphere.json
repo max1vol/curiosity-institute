@@ -2,37 +2,13 @@
   "asset": "main-views/dusty-foyer-start.png",
   "profile": "nano-banana-photosphere",
   "prompt": "Create a seamless 360-degree museum photosphere panorama for \"dusty-foyer-start\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. The left and right image edges must describe the same physical boundary so the seam is not noticeable in a sphere viewer. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. Do not include gameplay UI, arrows, HUD markers, player characters, callout icons, text, labels, black borders, split panels, or collage composition.",
-  "modelText": "**Analyzing Museum Foyer**\n\nI'm currently focused on the overall composition. The goal is a seamless, 360-degree first-person view of the foyer. The reference image, which is a miniature 3D render, will inform the art style.\n\n\n\n**Considering Spatial Layout**\n\nI am now focusing on the architecture and interior details, aiming for accuracy despite the shift in perspective from the reference image. The green striped wallpaper, the parquet flooring, and the red runner carpets are critical elements to incorporate, along with the arched doorways and furniture. I'm exploring how these elements will appear from a first-person viewpoint.\n\n\n\n**Adjusting Viewpoint and Details**\n\nI'm now focusing on the foreground elements, such as the red carpet, floorboards, and the reception desk, to ensure they're correctly positioned and sized in the new first-person perspective. The textured dust motes are also being considered. The layout of the walls and details in the mid-ground are also being adjusted.\n\n\n\n**Revising Foreground Elements**\n\nMy focus is on positioning the red carpet, parquet flooring, and reception desk. These foreground elements are crucial for the first-person perspective. The textured dust motes are also being reconsidered for their impact. The reception desk's placement is being considered in relation to the surrounding walls.\n\n\n\n**Planning Panorama Details**\n\nI am now focusing on the 360-degree panorama, concentrating on the placement and design of key elements within the scene. The red carpet runner, parquet flooring, reception desk, and coat rack are being positioned to create depth and visual interest from a first-person perspective. The distant archways and exhibit alcoves are also being considered.\n\n\n\n**Developing Panorama Layout**\n\nNow I am concentrating on the precise arrangement of elements for the 360-degree view. The reception desk and coat rack's placement is being considered to ensure visual balance. The hall's extension, along with the arched doorways and exhibits, is now also considered. A specific matching point to ensure seamlessness is being designed.\n\n\n\n**Structuring Seamlessness Strategy**\n\nI'm now focused on the panorama's edges. A split element is planned at the seam to ensure continuity, possibly using the hall's wall, flooring pattern, and red runner. Symmetry is intended to create a mirrored effect across the hall, and a specific wall panel, halved across edges, will anchor the wrap-around.\n\n\n\n**Constructing Scene Components**\n\nI am now describing the entire scene. The goal is a first-person perspective, with red carpet in the foreground. I'll arrange the reception desk, the coat rack, and the exhibition cases. A 360-degree environment will be created from the main hall's center, including alcoves, statues, and arched doorways. The split element for seamlessness is still the key detail.\n\n\n\n**Planning Prompt Structure**\n\nI am now focused on structuring the prompt for the 4:1 panorama. The goal is a detailed prompt that encompasses all the architectural elements, the first-person perspective, and the artistic style inspired by *Animal Crossing*. Emphasis is on ensuring a seamless visual experience.\n\n\n\n**Constructing Prompt Details**\n\nI'm now detailing the prompt's structure, focusing on the composition of the scene and the specific objects to be included. I'll maintain the style guidelines. The red runner, reception desk, and coat rack will be positioned. The split element at the edges is still under consideration to ensure a seamless panorama. A specific wall panel, with a mirrored map, has been chosen.\n\n\n\n**Constructing Prompt Details**\n\nI am now adding the final details to the prompt, to ensure the panorama is seamless. The style, perspective, and key objects are all specified. The scene's edges will represent the view behind the viewer, wrapping with a halved, split element to ensure the wrap-around is continuous.\n\n\n\n**Formulating the Final Prompt**\n\nI'm now integrating the seam details, using a split grandfather clock for the wrap-around. The description emphasizes the view behind the viewer and the overall *Animal Crossing* style. All other architectural details and objects are being listed.\n\n\n\n**Formulating the Final Prompt**\n\nI've streamlined the scene description, prioritizing a symmetrical design for seamless wrapping. The focus is now on the red runner, reception desk, and coat rack, along with architectural details for continuity. A split grandfather clock acts as the anchor for the seamless 360-degree panorama, ensuring a continuous view.\n\n\n\n**Evaluating Seamless Wraps**\n\nI'm focused on the panoramic continuity right now. The image effectively rendered the environment's low-poly style. I've noted specific props were recreated accurately. Crucially, the horizontal wrap appears to be seamless; clocks are split at the edges.\n\n\n\n**Assessing Style and Props**\n\nMy current evaluation centers on the environment's stylistic consistency, confirming that the generated image holds to the low-poly style. I've observed precise reproduction of props, including the wall plaques. Horizontal wrapping is without apparent flaws.",
+  "modelText": "Dry run enabled. Original input copied without network generation.",
   "modelResponse": {
-    "usageMetadata": {
-      "promptTokenCount": 1300,
-      "candidatesTokenCount": 1120,
-      "totalTokenCount": 5274,
-      "trafficType": "ON_DEMAND",
-      "promptTokensDetails": [
-        {
-          "modality": "TEXT",
-          "tokenCount": 211
-        },
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1089
-        }
-      ],
-      "candidatesTokensDetails": [
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1120
-        }
-      ],
-      "thoughtsTokenCount": 2854
-    },
-    "promptFeedback": null,
-    "finishReason": "STOP"
+    "dryRun": true
   },
   "imageSize": "1K",
   "aspectRatio": "4:1",
-  "generatedAt": "2026-04-01T13:56:02.766Z",
+  "generatedAt": "2026-04-03T18:51:54.325Z",
   "attempt": 1,
   "sourceFile": "photosphere-source.png",
   "imageFile": "photosphere.png"

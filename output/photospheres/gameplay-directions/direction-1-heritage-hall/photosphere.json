@@ -1,38 +1,14 @@
 {
   "asset": "gameplay-directions/direction-1-heritage-hall.png",
   "profile": "nano-banana-photosphere",
-  "prompt": "Create a seamless 360-degree museum photosphere panorama for \"direction-1-heritage-hall\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. The left and right image edges must describe the same physical boundary so the seam is not noticeable in a sphere viewer. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. No text, labels, black borders, split panels, UI, or collage composition.",
-  "modelText": "**Planning Panoramic Render**\n\nI'm focusing on the technical requirements for a 360-degree panorama. I'm targeting a 4:1 aspect ratio to match equirectangular projection needs. The initial stages involve determining the key aspects of the final image.\n\n\n\n**Deconstructing Image Elements**\n\nI'm presently breaking down the elements of the scene, like the green wallpaper, parquet flooring, and the wood trim. I am considering how to maintain the stylistic qualities of the source image in the final 360-degree panorama. I am focusing on the figures and props, ensuring they contribute to the scene.\n\n\n\n**Visualizing Scene Extents**\n\nI'm now determining how to extend the scene horizontally. I am mapping the placement of key features like the carpet runner and the Colosseum model across the panorama. I am adjusting the arrangement to create a cohesive 360-degree view.\n\n\n\n**Expanding the Panorama's Scope**\n\nI'm presently focusing on how to extend the scene horizontally. I am mapping out how the components of the scene, such as the wallpaper, flooring, and archways, will be repeated and adjusted to fit a 360-degree view. I'm exploring strategies for seamless transitions at the edges to ensure a continuous panorama.\n\n\n\n**Mapping Scene Components**\n\nI'm now detailing the planned layout for the horizontal panorama. I'm focusing on the center view, placing the service desk in a central position and planning the flow to the left and right, ensuring that all elements such as the wallpaper, flooring, and archways align seamlessly. I'm taking special care with how the Roman Colosseum model is incorporated.\n\n\n\n**Designing Panoramic Scene**\n\nI'm now outlining how to construct the 360-degree scene. I am deciding how to position key visual elements to create a panoramic effect. The central focus will be the carpet, flanked by the service desk and a staff member. I'm taking care to include the Colosseum model, archways, and visitor figures.\n\n\n\n**Formulating Scene Elements**\n\nI'm presently building the scene's key components, aiming for a 4:1 panorama. The approach involves recreating an isometric 3D render, complete with archways, flooring, and exhibits. I am targeting seamless transitions at the edges, planning to split an archway across the edges for alignment.\n\n\n\n**Structuring the Panorama Elements**\n\nI'm presently building the scene's key components, working towards a 4:1 panorama. The process includes planning a continuous ceiling and floor and extending the art, characters, and other props across the 360-degree view. I will ensure seamless transitions at the edges. I am also concentrating on the text removal.\n\n\n\n**Structuring the Panorama Elements**\n\nI'm presently building the scene's key components, working towards a 4:1 panorama. The process involves mapping out how the components will repeat in the view. I am concentrating on the seam placement to the left and right, planning a split archway on the edges.\n\n\n\n**Analyzing Panoramic Consistency**\n\nI am now thoroughly analyzing the seamless wrapping of the 3D-style panorama. The left and right edges appear to align without issue. The spatial depth and character designs seem to integrate naturally into the environment. The image accurately reflects the reference materials. I'm satisfied with the coherence of the scene.",
+  "prompt": "Create a seamless 360-degree museum photosphere panorama for \"direction-1-heritage-hall\". Treat the reference image as authoritative for art direction, architecture, exhibits, and materials. Render a continuous equirectangular-style first-person environment from the middle of the space at human eye level. Output the scene as a very wide 4:1 panoramic strip suitable for conversion into a 2:1 photosphere viewer texture. The scene must wrap left-to-right with coherent walls, floor, ceiling, props, and circulation space. The left and right image edges must describe the same physical boundary so the seam is not noticeable in a sphere viewer. Emphasize real room volume with foreground, midground, and background depth so camera rotation feels spatial instead of flat. Make it suitable for a 3D sphere viewer: immersive, continuous, and free of broken seams. Do not include gameplay UI, arrows, HUD markers, player characters, callout icons, text, labels, black borders, split panels, or collage composition.",
+  "modelText": "Dry run enabled. Original input copied without network generation.",
   "modelResponse": {
-    "usageMetadata": {
-      "promptTokenCount": 1285,
-      "candidatesTokenCount": 1120,
-      "totalTokenCount": 4617,
-      "trafficType": "ON_DEMAND",
-      "promptTokensDetails": [
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1089
-        },
-        {
-          "modality": "TEXT",
-          "tokenCount": 196
-        }
-      ],
-      "candidatesTokensDetails": [
-        {
-          "modality": "IMAGE",
-          "tokenCount": 1120
-        }
-      ],
-      "thoughtsTokenCount": 2212
-    },
-    "promptFeedback": null,
-    "finishReason": "STOP"
+    "dryRun": true
   },
   "imageSize": "1K",
   "aspectRatio": "4:1",
-  "generatedAt": "2026-04-01T13:39:28.472Z",
+  "generatedAt": "2026-04-03T18:51:53.967Z",
   "attempt": 1,
   "sourceFile": "photosphere-source.png",
   "imageFile": "photosphere.png"

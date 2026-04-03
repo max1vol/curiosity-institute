@@ -206,6 +206,7 @@ export async function runPhotospherePipeline(config) {
   const summary = {
     model: config.model,
     dryRun: config.dryRun,
+    retryLimit: config.retryLimit,
     inputDir: config.inputDir,
     outputDir: config.outputDir,
     reportsDir: config.reportsDir,

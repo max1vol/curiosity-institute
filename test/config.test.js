@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 
 import { buildConfig } from "../core/config.js";
+import { buildPhotosphereConfig } from "../core/photosphere-config.js";
 
 test("buildConfig uses dry-run without credentials", () => {
   const config = buildConfig({
@@ -52,4 +53,38 @@ test("buildConfig prefers service-account auth when service account JSON is pres
 
   assert.equal(config.auth.kind, "vertex-service-account");
   assert.equal(config.projectId, "pic2toon");
+});
+
+test("buildPhotosphereConfig defaults to five retries", () => {
+  const config = buildPhotosphereConfig({
+    argv: ["--dry-run"],
+    env: {},
+  });
+
+  assert.equal(config.retryLimit, 5);
+  assert.equal(config.model, "gemini-3.1-flash-image-preview");
+});
+
+test("buildPhotosphereConfig accepts PHOTOSPHERE_RETRY_LIMIT overrides up to six", () => {
+  const config = buildPhotosphereConfig({
+    argv: ["--dry-run"],
+    env: {
+      PHOTOSPHERE_RETRY_LIMIT: "6",
+    },
+  });
+
+  assert.equal(config.retryLimit, 6);
+});
+
+test("buildPhotosphereConfig rejects PHOTOSPHERE_RETRY_LIMIT values above six", () => {
+  assert.throws(
+    () =>
+      buildPhotosphereConfig({
+        argv: ["--dry-run"],
+        env: {
+          PHOTOSPHERE_RETRY_LIMIT: "7",
+        },
+      }),
+    /PHOTOSPHERE_RETRY_LIMIT must be an integer between 1 and 6\./i,
+  );
 });

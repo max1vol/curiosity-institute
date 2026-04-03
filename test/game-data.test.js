@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import { buildGameData } from "../core/game-data.js";
 
@@ -9,6 +12,7 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
   assert.equal(data.summary.conceptArtCount, 16);
   assert.equal(data.summary.renderLibraryCount, 16);
   assert.equal(typeof data.summary.photosphereCount, "number");
+  assert.equal(typeof data.summary.splatCount, "number");
   assert.equal(data.themes.length, 3);
   assert.equal(data.roomBlueprints.length, 9);
   assert.equal(data.miniGames.length, 4);
@@ -30,7 +34,7 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
     assert.equal(typeof room.photospherePath, "string");
     assert.equal(typeof room.photosphereMetadataPath, "string");
 
-    if (room.photospherePath) {
+    if (room.photospherePath || room.splatPath) {
       assert.ok(room.photosphereMap);
       assert.equal(room.photosphereMap.roomId, room.id);
       assert.equal(room.photosphereMap.startNodeId, `${room.id}:anchor`);
@@ -38,7 +42,10 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
 
       for (const node of room.photosphereMap.nodes) {
         assert.equal(node.roomId, room.id);
-        assert.ok(node.imagePath.startsWith("/output/photospheres/"));
+        assert.ok(
+          (node.imagePath && node.imagePath.startsWith("/output/photospheres/")) ||
+            (node.splatPath && node.splatPath.startsWith("/output/splats/")),
+        );
 
         for (const edge of node.edges) {
           assert.ok(data.roomBlueprints.some((candidate) => candidate.id === edge.roomId));
@@ -68,5 +75,28 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
     assert.ok(question.id.length > 0);
     assert.ok(question.context.length > 0);
     assert.ok(question.choices.length >= 4);
+  }
+});
+
+test("buildGameData discovers splat-backed immersive rooms", async () => {
+  const repoRoot = await fs.mkdtemp(path.join(os.tmpdir(), "ci-splats-"));
+
+  try {
+    await fs.mkdir(path.join(repoRoot, "docs", "concept-art", "main-views"), { recursive: true });
+    await fs.writeFile(path.join(repoRoot, "docs", "concept-art", "main-views", "dusty-foyer-start.png"), "");
+
+    await fs.mkdir(path.join(repoRoot, "output", "splats", "main-views", "dusty-foyer-start"), { recursive: true });
+    await fs.writeFile(path.join(repoRoot, "output", "splats", "main-views", "dusty-foyer-start", "scene.ksplat"), "");
+
+    const data = await buildGameData({ repoRoot });
+    const room = data.roomBlueprints.find((entry) => entry.id === "foyer");
+
+    assert.ok(room);
+    assert.equal(room.splatPath, "/output/splats/main-views/dusty-foyer-start/scene.ksplat");
+    assert.equal(room.splatFormat, "ksplat");
+    assert.equal(room.photosphereMap?.nodes[0]?.splatPath, "/output/splats/main-views/dusty-foyer-start/scene.ksplat");
+    assert.equal(data.summary.splatCount, 1);
+  } finally {
+    await fs.rm(repoRoot, { recursive: true, force: true });
   }
 });

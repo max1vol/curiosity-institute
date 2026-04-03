@@ -1,7 +1,17 @@
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { parseRetryLimit, resolveAuth } from "./config.js";
+import { resolveAuth } from "./config.js";
+
+function parsePhotosphereRetryLimit(value) {
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 6) {
+    throw new Error("PHOTOSPHERE_RETRY_LIMIT must be an integer between 1 and 6.");
+  }
+
+  return parsed;
+}
 
 export function buildPhotosphereConfig({ argv = process.argv.slice(2), env = process.env } = {}) {
   const { values } = parseArgs({
@@ -39,7 +49,8 @@ export function buildPhotosphereConfig({ argv = process.argv.slice(2), env = pro
     allowPositionals: false
   });
 
-  const retryLimit = parseRetryLimit(values.retries ?? env.RETRY_LIMIT ?? "3");
+  const retrySource = values.retries ?? env.PHOTOSPHERE_RETRY_LIMIT ?? env.RETRY_LIMIT;
+  const retryLimit = retrySource == null ? 5 : parsePhotosphereRetryLimit(retrySource);
   const authMode = values["auth-mode"] ?? env.GOOGLE_AUTH_MODE ?? "auto";
   const auth = resolveAuth(env, authMode);
 

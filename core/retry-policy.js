@@ -21,6 +21,10 @@ const NON_RETRYABLE_RULES = [
   },
 ];
 
+function serverDelayMsForAttempt(attempt) {
+  return Math.min(3000 * (2 ** (attempt - 1)), 20000);
+}
+
 const TRANSIENT_RULES = [
   {
     category: "quota",
@@ -34,7 +38,12 @@ const TRANSIENT_RULES = [
   },
   {
     category: "server",
-    delayMsForAttempt: (attempt) => Math.min(3000 * (2 ** (attempt - 1)), 20000),
+    delayMsForAttempt: serverDelayMsForAttempt,
+    pattern: /manager-directed worker branches failed|worker branches failed/i,
+  },
+  {
+    category: "server",
+    delayMsForAttempt: serverDelayMsForAttempt,
     pattern: /temporarily unavailable|\bunavailable\b|internal error/i,
   },
 ];

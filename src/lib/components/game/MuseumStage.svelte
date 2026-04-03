@@ -45,7 +45,7 @@
   }
 
   function roomHasWalkthrough(room: RoomBlueprint): boolean {
-    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath);
+    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath || room.splatPath);
   }
 
   function roomReward(room: RoomBlueprint): string {
