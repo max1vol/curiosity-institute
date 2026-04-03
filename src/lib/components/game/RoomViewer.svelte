@@ -62,6 +62,7 @@
   let textureLoader: THREE.TextureLoader | null = null;
   let loadGeneration = 0;
   let viewerDisposed = false;
+  let requestRender = () => {};
 
   const textureCache = new Map<string, THREE.Texture>();
   const pendingTextureLoads = new Map<string, Promise<THREE.Texture>>();
@@ -176,6 +177,7 @@
       material.map = texture;
       material.needsUpdate = true;
       loadMessage = "";
+      requestRender();
     } catch {
       if (currentLoad !== loadGeneration) {
         return;
@@ -232,27 +234,16 @@
 
     const target = new THREE.Vector3();
     let animationFrame = 0;
+    let renderQueued = false;
 
-    function resizeRenderer(): void {
-      if (!stageElement) {
+    function renderFrame(): void {
+      renderQueued = false;
+      animationFrame = 0;
+
+      if (viewerDisposed || !stageElement) {
         return;
       }
 
-      const width = Math.max(stageElement.clientWidth, 1);
-      const height = Math.max(stageElement.clientHeight, 1);
-
-      camera.aspect = width / height;
-      camera.fov = fov;
-      camera.updateProjectionMatrix();
-      renderer.setSize(width, height, false);
-    }
-
-    const resizeObserver = new ResizeObserver(() => {
-      resizeRenderer();
-    });
-    resizeObserver.observe(stageElement);
-
-    function renderFrame(): void {
       camera.fov = fov;
       camera.updateProjectionMatrix();
 
@@ -267,8 +258,42 @@
 
       camera.lookAt(target);
       renderer.render(scene, camera);
-      animationFrame = window.requestAnimationFrame(renderFrame);
     }
+
+    requestRender = () => {
+      if (viewerDisposed || renderQueued || (typeof document !== "undefined" && document.hidden)) {
+        return;
+      }
+
+      renderQueued = true;
+      animationFrame = window.requestAnimationFrame(renderFrame);
+    };
+
+    function resizeRenderer(): void {
+      if (!stageElement) {
+        return;
+      }
+
+      const width = Math.max(stageElement.clientWidth, 1);
+      const height = Math.max(stageElement.clientHeight, 1);
+
+      camera.aspect = width / height;
+      camera.fov = fov;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+      requestRender();
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      resizeRenderer();
+    });
+    resizeObserver.observe(stageElement);
+
+    const handleVisibilityChange = (): void => {
+      if (!document.hidden) {
+        requestRender();
+      }
+    };
 
     const handleKeyDown = (event: KeyboardEvent): void => {
       const key = event.key.toLowerCase();
@@ -314,9 +339,10 @@
     };
 
     window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     resizeRenderer();
-    renderFrame();
     viewerReady = true;
+    requestRender();
 
     return () => {
       viewerDisposed = true;
@@ -324,6 +350,7 @@
       loadGeneration += 1;
       window.cancelAnimationFrame(animationFrame);
       window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       resizeObserver.disconnect();
       disposeTextures();
       material?.dispose();
@@ -332,7 +359,19 @@
       renderer.domElement.remove();
       material = null;
       textureLoader = null;
+      requestRender = () => {};
     };
+  });
+
+  $effect(() => {
+    if (!viewerReady) {
+      return;
+    }
+
+    yaw;
+    pitch;
+    fov;
+    requestRender();
   });
 
   $effect(() => {

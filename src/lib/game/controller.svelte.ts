@@ -678,6 +678,48 @@ export class MuseumGameController {
     ].join(";");
   }
 
+  private canRunSimulation(): boolean {
+    if (!this.mounted || !this.game) {
+      return false;
+    }
+
+    if (typeof document !== "undefined" && document.hidden) {
+      return false;
+    }
+
+    return !this.game.activeModal && !this.viewerState;
+  }
+
+  private stopSimulationLoop(): void {
+    if (typeof window === "undefined" || !this.animationFrame) {
+      return;
+    }
+
+    window.cancelAnimationFrame(this.animationFrame);
+    this.animationFrame = 0;
+  }
+
+  private scheduleSimulationLoop(): void {
+    if (typeof window === "undefined" || this.animationFrame || !this.canRunSimulation()) {
+      return;
+    }
+
+    this.animationFrame = window.requestAnimationFrame(this.tick);
+  }
+
+  private syncSimulationLoop(resetFrame = false): void {
+    if (resetFrame) {
+      this.lastFrame = 0;
+    }
+
+    if (!this.canRunSimulation()) {
+      this.stopSimulationLoop();
+      return;
+    }
+
+    this.scheduleSimulationLoop();
+  }
+
   mount(): void {
     if (this.mounted || typeof window === "undefined") {
       return;
@@ -687,7 +729,8 @@ export class MuseumGameController {
     this.refreshSavedGameAvailability();
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
-    this.animationFrame = window.requestAnimationFrame(this.tick);
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+    this.syncSimulationLoop(true);
   }
 
   destroy(): void {
@@ -699,8 +742,8 @@ export class MuseumGameController {
     this.mounted = false;
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
-    window.cancelAnimationFrame(this.animationFrame);
-    this.animationFrame = 0;
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+    this.stopSimulationLoop();
     this.lastFrame = 0;
     this.keys.clear();
   }
@@ -725,6 +768,7 @@ export class MuseumGameController {
     this.logEvent(`The ${theme.label} museum day begins.`);
     this.checkGoals();
     this.persistGameSnapshot();
+    this.syncSimulationLoop(true);
   }
 
   resumeSavedGame(): void {
@@ -753,6 +797,7 @@ export class MuseumGameController {
     this.logEvent("Resumed a saved museum day.");
     this.checkGoals();
     this.persistGameSnapshot();
+    this.syncSimulationLoop(true);
   }
 
   clearSavedGame(): void {
@@ -819,6 +864,7 @@ export class MuseumGameController {
         scenario,
         guess: Math.round((scenario.min + scenario.max) / 2)
       };
+      this.syncSimulationLoop(true);
       return;
     }
 
@@ -828,6 +874,7 @@ export class MuseumGameController {
         miniGame,
         scenario: this.nextCuratorScenario()
       };
+      this.syncSimulationLoop(true);
       return;
     }
 
@@ -850,6 +897,7 @@ export class MuseumGameController {
       attempts: 0,
       locked: false
     };
+    this.syncSimulationLoop(true);
   }
 
   handleRoomNodeClick(roomId: string): void {
@@ -940,6 +988,7 @@ export class MuseumGameController {
 
     this.game.activeModal = null;
     this.clearMovementKeys();
+    this.syncSimulationLoop(true);
   }
 
   openRoomViewer(roomId: string): void {
@@ -966,12 +1015,14 @@ export class MuseumGameController {
     };
     this.viewerHistory = [startNode.id];
     this.markWalkthroughVisited(room);
+    this.syncSimulationLoop(true);
   }
 
   closeRoomViewer(): void {
     this.viewerState = null;
     this.viewerHistory = [];
     this.clearMovementKeys();
+    this.syncSimulationLoop(true);
   }
 
   setViewerPose(yaw: number, pitch: number): void {
@@ -1064,6 +1115,7 @@ export class MuseumGameController {
     const curiosityReward = scenario.difficulty === "Expert" ? 6 : 4;
 
     this.game.activeModal = null;
+    this.syncSimulationLoop(true);
     this.completeProgram(
       { coins: coinReward, reputation: repReward, curiosity: curiosityReward },
       `${scenario.style} cleared with ${coinReward} bonus coins.`
@@ -1079,6 +1131,7 @@ export class MuseumGameController {
     const success = choiceIndex === question.correctIndex;
     this.game.pendingCall = null;
     this.game.activeModal = null;
+    this.syncSimulationLoop(true);
 
     if (success) {
       this.award(
@@ -1106,6 +1159,7 @@ export class MuseumGameController {
     const { scenario } = this.game.activeModal;
     const success = choiceIndex === scenario.correctIndex;
     this.game.activeModal = null;
+    this.syncSimulationLoop(true);
 
     if (success) {
       this.completeProgram(
@@ -1161,6 +1215,7 @@ export class MuseumGameController {
       if (modal.deck.every((entry) => entry.matched)) {
         const reward = Math.max(12, 32 - modal.attempts);
         this.game.activeModal = null;
+        this.syncSimulationLoop(true);
         this.completeProgram({ coins: reward, reputation: 5, curiosity: 7 }, `Match Pairs cleared in ${modal.attempts} tries.`);
       }
 
@@ -1180,6 +1235,13 @@ export class MuseumGameController {
   }
 
   private readonly tick = (timestamp: number): void => {
+    this.animationFrame = 0;
+
+    if (!this.canRunSimulation()) {
+      this.lastFrame = 0;
+      return;
+    }
+
     if (!this.lastFrame) {
       this.lastFrame = timestamp;
     }
@@ -1196,7 +1258,11 @@ export class MuseumGameController {
       }
     }
 
-    this.animationFrame = window.requestAnimationFrame(this.tick);
+    this.scheduleSimulationLoop();
+  };
+
+  private readonly handleVisibilityChange = (): void => {
+    this.syncSimulationLoop(true);
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
@@ -1771,6 +1837,7 @@ export class MuseumGameController {
       type: "call",
       question
     };
+    this.syncSimulationLoop(true);
   }
 
   private openArchiveModal(focusAssetId: string | null = null): void {
@@ -1783,6 +1850,7 @@ export class MuseumGameController {
       type: "archive",
       focusAssetId
     };
+    this.syncSimulationLoop(true);
   }
 
   private triggerCallEvent(): void {
