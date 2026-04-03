@@ -13,9 +13,17 @@
     forwardEdge?: PhotosphereEdge;
     canMoveBack: boolean;
     canMoveForward: boolean;
+    roomTierLabel: string;
+    roomProgressText: string;
+    roomTierIndex: number;
+    roomTierMax: number;
+    roomUpgradeCost: number | null;
+    roomCanUpgrade: boolean;
+    roomUpgradeLabel: string;
     close: () => void;
     move: (direction: ViewerMoveDirection) => void;
     setPose: (yaw: number, pitch: number) => void;
+    upgradeRoom: () => void;
   }
 
   let {
@@ -27,9 +35,17 @@
     forwardEdge = undefined,
     canMoveBack,
     canMoveForward,
+    roomTierLabel,
+    roomProgressText,
+    roomTierIndex,
+    roomTierMax,
+    roomUpgradeCost,
+    roomCanUpgrade,
+    roomUpgradeLabel,
     close,
     move,
-    setPose
+    setPose,
+    upgradeRoom
   }: Props = $props();
 
   let stageElement: HTMLDivElement | null = null;
@@ -52,6 +68,10 @@
 
   function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function tierSteps(maxTier: number): number[] {
+    return Array.from({ length: maxTier + 1 }, (_, index) => index + 1);
   }
 
   function normalizeYaw(value: number): number {
@@ -333,26 +353,6 @@
 
 <div aria-label={`${room.label} walkthrough viewer`} aria-modal="true" class="viewer-root" role="dialog">
   <div class="viewer-shell">
-    <header class="viewer-toolbar">
-      <div>
-        <p class="eyebrow">Immersive Walkthrough</p>
-        <h2>{room.label}</h2>
-        <p class="viewer-copy">
-          Drag or swipe to pivot the camera. Use <kbd>F</kbd> or the Forward button to move deeper into the connected map,
-          <kbd>B</kbd> or Back to retrace your path, and the mouse wheel to zoom.
-        </p>
-      </div>
-
-      <div class="viewer-toolbar-actions">
-        {#if node.metadataPath}
-          <a class="ghost-button viewer-link" href={node.metadataPath} target="_blank" rel="noreferrer">
-            Open Metadata
-          </a>
-        {/if}
-        <button class="primary-button" type="button" onclick={close}>Close Walkthrough</button>
-      </div>
-    </header>
-
     <div class="viewer-stage-wrap">
       <div
         bind:this={stageElement}
@@ -366,6 +366,48 @@
         onwheel={handleWheel}
       ></div>
 
+      <section class="viewer-tier-panel" aria-label="Tier progression panel">
+        <div class="viewer-tier-topline">
+          <div>
+            <p class="eyebrow">Tier Progression</p>
+            <h2>{room.label}</h2>
+          </div>
+          <div class="viewer-tier-badge">{roomTierLabel}</div>
+        </div>
+
+        <p class="viewer-tier-copy">{roomProgressText}</p>
+
+        <div class="viewer-tier-track" aria-label={`${room.label} tier progression`}>
+          {#each tierSteps(roomTierMax) as tier}
+            <div class:active={tier <= roomTierIndex + 1} class:current={tier === roomTierIndex + 1} class="viewer-tier-step">
+              <span>Tier</span>
+              <strong>{tier}</strong>
+            </div>
+          {/each}
+        </div>
+
+        <div class="viewer-tier-meta">
+          <div class="viewer-tier-stat">
+            <span>Current Node</span>
+            <strong>{node.label}</strong>
+          </div>
+          <div class="viewer-tier-stat">
+            <span>Connected Paths</span>
+            <strong>{node.edges.length}</strong>
+          </div>
+          <div class="viewer-tier-stat">
+            <span>Upgrade Cost</span>
+            <strong>{roomUpgradeCost === null ? "Max tier" : `${roomUpgradeCost} coins`}</strong>
+          </div>
+        </div>
+
+        <button class="primary-button viewer-upgrade-button" type="button" disabled={!roomCanUpgrade} onclick={upgradeRoom}>
+          {roomUpgradeLabel}
+        </button>
+      </section>
+
+      <button aria-label="Close walkthrough" class="viewer-close" type="button" onclick={close}>&times;</button>
+
       {#if loadMessage || errorMessage}
         <div class:viewer-status-error={!!errorMessage} class="viewer-status">
           {errorMessage || loadMessage}
@@ -375,9 +417,7 @@
       <div class="viewer-hint">
         <span>Current Node</span>
         <strong>{node.label}</strong>
-        <small class="viewer-subhint">
-          {node.sourcePath ? "Nano Banana panorama from repo concept art" : "Awaiting generated panorama"}
-        </small>
+        <small class="viewer-subhint">Drag to look around, scroll to zoom, and use F/B or the travel buttons to move.</small>
       </div>
 
       <div class="viewer-travel" aria-label="Walkthrough travel controls">

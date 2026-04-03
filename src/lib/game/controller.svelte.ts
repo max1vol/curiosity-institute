@@ -292,6 +292,88 @@ export class MuseumGameController {
     return this.canTraverseViewerEdge(this.viewerForwardEdge);
   }
 
+  get viewerRoomLevel(): number {
+    if (!this.viewerRoom) {
+      return 0;
+    }
+
+    return this.roomLevel(this.viewerRoom.id);
+  }
+
+  get viewerRoomMaxLevel(): number {
+    return MAX_ROOM_LEVEL;
+  }
+
+  get viewerRoomTierLabel(): string {
+    return `Tier ${this.viewerRoomLevel + 1} of ${this.viewerRoomMaxLevel + 1}`;
+  }
+
+  get viewerRoomProgressText(): string {
+    const room = this.viewerRoom;
+
+    if (!room) {
+      return "No immersive room is open.";
+    }
+
+    if (this.viewerRoomLevel >= this.viewerRoomMaxLevel) {
+      return "This room is already at max tier.";
+    }
+
+    const cost = this.viewerRoomUpgradeCost;
+
+    if (cost === null) {
+      return "Upgrade unavailable.";
+    }
+
+    const nextTier = this.viewerRoomLevel + 2;
+    return `Upgrade to Tier ${nextTier} for ${cost} coins.`;
+  }
+
+  get viewerRoomUpgradeCost(): number | null {
+    const room = this.viewerRoom;
+
+    if (!room || !this.isRoomUnlocked(room.id) || this.viewerRoomLevel >= this.viewerRoomMaxLevel) {
+      return null;
+    }
+
+    return this.roomUpgradeCost(room);
+  }
+
+  get viewerRoomCanUpgrade(): boolean {
+    const room = this.viewerRoom;
+
+    if (!room) {
+      return false;
+    }
+
+    return this.canUpgradeRoom(room);
+  }
+
+  get viewerRoomUpgradeLabel(): string {
+    const room = this.viewerRoom;
+
+    if (!room) {
+      return "Upgrade Room";
+    }
+
+    if (this.viewerRoomLevel >= this.viewerRoomMaxLevel) {
+      return "Max Tier Reached";
+    }
+
+    const nextTier = this.viewerRoomLevel + 2;
+    const cost = this.viewerRoomUpgradeCost;
+
+    if (cost === null) {
+      return "Upgrade Unavailable";
+    }
+
+    if (!this.viewerRoomCanUpgrade) {
+      return `Need ${Math.max(0, cost - (this.game?.coins ?? 0))} coins for Tier ${nextTier}`;
+    }
+
+    return `Upgrade To Tier ${nextTier} (${cost} Coins)`;
+  }
+
   get canResumeSavedGame(): boolean {
     return this.savedGameAvailable;
   }
@@ -947,6 +1029,16 @@ export class MuseumGameController {
     };
     this.game.selectedRoomId = nextRoom.id;
     this.markWalkthroughVisited(nextRoom);
+  }
+
+  upgradeCurrentViewerRoom(): void {
+    const room = this.viewerRoom;
+
+    if (!room) {
+      return;
+    }
+
+    this.upgradeRoom(room.id);
   }
 
   setEstimationGuess(value: number): void {

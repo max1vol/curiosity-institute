@@ -1,6 +1,7 @@
 <script lang="ts">
   import MuseumStage from "$lib/components/game/MuseumStage.svelte";
   import { MuseumGameController } from "$lib/game/controller.svelte";
+  import type { ViewerMoveDirection } from "$lib/game/types";
 
   import type { PageData } from "./$types";
 
@@ -44,6 +45,10 @@
       roomViewerLoader = import("$lib/components/game/RoomViewer.svelte");
     }
   });
+
+  function getRoomViewerComponent(module: RoomViewerModule): any {
+    return module.default;
+  }
 </script>
 
 <svelte:head>
@@ -80,7 +85,7 @@
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Click unlocked rooms to enter their walkthrough, then drag to pivot and use Forward or Back to travel between connected wings. Hotline quizzes now rotate through harder randomized formats with shuffled answers, and wrong answers dock coins without ever taking the last one.
+        Controls: WASD or arrow keys to move on the floor. Open unlocked rooms to enter their walkthrough, then drag to pivot and use Forward or Back to travel between connected wings. Hotline quizzes now rotate through harder randomized formats with shuffled answers, and wrong answers dock coins without ever taking the last one.
       </p>
     </div>
 
@@ -345,7 +350,8 @@
 
 {#if controller.viewerRoom && controller.viewerState && controller.viewerNode && roomViewerLoader}
   {#await roomViewerLoader then RoomViewer}
-    <RoomViewer.default
+    {@const RoomViewerComponent = getRoomViewerComponent(RoomViewer)}
+    <RoomViewerComponent
       room={controller.viewerRoom}
       node={controller.viewerNode}
       yaw={controller.viewerState.yaw}
@@ -354,9 +360,17 @@
       forwardEdge={controller.viewerForwardEdge}
       canMoveBack={controller.canMoveViewerBack}
       canMoveForward={controller.canMoveViewerForward}
+      roomTierLabel={controller.viewerRoomTierLabel}
+      roomProgressText={controller.viewerRoomProgressText}
+      roomTierIndex={controller.viewerRoomLevel}
+      roomTierMax={controller.viewerRoomMaxLevel}
+      roomUpgradeCost={controller.viewerRoomUpgradeCost}
+      roomCanUpgrade={controller.viewerRoomCanUpgrade}
+      roomUpgradeLabel={controller.viewerRoomUpgradeLabel}
       close={() => controller.closeRoomViewer()}
-      move={(direction) => controller.moveViewer(direction)}
-      setPose={(yaw, pitch) => controller.setViewerPose(yaw, pitch)}
+      move={(direction: ViewerMoveDirection) => controller.moveViewer(direction)}
+      setPose={(yaw: number, pitch: number) => controller.setViewerPose(yaw, pitch)}
+      upgradeRoom={() => controller.upgradeCurrentViewerRoom()}
     />
   {/await}
 {/if}

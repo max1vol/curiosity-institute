@@ -33,32 +33,59 @@
   <div class="modal-shell">
     {#if modal.type === "call"}
       {@const art = content.miniGames.find((miniGame) => miniGame.id === "study-quiz")}
-      <div class="modal-content">
-        <div class="modal-header">
+      <div class="modal-content call-modal-content">
+        <div class="modal-header call-modal-header">
           <div>
-            <p class="eyebrow">Live Hotline</p>
-            <h2>Call The Curator</h2>
-            <p class="modal-subtitle">Answer clearly while the museum floor waits for you.</p>
+            <div class="call-status-row">
+              <span aria-hidden="true" class="call-status-dot"></span>
+              <p class="eyebrow">Live Hotline</p>
+            </div>
+            <h2>Curator Hotline</h2>
+            <p class="modal-subtitle">The floor is paused while you answer the caller.</p>
           </div>
-          <button class="modal-close" type="button" onclick={close}>Close</button>
+          <button class="modal-close call-close" type="button" onclick={close}>End Call</button>
         </div>
-        <section class="modal-feature">
-          <figure class="modal-feature-image">
-            <img src={art?.artPath} alt={art?.label ?? "Call The Curator"} />
+
+        <section class="call-shell">
+          <figure class="call-device">
+            <div class="call-device-topline">
+              <span>Incoming Caller</span>
+              <strong>Museum Hotline</strong>
+            </div>
+            <div class="call-device-screen">
+              <img src={art?.artPath} alt={art?.label ?? "Curator hotline"} />
+            </div>
+            <div class="call-device-footer">
+              <span>{modal.question.category}</span>
+              <strong>{modal.question.difficulty}</strong>
+            </div>
           </figure>
-          <div>
-            <div class="modal-meta-row">
+
+          <div class="call-panel">
+            <div class="modal-meta-row call-meta-row">
               <span class="meta-pill accent">{modal.question.style}</span>
               <span class="meta-pill">{modal.question.difficulty}</span>
               <span class="meta-pill">{modal.question.category}</span>
             </div>
-            <p class="modal-brief">{modal.question.context}</p>
-            <h3>{modal.question.prompt}</h3>
-            <div class="choice-grid">
+
+            <div class="call-context-card">
+              <span>Caller Context</span>
+              <p class="modal-brief">{modal.question.context}</p>
+            </div>
+
+            <div class="call-prompt-card">
+              <span>Question</span>
+              <h3>{modal.question.prompt}</h3>
+            </div>
+
+            <div class="choice-grid call-choice-grid">
               {#each modal.question.choices as choice, index (`call-${choice}`)}
-                <button class="choice-button primary challenge-button" type="button" onclick={() => resolveCall(index)}>
+                <button class="choice-button challenge-button call-choice-button" type="button" onclick={() => resolveCall(index)}>
                   <span class="choice-index">{String.fromCharCode(65 + index)}</span>
-                  <span class="choice-copy">{choice}</span>
+                  <span class="choice-copy">
+                    <strong>{choice}</strong>
+                    <small>Send this response to the caller</small>
+                  </span>
                 </button>
               {/each}
             </div>

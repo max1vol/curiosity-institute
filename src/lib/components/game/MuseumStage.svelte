@@ -227,7 +227,8 @@
 
     {#if game?.pendingCall}
       <div class="phone-indicator">
-        <span>Incoming question</span>
+        <span>Hotline Ringing</span>
+        <strong>Answer the curator call</strong>
       </div>
     {/if}
   </div>
