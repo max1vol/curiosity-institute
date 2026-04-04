@@ -101,6 +101,24 @@ function validatePayload(payload) {
   validateDeck("matchPairDeck", payload.matchPairDeck, 16);
   validateDeck("questDeck", payload.questDeck, 18);
 
+  for (const entry of payload.mcqDeck) {
+    if (!Array.isArray(entry.choices) || entry.choices.length !== 4) {
+      throw new Error(`mcqDeck item ${entry.id ?? "<unknown>"} must have exactly 4 choices.`);
+    }
+  }
+
+  for (const entry of payload.quizDeck) {
+    if (!Array.isArray(entry.choices) || entry.choices.length !== 4) {
+      throw new Error(`quizDeck item ${entry.id ?? "<unknown>"} must have exactly 4 choices.`);
+    }
+  }
+
+  for (const entry of payload.freeTextDeck) {
+    if (!Array.isArray(entry.acceptedAnswers) || entry.acceptedAnswers.length < 2 || entry.acceptedAnswers.length > 5) {
+      throw new Error(`freeTextDeck item ${entry.id ?? "<unknown>"} must have 2-5 accepted answers.`);
+    }
+  }
+
   const questTriggers = new Set([
     "mcq-failure",
     "mcq-mastery",

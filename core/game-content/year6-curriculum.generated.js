@@ -674,7 +674,8 @@ export const YEAR6_CURRICULUM = {
       "prompt": "How many sweets are left in the bag?",
       "placeholder": "Enter the number of sweets...",
       "acceptedAnswers": [
-        "24"
+        "24",
+        "24 sweets"
       ],
       "modelAnswer": "There are 24 sweets left in the bag.",
       "success": "Fractions of amounts mastered!",
