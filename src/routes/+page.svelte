@@ -1,6 +1,7 @@
 <script lang="ts">
   import MuseumStage from "$lib/components/game/MuseumStage.svelte";
   import { MuseumGameController } from "$lib/game/controller.svelte";
+  import { formatRewardLabel } from "$lib/game/progression";
   import type { ViewerMoveDirection } from "$lib/game/types";
 
   import type { PageData } from "./$types";
@@ -55,18 +56,18 @@
   <title>The Curiosity Institute</title>
   <meta
     name="description"
-    content="Guide the curator through a playable museum built from generated imagery derived from the original concept art in this repo."
+    content="Guide the curator through a Year 6 learning museum with hard randomized quizzes, diploma-gated rooms, quests, and immersive splat scenes."
   />
 </svelte:head>
 
 <div class="app-shell" style={controller.themeStyle}>
   <header class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">Playable Museum Prototype</p>
+      <p class="eyebrow">Playable Year 6 Prototype</p>
       <h1>The Curiosity Institute</h1>
       <p class="hero-lede">
-        Guide the curator across a growing museum floor, collect coins, open new wings, and answer live public
-        questions while using generated museum imagery derived from the original concept art and render libraries already in this repo.
+        Guide the curator across a growing study floor, earn diplomas from hard Year 6 challenges, unlock new wings
+        without spending those diplomas, and clear rewrite quests to earn paper, ink, and revision tokens.
       </p>
       <div class="hero-actions">
         <button class="primary-button" type="button" onclick={() => controller.startGame()}>
@@ -85,7 +86,7 @@
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Open unlocked rooms to enter their walkthrough, then drag to pivot and use Forward or Back to travel between connected wings. Hotline quizzes now rotate through harder randomized formats with shuffled answers, and wrong answers dock coins without ever taking the last one.
+        Controls: WASD or arrow keys to move on the floor. Open unlocked rooms to enter their immersive scene, then drag to pivot and use Forward or Back to travel between connected wings. Study rounds rotate through weighted hard formats: quiz 50%, free text 25%, MCQ 20%, and match pairs 5%.
       </p>
     </div>
 
@@ -109,7 +110,7 @@
   <section class="theme-picker">
     <div class="section-heading">
       <p class="eyebrow">Choose A Direction</p>
-      <h2>Three Playable Museum Looks</h2>
+      <h2>Three Playable Study Worlds</h2>
     </div>
     <div class="theme-grid">
       {#each data.content.themes as theme (theme.id)}
@@ -148,8 +149,8 @@
     <aside class="sidebar">
       <section class="panel briefing-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Director Brief</p>
-          <h2>Day Goals</h2>
+          <p class="eyebrow">Class Brief</p>
+          <h2>Study Goals</h2>
         </div>
         <div class="briefing-summary">
           <div class="grade-card">
@@ -178,9 +179,37 @@
         </div>
       </section>
 
+      <section class="panel quest-panel">
+        <div class="section-heading compact">
+          <p class="eyebrow">Quest Board</p>
+          <h2>Redraft Quests</h2>
+        </div>
+        {#if controller.game?.activeQuests.length}
+          <div class="goal-grid">
+            {#each controller.game.activeQuests as quest (quest.id)}
+              <article class="goal-card">
+                <div class="goal-topline">
+                  <h3>{quest.title}</h3>
+                  <strong>Day {quest.createdAtDay}</strong>
+                </div>
+                <p>{quest.detail}</p>
+                <div class="goal-footer">
+                  <span>{formatRewardLabel(quest.resourceReward)}</span>
+                  <button class="ghost-button" type="button" onclick={() => controller.completeQuest(quest.id)}>
+                    Claim Resources
+                  </button>
+                </div>
+              </article>
+            {/each}
+          </div>
+        {:else}
+          <div class="room-empty">Missed work, locked wings, and failed rounds can generate rewrite quests here.</div>
+        {/if}
+      </section>
+
       <section class="panel stats-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Museum Health</p>
+          <p class="eyebrow">Study Health</p>
           <h2>Floor Metrics</h2>
         </div>
         <div class="stats-grid">
@@ -207,11 +236,11 @@
           {#if controller.selectedRoom}
             <img src={controller.selectedRoom.previewPath || controller.selectedRoom.artPath} alt={controller.selectedRoom.label} />
           {:else}
-            <div class="room-empty">Start a day to inspect rooms and launch mini-games.</div>
+            <div class="room-empty">Start a day to inspect study rooms and launch challenge hubs.</div>
           {/if}
         </div>
         <p class="room-copy">
-          {controller.selectedRoom?.blurb ?? "Select a room on the museum floor to inspect it, move the curator, or unlock it."}
+          {controller.selectedRoom?.blurb ?? "Select a room on the study floor to inspect it, move the curator, or unlock it."}
         </p>
         <div class="room-detail-grid">
           {#each controller.selectedRoomDetails as detail (detail.label)}
@@ -249,7 +278,7 @@
       <section class="panel program-panel">
         <div class="section-heading compact">
           <p class="eyebrow">Program Board</p>
-          <h2>Rotating Challenges</h2>
+          <h2>Year 6 Challenge Hubs</h2>
         </div>
         <div class="program-grid">
           {#each data.content.miniGames as miniGame (miniGame.id)}
@@ -270,9 +299,7 @@
                 <p>{miniGame.description}</p>
                 <div class="program-chip-row">
                   <span class="program-chip">{miniGame.formatNote}</span>
-                  <span class="program-chip">
-                    {miniGame.reward.coins} coins · {miniGame.reward.reputation}% rep · {miniGame.reward.curiosity}% curiosity
-                  </span>
+                  <span class="program-chip">Diplomas on success · quests on failure</span>
                 </div>
               </div>
             </article>
@@ -294,7 +321,7 @@
 
       <section class="panel log-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Museum Log</p>
+          <p class="eyebrow">Study Log</p>
           <h2>Latest Activity</h2>
         </div>
         <ul class="activity-log">
@@ -303,7 +330,7 @@
               <li>{entry.message}</li>
             {/each}
           {:else}
-            <li>Start a day to generate visitor activity, hotline calls, and room unlocks.</li>
+            <li>Start a day to generate visitor activity, study alerts, and diploma-gated room unlocks.</li>
           {/if}
         </ul>
       </section>
@@ -338,10 +365,10 @@
       modal={controller.game.activeModal}
       content={data.content}
       close={() => controller.closeModal()}
-      finishEstimation={() => controller.finishEstimation()}
-      setEstimationGuess={(value) => controller.setEstimationGuess(value)}
-      resolveCall={(choiceIndex) => controller.resolveCallChoice(choiceIndex)}
-      resolveCuratorCheck={(choiceIndex) => controller.resolveCuratorCheckChoice(choiceIndex)}
+      resolveMcq={(choiceIndex) => controller.resolveMcqChoice(choiceIndex)}
+      resolveQuiz={(choiceIndex) => controller.resolveQuizChoice(choiceIndex)}
+      setFreeTextAnswer={(value) => controller.setFreeTextAnswer(value)}
+      submitFreeText={() => controller.submitFreeText()}
       selectMatchCard={(cardId) => controller.handleMatchCard(cardId)}
       openArchiveAsset={(assetId) => controller.openArchiveAsset(assetId)}
     />
@@ -367,6 +394,7 @@
       roomUpgradeCost={controller.viewerRoomUpgradeCost}
       roomCanUpgrade={controller.viewerRoomCanUpgrade}
       roomUpgradeLabel={controller.viewerRoomUpgradeLabel}
+      sceneReady={(roomId: string) => controller.recordViewerSceneLoaded(roomId)}
       close={() => controller.closeRoomViewer()}
       move={(direction: ViewerMoveDirection) => controller.moveViewer(direction)}
       setPose={(yaw: number, pitch: number) => controller.setViewerPose(yaw, pitch)}

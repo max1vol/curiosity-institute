@@ -4,7 +4,14 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { outputDirectoryForAsset, walkFiles } from "./fs-utils.js";
 import { CATEGORY_METADATA, ROOM_BLUEPRINTS, THEME_DEFINITIONS, TITLE_OVERRIDES } from "./game-content/catalog.js";
-import { CALL_DECK, CURATOR_CHECK_DECK, ESTIMATION_DECK, MATCH_PAIRS_DECK } from "./game-content/challenges.js";
+import {
+  FREE_TEXT_DECK,
+  MATCH_PAIR_DECK,
+  MCQ_DECK,
+  QUEST_DECK,
+  QUIZ_DECK,
+  STUDY_MODE_WEIGHTS,
+} from "./game-content/challenges.js";
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const SPLAT_EXTENSIONS = new Map([
@@ -91,15 +98,41 @@ function supportedSplatFormat(filePath) {
   return SPLAT_EXTENSIONS.get(path.extname(filePath).toLowerCase()) ?? null;
 }
 
-function buildRoomPhotosphereMap(room, roomsById) {
-  if (!room.photospherePath && !room.splatPath) {
+function finiteNumberOrNull(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function parseVector3Tuple(value) {
+  if (Array.isArray(value) && value.length === 3) {
+    const tuple = value.map((entry) => finiteNumberOrNull(entry));
+
+    if (tuple.every((entry) => entry !== null)) {
+      return tuple;
+    }
+  }
+
+  if (value && typeof value === "object") {
+    const x = finiteNumberOrNull(value.x);
+    const y = finiteNumberOrNull(value.y);
+    const z = finiteNumberOrNull(value.z);
+
+    if (x !== null && y !== null && z !== null) {
+      return [x, y, z];
+    }
+  }
+
+  return undefined;
+}
+
+function buildRoomImmersiveMap(room, roomsById) {
+  if (!room.panoramaPath && !room.splatPath) {
     return null;
   }
 
   const nodeId = nodeIdForRoom(room.id);
   const edges = (room.immersiveNeighbors ?? [])
     .map((neighborId) => roomsById.get(neighborId))
-    .filter((neighbor) => neighbor && (neighbor.photospherePath || neighbor.splatPath))
+    .filter((neighbor) => neighbor && (neighbor.panoramaPath || neighbor.splatPath))
     .map((neighbor) => {
       const headingDeg = normalizeHeading(headingBetweenRooms(room, neighbor));
       const returnHeadingDeg = normalizeHeading(headingBetweenRooms(neighbor, room) + 180);
@@ -109,9 +142,10 @@ function buildRoomPhotosphereMap(room, roomsById) {
         toNodeId: nodeIdForRoom(neighbor.id),
         roomId: neighbor.id,
         label: neighbor.label,
+        panoramaPath: neighbor.panoramaPath,
         headingDeg,
         targetHeadingDeg: returnHeadingDeg,
-        imagePath: neighbor.photospherePath,
+        imagePath: neighbor.panoramaPath,
       };
     });
 
@@ -123,12 +157,20 @@ function buildRoomPhotosphereMap(room, roomsById) {
         id: nodeId,
         roomId: room.id,
         label: room.label,
-        imagePath: room.photospherePath,
-        sourcePath: room.photosphereSourcePath,
-        metadataPath: room.photosphereMetadataPath,
+        panoramaPath: room.panoramaPath,
+        panoramaSourcePath: room.panoramaSourcePath,
+        panoramaMetadataPath: room.panoramaMetadataPath,
+        imagePath: room.panoramaPath,
+        sourcePath: room.panoramaSourcePath,
+        metadataPath: room.panoramaMetadataPath,
         splatPath: room.splatPath,
         splatMetadataPath: room.splatMetadataPath,
         splatFormat: room.splatFormat,
+        splatSceneCenter: room.splatSceneCenter,
+        splatLookAt: room.splatLookAt,
+        splatCameraUp: room.splatCameraUp,
+        splatCameraRadius: room.splatCameraRadius,
+        splatHeadingOffsetDeg: room.splatHeadingOffsetDeg,
         edges,
       },
     ],
@@ -145,7 +187,7 @@ function generatedDisplayPath(concept, preferredViewIndex = 0) {
   return (
     renderViews[preferredViewIndex]?.imagePath ??
     renderViews[0]?.imagePath ??
-    concept.photosphere?.imagePath ??
+    concept.panorama?.panoramaPath ??
     ""
   );
 }
@@ -206,15 +248,18 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     .filter((filePath) => path.basename(filePath) === "photosphere.json")
     .sort();
 
-  const photospheresByAsset = new Map();
+  const panoramasByAsset = new Map();
 
   for (const photospherePath of photosphereFiles) {
     const parsed = JSON.parse(await fs.readFile(photospherePath, "utf8"));
     const asset = toPosix(parsed.asset);
     const outputDirectory = outputDirectoryForAsset(asset);
 
-    photospheresByAsset.set(asset, {
+    panoramasByAsset.set(asset, {
       asset,
+      panoramaPath: publicPath("output", "photospheres", outputDirectory, parsed.imageFile),
+      panoramaSourcePath: publicPath("output", "photospheres", outputDirectory, parsed.sourceFile),
+      panoramaMetadataPath: publicPath("output", "photospheres", outputDirectory, "photosphere.json"),
       imagePath: publicPath("output", "photospheres", outputDirectory, parsed.imageFile),
       sourcePath: publicPath("output", "photospheres", outputDirectory, parsed.sourceFile),
       metadataPath: publicPath("output", "photospheres", outputDirectory, "photosphere.json"),
@@ -283,13 +328,25 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       splatPath: publicPath("output", "splats", relativeDirectory, path.basename(splatFilePath)),
       metadataPath: entry.manifestPath ? publicPath("output", "splats", relativeDirectory, path.basename(entry.manifestPath)) : "",
       format,
+      sceneCenter: parseVector3Tuple(manifest?.sceneCenter ?? manifest?.center),
+      lookAt: parseVector3Tuple(manifest?.lookAt ?? manifest?.target),
+      cameraUp: parseVector3Tuple(manifest?.cameraUp ?? manifest?.up),
+      cameraRadius:
+        finiteNumberOrNull(manifest?.cameraRadius) ??
+        finiteNumberOrNull(manifest?.radius) ??
+        undefined,
+      headingOffsetDeg:
+        finiteNumberOrNull(manifest?.headingOffsetDeg) ??
+        finiteNumberOrNull(manifest?.yawOffsetDeg) ??
+        finiteNumberOrNull(manifest?.headingOffset) ??
+        undefined,
     });
   }
 
   const conceptArt = conceptFiles.map((filePath) => {
     const relativePath = toPosix(path.relative(conceptRoot, filePath));
     const renderLibrary = renderLibrariesByAsset.get(relativePath) ?? null;
-    const photosphere = photospheresByAsset.get(relativePath) ?? null;
+    const panorama = panoramasByAsset.get(relativePath) ?? null;
     const splat = splatsByAsset.get(relativePath) ?? null;
     const originalPath = publicPath("docs", "concept-art", relativePath);
 
@@ -298,10 +355,11 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       asset: relativePath,
       label: titleFromFile(relativePath),
       category: relativePath.split("/")[0],
-      displayPath: generatedDisplayPath({ renderLibrary, photosphere }),
+      displayPath: generatedDisplayPath({ renderLibrary, panorama }),
       originalPath,
       renderLibrary,
-      photosphere,
+      panorama,
+      photosphere: panorama,
       splat,
     };
   });
@@ -340,64 +398,82 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       ...room,
       artPath: generatedDisplayPath(concept),
       renderViews: concept?.renderLibrary?.views ?? [],
-      photosphereMap: null,
-      photospherePath: concept?.photosphere?.imagePath ?? "",
-      photosphereSourcePath: concept?.photosphere?.sourcePath ?? "",
-      photosphereMetadataPath: concept?.photosphere?.metadataPath ?? "",
+      immersiveMap: null,
+      panoramaPath: concept?.panorama?.panoramaPath ?? "",
+      panoramaSourcePath: concept?.panorama?.panoramaSourcePath ?? "",
+      panoramaMetadataPath: concept?.panorama?.panoramaMetadataPath ?? "",
       splatPath: concept?.splat?.splatPath,
       splatMetadataPath: concept?.splat?.metadataPath,
       splatFormat: concept?.splat?.format,
+      splatSceneCenter: concept?.splat?.sceneCenter,
+      splatLookAt: concept?.splat?.lookAt,
+      splatCameraUp: concept?.splat?.cameraUp,
+      splatCameraRadius: concept?.splat?.cameraRadius,
+      splatHeadingOffsetDeg: concept?.splat?.headingOffsetDeg,
+      photosphereMap: null,
+      photospherePath: concept?.panorama?.panoramaPath ?? "",
+      photosphereSourcePath: concept?.panorama?.panoramaSourcePath ?? "",
+      photosphereMetadataPath: concept?.panorama?.panoramaMetadataPath ?? "",
       previewPath: generatedDisplayPath(preview) || generatedDisplayPath(concept),
       previewRenderViews: preview?.renderLibrary?.views ?? [],
     };
   });
 
   const roomBlueprintsById = new Map(baseRoomBlueprints.map((room) => [room.id, room]));
-  const roomBlueprints = baseRoomBlueprints.map((room) => ({
-    ...room,
-    photosphereMap: buildRoomPhotosphereMap(room, roomBlueprintsById),
-  }));
+  const roomBlueprints = baseRoomBlueprints.map((room) => {
+    const immersiveMap = buildRoomImmersiveMap(room, roomBlueprintsById);
+
+    return {
+      ...room,
+      immersiveMap,
+      photosphereMap: immersiveMap,
+    };
+  });
 
   const miniGames = [
     {
       id: "study-quiz",
-      label: "Call The Curator",
+      label: "Year 6 English Hub",
       roomId: "hotline-desk",
+      subjectFocus: "English",
       artAsset: "side-games/mcq-mini-game.png",
-      description: "Answer a live museum hotline question and keep the public engaged.",
-      formatNote: "Randomized hotline styles with shuffled answers and expert distractors.",
+      description: "Launch a weighted random English-heavy session with MCQ, free-text, quiz, and matching practice.",
+      formatNote: "Weighted study mix: quiz 50%, free-text 25%, MCQ 20%, match pairs 5%.",
       difficultyLabel: "Advanced + Expert",
-      reward: { coins: 12, reputation: 6, curiosity: 8 },
+      reward: { diplomas: 2, paper: 1, ink: 1 },
     },
     {
       id: "estimation",
-      label: "Estimation Lab",
+      label: "Year 6 Maths Hub",
       roomId: "coin-mint-lab",
+      subjectFocus: "Maths",
       artAsset: "side-games/estimation-mini-game.png",
-      description: "Estimate dates, visitor counts, or object weights for a quick income spike.",
-      formatNote: "Rotating ranges and tighter clues pulled from the museum floor.",
+      description: "Practice hard Year 6 maths and reasoning through a weighted random challenge mix.",
+      formatNote: "Every launch can become a quiz, free-text explanation, MCQ, or matching round.",
       difficultyLabel: "Advanced Mixed",
-      reward: { coins: 16, reputation: 4, curiosity: 6 },
+      reward: { diplomas: 2, paper: 2, revisionTokens: 1 },
     },
     {
       id: "curator-check",
-      label: "Curator Check",
+      label: "Year 6 Science Hub",
       roomId: "review-studio",
+      subjectFocus: "Science",
       artAsset: "side-games/curator-check-mini-game.png",
-      description: "Make fast floor-management decisions when visitor flow or labels go sideways.",
-      formatNote: "Higher-stakes triage scenarios with four plausible responses.",
+      description: "Push through harder science and reasoning prompts that award diplomas instead of spendable unlock currency.",
+      formatNote: "Failure can create follow-up quests that reward paper, ink, and revision tokens.",
       difficultyLabel: "Expert Leaning",
-      reward: { coins: 10, reputation: 8, curiosity: 5 },
+      reward: { diplomas: 2, ink: 2, revisionTokens: 1 },
     },
     {
       id: "match-pairs",
-      label: "Match Pairs",
+      label: "Year 6 Humanities Hub",
       roomId: "curiosity-arcade",
+      subjectFocus: "History & Geography",
       artAsset: "side-games/match-pairs-mini-game.png",
-      description: "Run a memory-game attraction that boosts family traffic and coin pickups.",
-      formatNote: "Eight shuffled pairs drawn from a much larger rotating museum deck.",
+      description: "Mix history, geography, and vocabulary practice into the same weighted Year 6 study loop.",
+      formatNote: "Matching rounds are rarer, but they still feed diploma progress and quest generation.",
       difficultyLabel: "Expanded Deck",
-      reward: { coins: 14, reputation: 5, curiosity: 7 },
+      reward: { diplomas: 1, paper: 1, ink: 1, revisionTokens: 1 },
     },
   ].map((miniGame) => {
     const concept = conceptArtByAsset.get(miniGame.artAsset);
@@ -405,16 +481,21 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       ...miniGame,
       artPath: generatedDisplayPath(concept),
       renderViews: concept?.renderLibrary?.views ?? [],
-      photospherePath: concept?.photosphere?.imagePath ?? "",
+      panoramaPath: concept?.panorama?.panoramaPath ?? "",
+      photospherePath: concept?.panorama?.panoramaPath ?? "",
     };
   });
+
+  const immersiveCount = new Set([...panoramasByAsset.keys(), ...splatsByAsset.keys()]).size;
 
   return {
     generatedAt: new Date().toISOString(),
     summary: {
       conceptArtCount: conceptArt.length,
       renderLibraryCount: renderLibraries.length,
-      photosphereCount: photospheresByAsset.size,
+      immersiveCount,
+      panoramaCount: panoramasByAsset.size,
+      photosphereCount: panoramasByAsset.size,
       splatCount: splatsByAsset.size,
       themeCount: themes.length,
       roomCount: roomBlueprints.length,
@@ -430,10 +511,12 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
     conceptGroups,
     conceptArt,
     renderLibraries,
-    callDeck: CALL_DECK,
-    estimationDeck: ESTIMATION_DECK,
-    curatorCheckDeck: CURATOR_CHECK_DECK,
-    matchPairsDeck: MATCH_PAIRS_DECK,
+    mcqDeck: MCQ_DECK,
+    quizDeck: QUIZ_DECK,
+    freeTextDeck: FREE_TEXT_DECK,
+    matchPairDeck: MATCH_PAIR_DECK,
+    questDeck: QUEST_DECK,
+    studyModeWeights: STUDY_MODE_WEIGHTS,
   };
 }
 

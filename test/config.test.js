@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { buildConfig } from "../core/config.js";
 import { buildPhotosphereConfig } from "../core/photosphere-config.js";
+import { buildSplatConfig } from "../core/splat-config.js";
 
 test("buildConfig uses dry-run without credentials", () => {
   const config = buildConfig({
@@ -63,6 +64,27 @@ test("buildPhotosphereConfig defaults to five retries", () => {
 
   assert.equal(config.retryLimit, 5);
   assert.equal(config.model, "gemini-3.1-flash-image-preview");
+});
+
+test("buildSplatConfig mirrors the splat-first immersive config", () => {
+  const config = buildSplatConfig({
+    argv: ["--dry-run"],
+    env: {},
+  });
+
+  assert.equal(config.retryLimit, 5);
+  assert.equal(config.model, "gemini-3.1-flash-image-preview");
+});
+
+test("buildSplatConfig accepts SPLAT_RETRY_LIMIT overrides up to six", () => {
+  const config = buildSplatConfig({
+    argv: ["--dry-run"],
+    env: {
+      SPLAT_RETRY_LIMIT: "6",
+    },
+  });
+
+  assert.equal(config.retryLimit, 6);
 });
 
 test("buildPhotosphereConfig accepts PHOTOSPHERE_RETRY_LIMIT overrides up to six", () => {

@@ -6,10 +6,10 @@
     modal: ModalState;
     content: GameContent;
     close: () => void;
-    finishEstimation: () => void;
-    setEstimationGuess: (value: number) => void;
-    resolveCall: (choiceIndex: number) => void;
-    resolveCuratorCheck: (choiceIndex: number) => void;
+    resolveMcq: (choiceIndex: number) => void;
+    resolveQuiz: (choiceIndex: number) => void;
+    setFreeTextAnswer: (value: string) => void;
+    submitFreeText: () => void;
     selectMatchCard: (cardId: string) => void;
     openArchiveAsset: (assetId: string) => void;
   }
@@ -18,152 +18,142 @@
     modal,
     content,
     close,
-    finishEstimation,
-    setEstimationGuess,
-    resolveCall,
-    resolveCuratorCheck,
+    resolveMcq,
+    resolveQuiz,
+    setFreeTextAnswer,
+    submitFreeText,
     selectMatchCard,
     openArchiveAsset
   }: Props = $props();
 
   const focusAsset = $derived(resolveArchiveFocus(modal, content.conceptArt));
+
+  let freeTextDraft = $state("");
+
+  $effect(() => {
+    if (modal.type === "free-text" && modal.answer !== freeTextDraft) {
+      freeTextDraft = modal.answer;
+    }
+  });
+
+  function choiceLabel(index: number): string {
+    return String.fromCharCode(65 + index);
+  }
+
+  function modalHeadline(): string {
+    switch (modal.type) {
+      case "mcq":
+        return "Year 6 Multiple Choice";
+      case "quiz":
+        return "Year 6 Quiz";
+      case "free-text":
+        return "Year 6 Written Response";
+      case "match-pairs":
+        return "Year 6 Match Pairs";
+      case "archive":
+        return "Repo Archive";
+    }
+  }
+
+  function modalEyebrow(): string {
+    switch (modal.type) {
+      case "mcq":
+        return "Study Mode";
+      case "quiz":
+        return "Hard Quiz";
+      case "free-text":
+        return "Extended Answer";
+      case "match-pairs":
+        return "Revision Game";
+      case "archive":
+        return "Repo Archive";
+    }
+  }
 </script>
 
 <div class="modal-root" role="dialog" aria-modal="true">
   <div class="modal-shell">
-    {#if modal.type === "call"}
-      {@const art = content.miniGames.find((miniGame) => miniGame.id === "study-quiz")}
-      <div class="modal-content call-modal-content">
-        <div class="modal-header call-modal-header">
+    {#if modal.type === "mcq" || modal.type === "quiz"}
+      {@const miniGame = modal.miniGame}
+      <div class="modal-content">
+        <div class="modal-header">
           <div>
-            <div class="call-status-row">
-              <span aria-hidden="true" class="call-status-dot"></span>
-              <p class="eyebrow">Live Hotline</p>
-            </div>
-            <h2>Curator Hotline</h2>
-            <p class="modal-subtitle">The floor is paused while you answer the caller.</p>
+            <p class="eyebrow">{modalEyebrow()}</p>
+            <h2>{miniGame?.label ?? modalHeadline()}</h2>
+            <p class="modal-subtitle">{miniGame?.description ?? "A harder Year 6 study round built from the curriculum deck."}</p>
           </div>
-          <button class="modal-close call-close" type="button" onclick={close}>End Call</button>
+          <button class="modal-close" type="button" onclick={close}>Close</button>
         </div>
 
-        <section class="call-shell">
-          <figure class="call-device">
-            <div class="call-device-topline">
-              <span>Incoming Caller</span>
-              <strong>Museum Hotline</strong>
-            </div>
-            <div class="call-device-screen">
-              <img src={art?.artPath} alt={art?.label ?? "Curator hotline"} />
-            </div>
-            <div class="call-device-footer">
-              <span>{modal.question.category}</span>
-              <strong>{modal.question.difficulty}</strong>
-            </div>
-          </figure>
-
-          <div class="call-panel">
-            <div class="modal-meta-row call-meta-row">
-              <span class="meta-pill accent">{modal.question.style}</span>
+        <section class="modal-feature">
+          {#if miniGame}
+            <figure class="modal-feature-image">
+              <img src={miniGame.artPath} alt={miniGame.label} />
+            </figure>
+          {/if}
+          <div>
+            <div class="modal-meta-row">
+              <span class="meta-pill accent">{modal.question.subject}</span>
+              <span class="meta-pill">{modal.question.topic}</span>
               <span class="meta-pill">{modal.question.difficulty}</span>
-              <span class="meta-pill">{modal.question.category}</span>
             </div>
-
-            <div class="call-context-card">
-              <span>Caller Context</span>
-              <p class="modal-brief">{modal.question.context}</p>
-            </div>
-
-            <div class="call-prompt-card">
-              <span>Question</span>
-              <h3>{modal.question.prompt}</h3>
-            </div>
-
-            <div class="choice-grid call-choice-grid">
-              {#each modal.question.choices as choice, index (`call-${choice}`)}
-                <button class="choice-button challenge-button call-choice-button" type="button" onclick={() => resolveCall(index)}>
-                  <span class="choice-index">{String.fromCharCode(65 + index)}</span>
-                  <span class="choice-copy">
-                    <strong>{choice}</strong>
-                    <small>Send this response to the caller</small>
-                  </span>
-                </button>
-              {/each}
-            </div>
-          </div>
-        </section>
-      </div>
-    {:else if modal.type === "estimation"}
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <p class="eyebrow">Mini Game</p>
-            <h2>{modal.miniGame.label}</h2>
-            <p class="modal-subtitle">{modal.miniGame.description}</p>
-          </div>
-          <button class="modal-close" type="button" onclick={close}>Close</button>
-        </div>
-        <section class="modal-feature">
-          <figure class="modal-feature-image">
-            <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
-          </figure>
-          <div>
-            <div class="modal-meta-row">
-              <span class="meta-pill accent">{modal.scenario.style}</span>
-              <span class="meta-pill">{modal.scenario.difficulty}</span>
-              <span class="meta-pill">{modal.scenario.category}</span>
-            </div>
-            <p class="modal-brief">{modal.scenario.clue}</p>
-            <h3>{modal.scenario.prompt}</h3>
-            <div class="slider-wrap challenge-slider">
-              <input
-                type="range"
-                min={modal.scenario.min}
-                max={modal.scenario.max}
-                value={modal.guess}
-                step="1"
-                oninput={(event) => setEstimationGuess(Number((event.currentTarget as HTMLInputElement).value))}
-              />
-              <div class="slider-value">{modal.guess} {modal.scenario.unit}</div>
-            </div>
-            <div class="mini-stat-row">
-              <span class="pill">Range: {modal.scenario.min} to {modal.scenario.max}</span>
-              <span class="pill">Reward: up to 22 coins</span>
-            </div>
+            <p class="modal-brief">{modal.question.context}</p>
+            <h3>{modal.question.prompt}</h3>
             <div class="choice-grid">
-              <button class="choice-button primary" type="button" onclick={finishEstimation}>Lock In Guess</button>
-            </div>
-          </div>
-        </section>
-      </div>
-    {:else if modal.type === "curator-check"}
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <p class="eyebrow">Mini Game</p>
-            <h2>{modal.miniGame.label}</h2>
-            <p class="modal-subtitle">{modal.miniGame.description}</p>
-          </div>
-          <button class="modal-close" type="button" onclick={close}>Close</button>
-        </div>
-        <section class="modal-feature">
-          <figure class="modal-feature-image">
-            <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
-          </figure>
-          <div>
-            <div class="modal-meta-row">
-              <span class="meta-pill accent">{modal.scenario.style}</span>
-              <span class="meta-pill">{modal.scenario.difficulty}</span>
-              <span class="meta-pill">{modal.scenario.category}</span>
-            </div>
-            <p class="modal-brief">{modal.scenario.context}</p>
-            <h3>{modal.scenario.prompt}</h3>
-            <div class="choice-grid">
-              {#each modal.scenario.choices as choice, index (`curator-${choice}`)}
-                <button class="choice-button primary challenge-button" type="button" onclick={() => resolveCuratorCheck(index)}>
-                  <span class="choice-index">{String.fromCharCode(65 + index)}</span>
+              {#each modal.question.choices as choice, index (modal.question.id + "-" + choice)}
+                <button
+                  class="choice-button primary challenge-button"
+                  type="button"
+                  onclick={() => (modal.type === "mcq" ? resolveMcq(index) : resolveQuiz(index))}
+                >
+                  <span class="choice-index">{choiceLabel(index)}</span>
                   <span class="choice-copy">{choice}</span>
                 </button>
               {/each}
+            </div>
+          </div>
+        </section>
+      </div>
+    {:else if modal.type === "free-text"}
+      {@const miniGame = modal.miniGame}
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">{modalEyebrow()}</p>
+            <h2>{miniGame?.label ?? modalHeadline()}</h2>
+            <p class="modal-subtitle">{miniGame?.description ?? "Write the best answer you can from the Year 6 curriculum."}</p>
+          </div>
+          <button class="modal-close" type="button" onclick={close}>Close</button>
+        </div>
+
+        <section class="modal-feature">
+          {#if miniGame}
+            <figure class="modal-feature-image">
+              <img src={miniGame.artPath} alt={miniGame.label} />
+            </figure>
+          {/if}
+          <div>
+            <div class="modal-meta-row">
+              <span class="meta-pill accent">{modal.question.subject}</span>
+              <span class="meta-pill">{modal.question.topic}</span>
+              <span class="meta-pill">{modal.question.difficulty}</span>
+            </div>
+            <p class="modal-brief">{modal.question.context}</p>
+            <h3>{modal.question.prompt}</h3>
+            <p class="modal-copy">Model answers stay hidden until you submit. Write directly in the box below.</p>
+            <textarea
+              class="free-text-input"
+              rows="6"
+              placeholder={modal.question.placeholder}
+              value={freeTextDraft}
+              oninput={(event) => {
+                const nextValue = (event.currentTarget as HTMLTextAreaElement).value;
+                freeTextDraft = nextValue;
+                setFreeTextAnswer(nextValue);
+              }}
+            ></textarea>
+            <div class="choice-grid">
+              <button class="choice-button primary" type="button" onclick={submitFreeText}>Submit Answer</button>
             </div>
           </div>
         </section>
@@ -172,25 +162,28 @@
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <p class="eyebrow">Mini Game</p>
-            <h2>{modal.miniGame.label}</h2>
-            <p class="modal-subtitle">{modal.miniGame.description}</p>
+            <p class="eyebrow">{modalEyebrow()}</p>
+            <h2>{modal.miniGame?.label ?? modalHeadline()}</h2>
+            <p class="modal-subtitle">{modal.miniGame?.description ?? "Match the Year 6 pairs before the deck runs out."}</p>
           </div>
           <button class="modal-close" type="button" onclick={close}>Close</button>
         </div>
         <section class="modal-feature">
-          <figure class="modal-feature-image">
-            <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
-          </figure>
+          {#if modal.miniGame}
+            <figure class="modal-feature-image">
+              <img src={modal.miniGame.artPath} alt={modal.miniGame.label} />
+            </figure>
+          {/if}
           <div>
             <div class="modal-meta-row">
-              <span class="meta-pill accent">Rotating Memory Deck</span>
+              <span class="meta-pill accent">{modal.subject}</span>
+              <span class="meta-pill">{modal.topic}</span>
               <span class="meta-pill">{Math.floor(modal.deck.length / 2)} pairs</span>
               <span class="meta-pill">Attempts {modal.attempts}</span>
             </div>
-            <h3>Find the {Math.floor(modal.deck.length / 2)} museum pairs.</h3>
+            <h3>Find the matching pairs in {modal.subject} and {modal.topic}.</h3>
             <p class="modal-copy">
-              This run pulls from a larger shuffled archive set. Cleared:
+              This round draws from a shuffled Year 6 revision deck. Cleared:
               {" "}
               {Math.floor(modal.deck.filter((card) => card.matched).length / 2)}/{Math.floor(modal.deck.length / 2)}.
             </p>
@@ -215,7 +208,7 @@
         <div class="modal-header">
           <div>
             <p class="eyebrow">Repo Archive</p>
-            <h2>Generated Museum Library</h2>
+            <h2>{modalHeadline()}</h2>
             <p class="modal-subtitle">Generated imagery derived from the source concept art, plus the tracked intersecting render library.</p>
           </div>
           <button class="modal-close" type="button" onclick={close}>Close</button>

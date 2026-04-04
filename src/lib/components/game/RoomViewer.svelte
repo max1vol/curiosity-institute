@@ -2,18 +2,18 @@
   import { onMount } from "svelte";
   import * as THREE from "three";
 
-  import type { PhotosphereEdge, PhotosphereNode, RoomBlueprint, ViewerMoveDirection } from "$lib/game/types";
+  import type { ImmersiveEdge, ImmersiveNode, RoomBlueprint, ViewerMoveDirection } from "$lib/game/types";
 
   type GaussianSplatsModule = typeof import("@mkkellogg/gaussian-splats-3d");
   type ImmersiveRenderMode = "panorama" | "splat" | "none";
 
   interface Props {
     room: RoomBlueprint;
-    node: PhotosphereNode;
+    node: ImmersiveNode;
     yaw: number;
     pitch: number;
-    backEdge?: PhotosphereEdge;
-    forwardEdge?: PhotosphereEdge;
+    backEdge?: ImmersiveEdge;
+    forwardEdge?: ImmersiveEdge;
     canMoveBack: boolean;
     canMoveForward: boolean;
     roomTierLabel: string;
@@ -23,6 +23,7 @@
     roomUpgradeCost: number | null;
     roomCanUpgrade: boolean;
     roomUpgradeLabel: string;
+    sceneReady: (roomId: string) => void;
     close: () => void;
     move: (direction: ViewerMoveDirection) => void;
     setPose: (yaw: number, pitch: number) => void;
@@ -45,6 +46,7 @@
     roomUpgradeCost,
     roomCanUpgrade,
     roomUpgradeLabel,
+    sceneReady,
     close,
     move,
     setPose,
@@ -198,7 +200,7 @@
     return promise;
   }
 
-  async function showNodeTexture(imagePath: string, currentLoad: number): Promise<boolean> {
+  async function showPanoramaFallback(panoramaPath: string, currentLoad: number): Promise<boolean> {
     if (!material) {
       return false;
     }
@@ -209,7 +211,7 @@
     clearPanoramaMaterial();
 
     try {
-      const texture = await loadTexture(imagePath);
+      const texture = await loadTexture(panoramaPath);
 
       if (currentLoad !== loadGeneration || !material) {
         return false;
@@ -276,6 +278,7 @@
       activeRenderMode = "splat";
       loadMessage = "";
       errorMessage = "";
+      sceneReady(node.roomId);
       return true;
     } catch {
       if (splatViewer === viewer) {
@@ -294,11 +297,11 @@
 
   function preloadNeighborTextures(): void {
     for (const edge of node.edges) {
-      if (!edge.imagePath) {
+      if (!edge.panoramaPath) {
         continue;
       }
 
-      void loadTexture(edge.imagePath).catch(() => {});
+      void loadTexture(edge.panoramaPath).catch(() => {});
     }
   }
 
@@ -311,14 +314,14 @@
     pendingTextureLoads.clear();
   }
 
-  async function showActiveNode(): Promise<void> {
+  async function showActiveImmersiveScene(): Promise<void> {
     if (!viewerReady) {
       return;
     }
 
     const currentLoad = ++loadGeneration;
     const hasSplat = Boolean(node.splatPath);
-    const hasPanorama = Boolean(node.imagePath);
+    const hasPanorama = Boolean(node.panoramaPath);
 
     errorMessage = "";
 
@@ -328,7 +331,7 @@
       clearPanoramaMaterial();
       await disposeSplatViewer();
       if (currentLoad === loadGeneration) {
-        errorMessage = "This walkthrough node does not have a generated immersive scene yet.";
+        errorMessage = "This room node does not have a generated immersive scene yet.";
       }
       return;
     }
@@ -347,7 +350,7 @@
       }
     }
 
-    if (!hasPanorama || !node.imagePath) {
+    if (!hasPanorama || !node.panoramaPath) {
       if (currentLoad !== loadGeneration) {
         return;
       }
@@ -363,8 +366,9 @@
       return;
     }
 
-    await showNodeTexture(node.imagePath, currentLoad);
-    if (currentLoad === loadGeneration) {
+    const loadedPanorama = await showPanoramaFallback(node.panoramaPath, currentLoad);
+    if (loadedPanorama && currentLoad === loadGeneration) {
+      sceneReady(node.roomId);
       preloadNeighborTextures();
     }
   }
@@ -418,14 +422,18 @@
       const theta = THREE.MathUtils.degToRad(yaw);
 
       if (activeRenderMode === "splat" && splatViewer) {
-        const radius = 3.2;
+        const radius = node.splatCameraRadius ?? 3.2;
+        const splatTheta = THREE.MathUtils.degToRad(yaw + (node.splatHeadingOffsetDeg ?? 0));
+        const sceneCenter = node.splatSceneCenter ?? [0, 0, 0];
+        const lookAt = node.splatLookAt ?? sceneCenter;
+        const cameraUp = node.splatCameraUp ?? [0, 1, 0];
         camera.position.set(
-          radius * Math.sin(phi) * Math.sin(theta),
-          radius * Math.cos(phi),
-          radius * Math.sin(phi) * Math.cos(theta)
+          sceneCenter[0] + radius * Math.sin(phi) * Math.sin(splatTheta),
+          sceneCenter[1] + radius * Math.cos(phi),
+          sceneCenter[2] + radius * Math.sin(phi) * Math.cos(splatTheta)
         );
-        camera.up.set(0, 1, 0);
-        splatTarget.set(0, 0, 0);
+        camera.up.set(cameraUp[0], cameraUp[1], cameraUp[2]);
+        splatTarget.set(lookAt[0], lookAt[1], lookAt[2]);
         camera.lookAt(splatTarget);
         splatViewer.update();
         splatViewer.render();
@@ -557,11 +565,11 @@
       return;
     }
 
-    void showActiveNode();
+    void showActiveImmersiveScene();
   });
 </script>
 
-<div aria-label={`${room.label} walkthrough viewer`} aria-modal="true" class="viewer-root" role="dialog">
+<div aria-label={`${room.label} immersive scene viewer`} aria-modal="true" class="viewer-root" role="dialog">
   <div class="viewer-shell">
     <div class="viewer-stage-wrap">
       <div
@@ -616,7 +624,7 @@
         </button>
       </section>
 
-      <button aria-label="Close walkthrough" class="viewer-close" type="button" onclick={close}>&times;</button>
+      <button aria-label="Close immersive scene" class="viewer-close" type="button" onclick={close}>&times;</button>
 
       {#if loadMessage || errorMessage}
         <div class:viewer-status-error={!!errorMessage} class="viewer-status">
@@ -630,7 +638,7 @@
         <small class="viewer-subhint">Drag to explore, scroll to zoom, and use F/B or the travel buttons to move.</small>
       </div>
 
-      <div class="viewer-travel" aria-label="Walkthrough travel controls">
+      <div class="viewer-travel" aria-label="Immersive scene travel controls">
         <button class="viewer-travel-button" type="button" disabled={!backEdge || !canMoveBack} onclick={() => move("back")}>
           <span>Back</span>
           <strong>{backEdge ? backEdge.label : "No previous room"}</strong>

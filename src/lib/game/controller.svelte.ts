@@ -1,38 +1,52 @@
 import type {
   ActivityEntry,
-  CallQuestion,
   ConceptAsset,
   DailyGoal,
   DailyGoalView,
   FloorCoin,
+  FreeTextQuestion,
   GameContent,
   GameSession,
-  MatchCard,
+  ImmersiveEdge,
+  ImmersiveNode,
+  McqQuestion,
   MiniGameDefinition,
   MiniGameId,
   ModalState,
   ObjectivePill,
   Point,
-  PhotosphereEdge,
-  PhotosphereNode,
+  QuestTrigger,
+  RewardBundle,
   RoomAction,
   RoomBlueprint,
   RoomDetail,
   StatCard,
+  StudyMode,
+  StudyResources,
   ThemeDefinition,
   ViewerState,
-  VisitorState
+  VisitorState,
+  QuizQuestion
 } from "./types";
 import {
   drawMatchPairsDeck,
-  fallbackCallQuestion,
-  fallbackCuratorScenario,
-  fallbackEstimationScenario,
-  selectCallQuestion,
-  selectCuratorScenario,
-  selectEstimationScenario
+  fallbackFreeTextQuestion,
+  fallbackMcqQuestion,
+  fallbackQuizQuestion,
+  selectFreeTextQuestion,
+  selectMcqQuestion,
+  selectQuest,
+  selectQuizQuestion,
+  selectStudyMode
 } from "./challenge-selection";
 import { buildDailyGoals, formatRewardLabel, goalProgressForGame, MAX_ROOM_LEVEL } from "./progression";
+import {
+  buildMatchCards,
+  evaluateFreeTextAnswer,
+  formatCompactReward,
+  formatStudyModeLabel,
+  formatStudyResources
+} from "./study-helpers";
 
 export const WORLD = {
   width: 1100,
@@ -40,9 +54,19 @@ export const WORLD = {
 } as const;
 
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
-const STORAGE_KEY = "curiosity-institute-save-v3";
+const STORAGE_KEY = "curiosity-institute-save-v4";
 const SAVE_INTERVAL_MS = 2500;
 const MIN_QUESTION_COINS = 1;
+const MATCH_PAIR_ATTEMPT_LIMIT = 9;
+const MATCH_PAIR_DECK_SIZE = 6;
+const ACTIVITY_LOG_LIMIT = 8;
+const ACTIVE_QUEST_LIMIT = 4;
+const QUEST_TRIGGER_BY_MODE: Record<StudyMode, QuestTrigger> = {
+  mcq: "mcq-failure",
+  quiz: "quiz-failure",
+  "free-text": "free-text-failure",
+  "match-pairs": "match-pairs-failure"
+};
 
 interface SavedGamePayload {
   version: number;
@@ -53,17 +77,6 @@ interface SavedGamePayload {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function shuffle<T>(items: T[]): T[] {
-  const next = [...items];
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-  }
-
-  return next;
 }
 
 function distance(a: Point, b: Point): number {
@@ -194,22 +207,26 @@ function headingDelta(from: number, to: number): number {
   return Math.abs((((to - from) % 360) + 540) % 360 - 180);
 }
 
-function formatCompactReward(rewards: { coins?: number; reputation?: number; curiosity?: number }): string {
-  const parts: string[] = [];
+function createStudyResources(): StudyResources {
+  return {
+    paper: 0,
+    ink: 0,
+    revisionTokens: 0
+  };
+}
 
-  if (rewards.coins) {
-    parts.push(`${rewards.coins} coins`);
-  }
+function isStudyMode(value: unknown): value is StudyMode {
+  return value === "mcq" || value === "quiz" || value === "free-text" || value === "match-pairs";
+}
 
-  if (rewards.reputation) {
-    parts.push(`${rewards.reputation}% rep`);
-  }
-
-  if (rewards.curiosity) {
-    parts.push(`${rewards.curiosity}% curiosity`);
-  }
-
-  return parts.join(" / ");
+function normalizeQuestTrigger(value: unknown): QuestTrigger {
+  return value === "mcq-failure" ||
+    value === "quiz-failure" ||
+    value === "free-text-failure" ||
+    value === "locked-submission" ||
+    value === "match-pairs-failure"
+    ? value
+    : "locked-submission";
 }
 
 export class MuseumGameController {
@@ -255,15 +272,15 @@ export class MuseumGameController {
     return this.findRoom(roomId);
   }
 
-  get viewerNode(): PhotosphereNode | undefined {
+  get viewerNode(): ImmersiveNode | undefined {
     if (!this.viewerState) {
       return undefined;
     }
 
-    return this.findPhotosphereNode(this.viewerState.nodeId);
+    return this.findImmersiveNode(this.viewerState.nodeId);
   }
 
-  get viewerBackEdge(): PhotosphereEdge | undefined {
+  get viewerBackEdge(): ImmersiveEdge | undefined {
     const currentNode = this.viewerNode;
     const previousNodeId = this.previousViewerNodeId();
 
@@ -274,7 +291,7 @@ export class MuseumGameController {
     return currentNode.edges.find((edge) => edge.toNodeId === previousNodeId);
   }
 
-  get viewerForwardEdge(): PhotosphereEdge | undefined {
+  get viewerForwardEdge(): ImmersiveEdge | undefined {
     if (!this.viewerNode || !this.viewerState) {
       return undefined;
     }
@@ -326,7 +343,7 @@ export class MuseumGameController {
     }
 
     const nextTier = this.viewerRoomLevel + 2;
-    return `Upgrade to Tier ${nextTier} for ${cost} coins.`;
+    return `Upgrade to Tier ${nextTier} for ${cost} resources.`;
   }
 
   get viewerRoomUpgradeCost(): number | null {
@@ -368,10 +385,10 @@ export class MuseumGameController {
     }
 
     if (!this.viewerRoomCanUpgrade) {
-      return `Need ${Math.max(0, cost - (this.game?.coins ?? 0))} coins for Tier ${nextTier}`;
+      return `Need ${Math.max(0, cost - this.totalResources())} resources for Tier ${nextTier}`;
     }
 
-    return `Upgrade To Tier ${nextTier} (${cost} Coins)`;
+    return `Upgrade To Tier ${nextTier} (${cost} Resources)`;
   }
 
   get canResumeSavedGame(): boolean {
@@ -419,18 +436,22 @@ export class MuseumGameController {
 
   get gradeSummary(): string {
     if (!this.game) {
-      return "Choose a direction, then start or resume a museum day.";
+      return "Choose a direction, then start or resume a Year 6 study day.";
     }
 
     if (this.completedGoalsCount === this.dailyGoals.length) {
-      return "Director brief complete. Use the rest of the day to polish the floor and raise the grade.";
+      return "Quest board complete. Use the rest of the day to unlock more study rooms and raise the grade.";
+    }
+
+    if (this.game.activeQuests.length) {
+      return "A redraft quest is waiting. Claim its study resources before the next hard room upgrade.";
     }
 
     if (this.game.pendingCall) {
-      return "A live caller is waiting. Clear the hotline before confidence dips.";
+      return `A ${formatStudyModeLabel(this.game.pendingCall)} round is waiting. Clear it before your study streak dips.`;
     }
 
-    return "Balance expansion, visitor flow, and public programming to lift the museum grade.";
+    return "Balance room unlocks, diploma progress, and redraft quests to lift the grade.";
   }
 
   get dailyGoals(): DailyGoalView[] {
@@ -485,16 +506,16 @@ export class MuseumGameController {
         value: `${visitCount} routed`
       },
       {
-        label: "Walkthrough",
-        value: room.photosphereMap?.nodes[0]?.edges.length
-          ? `${room.photosphereMap.nodes[0].edges.length} connected wings`
-          : this.hasWalkthrough(room)
+        label: "Immersive Scene",
+        value: room.immersiveMap?.nodes[0]?.edges.length
+          ? `${room.immersiveMap.nodes[0].edges.length} connected wings`
+          : this.hasImmersiveScene(room)
             ? "Standalone room"
             : "Not generated"
       },
       {
-        label: this.isRoomUnlocked(room.id) ? "Next Upgrade" : "Unlock Cost",
-        value: this.isRoomUnlocked(room.id) ? (upgradeCost ? `${upgradeCost} coins` : "Max tier") : `${room.cost} coins`
+        label: this.isRoomUnlocked(room.id) ? "Next Upgrade" : "Diploma Gate",
+        value: this.isRoomUnlocked(room.id) ? (upgradeCost ? `${upgradeCost} resources` : "Max tier") : `${room.diplomaRequirement} diplomas`
       }
     ];
   }
@@ -503,7 +524,8 @@ export class MuseumGameController {
     if (!this.game) {
       return [
         { label: "Coins", value: 0 },
-        { label: "Revenue", value: 0 },
+        { label: "Diplomas", value: 0 },
+        { label: "Resources", value: "0 paper · 0 ink · 0 tokens" },
         { label: "Reputation", value: "0%" },
         { label: "Curiosity", value: "0%" },
         { label: "Visitors Served", value: 0 },
@@ -513,7 +535,8 @@ export class MuseumGameController {
 
     return [
       { label: "Coins", value: this.game.coins },
-      { label: "Revenue", value: this.game.revenueEarned },
+      { label: "Diplomas", value: this.game.diplomas },
+      { label: "Resources", value: formatStudyResources(this.game.resources) },
       { label: "Reputation", value: `${this.game.reputation}%` },
       { label: "Curiosity", value: `${this.game.curiosity}%` },
       { label: "Visitors Served", value: this.game.visitorsServed },
@@ -523,11 +546,16 @@ export class MuseumGameController {
 
   get currentObjective(): string {
     if (!this.game) {
-      return "Start a museum day, pick a direction, and begin opening wings.";
+      return "Start a study day, pick a direction, and begin unlocking Year 6 rooms.";
     }
 
     if (this.game.pendingCall) {
-      return "Answer the incoming hotline question before visitor confidence dips.";
+      return `Open the queued ${formatStudyModeLabel(this.game.pendingCall)} round before the study streak cools down.`;
+    }
+
+    if (this.game.activeQuests.length) {
+      const quest = this.game.activeQuests[0];
+      return `${quest.title}: ${quest.detail}`;
     }
 
     const nextGoal = this.dailyGoals.find((goal) => !goal.completed);
@@ -540,10 +568,10 @@ export class MuseumGameController {
     const unlockable = lockedRooms.find((room) => this.canUnlockRoom(room));
 
     if (unlockable) {
-      return `Director brief complete. Use spare funds to open ${unlockable.label}.`;
+      return `Quest board complete. Use your diplomas to open ${unlockable.label}.`;
     }
 
-    return "All core goals are complete. Keep the floor moving and chase a higher museum grade.";
+    return "All core quests are complete. Keep learning and chase a higher grade.";
   }
 
   get objectivePills(): ObjectivePill[] {
@@ -553,7 +581,7 @@ export class MuseumGameController {
       return [
         { label: "Direction", value: themeLabel },
         { label: "Grade", value: "Preview" },
-        { label: "Goals", value: `0/${buildDailyGoals(this.activeTheme?.id ?? "").length}` },
+        { label: "Quests", value: `0/${buildDailyGoals(this.activeTheme?.id ?? "").length}` },
         { label: "Autosave", value: this.savedGameAvailable ? "Ready" : "None" }
       ];
     }
@@ -561,7 +589,8 @@ export class MuseumGameController {
     return [
       { label: "Direction", value: themeLabel },
       { label: "Grade", value: this.museumGrade },
-      { label: "Goals", value: `${this.completedGoalsCount}/${this.dailyGoals.length}` },
+      { label: "Diplomas", value: String(this.game.diplomas) },
+      { label: "Quests", value: `${this.completedGoalsCount}/${this.dailyGoals.length}` },
       { label: "Autosave", value: "Live" }
     ];
   }
@@ -576,14 +605,13 @@ export class MuseumGameController {
     const actions: RoomAction[] = [];
 
     if (!this.isRoomUnlocked(room.id)) {
-      const affordable = this.game.coins >= room.cost;
       const prerequisitesMet = room.requiredRoomIds.every((requiredId) => this.isRoomUnlocked(requiredId));
 
-      if (affordable && prerequisitesMet) {
+      if (this.canUnlockRoom(room) && prerequisitesMet) {
         actions.push({
           id: `${room.id}-unlock`,
           action: "unlock",
-          label: `Unlock For ${room.cost} Coins`,
+          label: `Unlock At ${room.diplomaRequirement} Diplomas`,
           primary: true,
           tone: "glow"
         });
@@ -593,17 +621,17 @@ export class MuseumGameController {
           action: "unlock",
           label: !prerequisitesMet
             ? `Open ${room.requiredRoomIds.map((requiredId) => this.findRoom(requiredId)?.label ?? requiredId).join(" and ")} first`
-            : `Need ${room.cost - this.game.coins} more coins`,
+            : `Need ${Math.max(0, room.diplomaRequirement - this.game.diplomas)} more diplomas`,
           disabled: true,
           tone: "dim"
         });
       }
     } else {
-      if (this.hasWalkthrough(room)) {
+      if (this.hasImmersiveScene(room)) {
         actions.push({
           id: `${room.id}-viewer`,
           action: "viewer",
-          label: "Enter Walkthrough",
+          label: "Enter Immersive Scene",
           primary: true,
           tone: "glow"
         });
@@ -616,14 +644,14 @@ export class MuseumGameController {
           id: `${room.id}-mini-game`,
           action: "mini-game",
           label: `Play ${miniGame?.label ?? "Mini Game"}${miniGame ? ` (${formatCompactReward(miniGame.reward)})` : ""}`,
-          primary: !this.hasWalkthrough(room)
+          primary: !this.hasImmersiveScene(room)
         });
       } else {
         actions.push({
           id: `${room.id}-tour`,
           action: "tour",
           label: `Host Guided Tour (+${this.roomTourRewardValue(room)} coins)`,
-          primary: !this.hasWalkthrough(room)
+          primary: !this.hasImmersiveScene(room)
         });
       }
 
@@ -637,7 +665,7 @@ export class MuseumGameController {
         actions.push({
           id: `${room.id}-upgrade`,
           action: "upgrade",
-          label: canAfford ? `Upgrade To Tier ${nextTier} (${upgradeCost} Coins)` : `Need ${Math.max(0, upgradeCost - this.game.coins)} coins for Tier ${nextTier}`,
+          label: canAfford ? `Upgrade To Tier ${nextTier} (${upgradeCost} Resources)` : `Need ${Math.max(0, upgradeCost - this.totalResources())} resources for Tier ${nextTier}`,
           disabled: !canAfford,
           tone: canAfford ? "glow" : "dim"
         });
@@ -765,7 +793,7 @@ export class MuseumGameController {
 
     this.game = this.createGameSession(theme);
     this.closeRoomViewer();
-    this.logEvent(`The ${theme.label} museum day begins.`);
+    this.logEvent(`The ${theme.label} study day begins.`);
     this.checkGoals();
     this.persistGameSnapshot();
     this.syncSimulationLoop(true);
@@ -794,7 +822,7 @@ export class MuseumGameController {
     this.closeRoomViewer();
     this.lastSavedAt = snapshot.savedAt;
     this.savedGameAvailable = true;
-    this.logEvent("Resumed a saved museum day.");
+    this.logEvent("Resumed a saved study day.");
     this.checkGoals();
     this.persistGameSnapshot();
     this.syncSimulationLoop(true);
@@ -834,7 +862,7 @@ export class MuseumGameController {
       return;
     }
 
-    this.openCallModal(this.game.pendingCall ?? this.nextCallQuestion());
+    this.openStudyMode(this.game.pendingCall ?? this.nextStudyMode(), this.findMiniGame("study-quiz") ?? null);
   }
 
   openMiniGame(miniGameId: MiniGameId): void {
@@ -851,53 +879,7 @@ export class MuseumGameController {
       return;
     }
 
-    if (miniGameId === "study-quiz") {
-      this.openCallModal(this.nextCallQuestion());
-      return;
-    }
-
-    if (miniGameId === "estimation") {
-      const scenario = this.nextEstimationScenario();
-      this.game.activeModal = {
-        type: "estimation",
-        miniGame,
-        scenario,
-        guess: Math.round((scenario.min + scenario.max) / 2)
-      };
-      this.syncSimulationLoop(true);
-      return;
-    }
-
-    if (miniGameId === "curator-check") {
-      this.game.activeModal = {
-        type: "curator-check",
-        miniGame,
-        scenario: this.nextCuratorScenario()
-      };
-      this.syncSimulationLoop(true);
-      return;
-    }
-
-    const selectedPairs = drawMatchPairsDeck(this.content.matchPairsDeck, 8);
-    const deck = shuffle(
-      selectedPairs.flatMap((label) => [
-        { id: `${label}-a`, pair: label, label },
-        { id: `${label}-b`, pair: label, label }
-      ])
-    ).map((card) => ({
-      ...card,
-      matched: false,
-      revealed: false
-    }));
-
-    this.game.activeModal = {
-      type: "match-pairs",
-      miniGame,
-      deck,
-      attempts: 0,
-      locked: false
-    };
-    this.syncSimulationLoop(true);
+    this.openStudyMode(this.nextStudyMode(), miniGame);
   }
 
   handleRoomNodeClick(roomId: string): void {
@@ -918,14 +900,18 @@ export class MuseumGameController {
       return;
     }
 
-    if (this.isRoomUnlocked(room.id)) {
-      if (this.hasWalkthrough(room)) {
-        this.openRoomViewer(room.id);
-        return;
-      }
-
-      this.setCuratorTarget(roomCenter(room));
+    if (!this.isRoomUnlocked(room.id)) {
+      this.assignQuest("locked-submission");
+      this.logEvent(`${room.label} is still locked. Earn more diplomas or clear the prerequisite wings.`);
+      return;
     }
+
+    if (this.hasImmersiveScene(room)) {
+      this.openRoomViewer(room.id);
+      return;
+    }
+
+    this.setCuratorTarget(roomCenter(room));
   }
 
   moveCuratorToPointer(event: MouseEvent, worldElement: HTMLElement): void {
@@ -991,13 +977,29 @@ export class MuseumGameController {
     this.syncSimulationLoop(true);
   }
 
+  completeQuest(questId: string): void {
+    if (!this.game) {
+      return;
+    }
+
+    const quest = this.game.activeQuests.find((entry) => entry.id === questId);
+
+    if (!quest) {
+      return;
+    }
+
+    this.game.activeQuests = this.game.activeQuests.filter((entry) => entry.id !== questId);
+    this.game.questsCompleted += 1;
+    this.award(quest.resourceReward, `${quest.title} complete. Resources gained: ${formatRewardLabel(quest.resourceReward)}.`);
+  }
+
   openRoomViewer(roomId: string): void {
     if (!this.game) {
       return;
     }
 
     const room = this.findRoom(roomId);
-    const startNode = room ? this.startViewerNode(room) : undefined;
+    const startNode = room ? this.startImmersiveNode(room) : undefined;
 
     if (!room || !startNode || !this.isRoomUnlocked(room.id)) {
       return;
@@ -1014,7 +1016,6 @@ export class MuseumGameController {
       pitch: 0
     };
     this.viewerHistory = [startNode.id];
-    this.markWalkthroughVisited(room);
     this.syncSimulationLoop(true);
   }
 
@@ -1045,7 +1046,7 @@ export class MuseumGameController {
     if (direction === "back") {
       const currentNodeId = this.viewerHistory[this.viewerHistory.length - 1];
       const previousNodeId = this.previousViewerNodeId();
-      const previousNode = previousNodeId ? this.findPhotosphereNode(previousNodeId) : undefined;
+      const previousNode = previousNodeId ? this.findImmersiveNode(previousNodeId) : undefined;
 
       if (!currentNodeId || !previousNode) {
         return;
@@ -1065,7 +1066,7 @@ export class MuseumGameController {
     }
 
     const edge = this.viewerForwardEdge;
-    const nextNode = edge ? this.findPhotosphereNode(edge.toNodeId) : undefined;
+    const nextNode = edge ? this.findImmersiveNode(edge.toNodeId) : undefined;
     const nextRoom = nextNode ? this.findRoom(nextNode.roomId) : undefined;
 
     if (!edge || !nextNode || !nextRoom || !this.game || !this.isRoomUnlocked(nextRoom.id)) {
@@ -1079,7 +1080,6 @@ export class MuseumGameController {
       pitch: this.viewerState.pitch
     };
     this.game.selectedRoomId = nextRoom.id;
-    this.markWalkthroughVisited(nextRoom);
   }
 
   upgradeCurrentViewerRoom(): void {
@@ -1092,91 +1092,171 @@ export class MuseumGameController {
     this.upgradeRoom(room.id);
   }
 
-  setEstimationGuess(value: number): void {
-    if (this.game?.activeModal?.type !== "estimation") {
+  recordViewerSceneLoaded(roomId: string): void {
+    const room = this.findRoom(roomId);
+
+    if (!room) {
       return;
     }
 
-    this.game.activeModal.guess = Number.parseInt(String(value), 10);
+    this.markImmersiveVisit(room);
   }
 
-  finishEstimation(): void {
-    if (this.game?.activeModal?.type !== "estimation") {
+  private setActiveModal(modal: ModalState): void {
+    if (!this.game) {
       return;
     }
 
-    const { scenario, guess } = this.game.activeModal;
-    const distanceFromAnswer = Math.abs(guess - scenario.value);
-    const range = Math.max(1, scenario.max - scenario.min);
-    const accuracy = 1 - distanceFromAnswer / range;
-    const expertMultiplier = scenario.difficulty === "Expert" ? 1.22 : 1;
-    const coinReward = Math.max(6, Math.round(accuracy * 22 * expertMultiplier));
-    const repReward = accuracy > 0.82 ? (scenario.difficulty === "Expert" ? 7 : 5) : accuracy > 0.62 ? 3 : 1;
-    const curiosityReward = scenario.difficulty === "Expert" ? 6 : 4;
+    this.game.activeModal = modal;
+    this.syncSimulationLoop(true);
+  }
 
+  private finishStudyRound(): void {
+    if (!this.game) {
+      return;
+    }
+
+    this.game.pendingCall = null;
     this.game.activeModal = null;
     this.syncSimulationLoop(true);
-    this.completeProgram(
-      { coins: coinReward, reputation: repReward, curiosity: curiosityReward },
-      `${scenario.style} cleared with ${coinReward} bonus coins.`
-    );
   }
 
-  resolveCallChoice(choiceIndex: number): void {
-    if (this.game?.activeModal?.type !== "call") {
+  private studySuccessReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
+    const expert = difficulty === "Expert";
+
+    if (mode === "mcq") {
+      return expert
+        ? { diplomas: 2, coins: 12, reputation: 8, curiosity: 10 }
+        : { diplomas: 1, coins: 9, reputation: 6, curiosity: 8 };
+    }
+
+    if (mode === "quiz") {
+      return expert
+        ? { diplomas: 2, coins: 14, reputation: 9, curiosity: 6 }
+        : { diplomas: 1, coins: 10, reputation: 7, curiosity: 5 };
+    }
+
+    return expert
+      ? { diplomas: 2, coins: 10, reputation: 7, curiosity: 8 }
+      : { diplomas: 1, coins: 7, reputation: 5, curiosity: 6 };
+  }
+
+  private studyFailureReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
+    const expert = difficulty === "Expert";
+
+    if (mode === "mcq") {
+      return expert
+        ? { coins: -6, reputation: -5, curiosity: -3 }
+        : { coins: -4, reputation: -4, curiosity: -2 };
+    }
+
+    if (mode === "quiz") {
+      return expert
+        ? { coins: -5, reputation: -4, curiosity: -2 }
+        : { coins: -3, reputation: -3, curiosity: -1 };
+    }
+
+    return expert
+      ? { coins: -4, reputation: -3, curiosity: -2 }
+      : { coins: -3, reputation: -2, curiosity: -1 };
+  }
+
+  private concludeStudyRound({
+    mode,
+    success,
+    successRewards,
+    failureRewards,
+    successMessage,
+    failureMessage
+  }: {
+    mode: StudyMode;
+    success: boolean;
+    successRewards: RewardBundle;
+    failureRewards: RewardBundle;
+    successMessage: string;
+    failureMessage: string;
+  }): void {
+    this.finishStudyRound();
+
+    if (success) {
+      this.completeProgram(mode, successRewards, successMessage);
+      return;
+    }
+
+    this.recordStudyFailure(mode, failureRewards, failureMessage);
+  }
+
+  private createMatchPairsModal(miniGame: MiniGameDefinition | null): Extract<ModalState, { type: "match-pairs" }> {
+    const selectedPairs = drawMatchPairsDeck(this.content.matchPairDeck, MATCH_PAIR_DECK_SIZE);
+    const subjects = Array.from(new Set(selectedPairs.map((pair) => pair.subject)));
+    const subject = subjects.length === 1 ? subjects[0] : "Mixed Subjects";
+    const topic = selectedPairs.length ? `${selectedPairs.length} revision pairs` : "Revision pairs";
+
+    return {
+      type: "match-pairs",
+      miniGame,
+      subject,
+      topic,
+      deck: buildMatchCards(selectedPairs),
+      attempts: 0,
+      locked: false
+    };
+  }
+
+  setFreeTextAnswer(value: string): void {
+    if (this.game?.activeModal?.type !== "free-text") {
+      return;
+    }
+
+    this.game.activeModal.answer = value;
+  }
+
+  submitFreeText(): void {
+    if (this.game?.activeModal?.type !== "free-text") {
+      return;
+    }
+
+    const { question, answer } = this.game.activeModal;
+    this.concludeStudyRound({
+      mode: "free-text",
+      success: evaluateFreeTextAnswer(answer, question),
+      successRewards: this.studySuccessReward("free-text", question.difficulty),
+      failureRewards: this.studyFailureReward("free-text", question.difficulty),
+      successMessage: `${question.success} Diploma progress climbs in ${question.subject}.`,
+      failureMessage: `${question.failure} A rewrite quest has been added to the board.`
+    });
+  }
+
+  resolveMcqChoice(choiceIndex: number): void {
+    if (this.game?.activeModal?.type !== "mcq") {
       return;
     }
 
     const { question } = this.game.activeModal;
-    const success = choiceIndex === question.correctIndex;
-    this.game.pendingCall = null;
-    this.game.activeModal = null;
-    this.syncSimulationLoop(true);
-
-    if (success) {
-      this.award(
-        question.difficulty === "Expert"
-          ? { coins: 18, reputation: 8, curiosity: 10 }
-          : { coins: 14, reputation: 6, curiosity: 8 },
-        question.success
-      );
-      return;
-    }
-
-    this.award(
-      question.difficulty === "Expert"
-        ? { coins: -6, reputation: -5, curiosity: -3 }
-        : { coins: -4, reputation: -4, curiosity: -2 },
-      `${question.failure} Museum funds take a small hit, but losses stop at 1 coin.`
-    );
+    this.concludeStudyRound({
+      mode: "mcq",
+      success: choiceIndex === question.correctIndex,
+      successRewards: this.studySuccessReward("mcq", question.difficulty),
+      failureRewards: this.studyFailureReward("mcq", question.difficulty),
+      successMessage: `${question.success} ${question.subject} diploma progress improves.`,
+      failureMessage: `${question.failure} Coin losses stop at the final safety coin.`
+    });
   }
 
-  resolveCuratorCheckChoice(choiceIndex: number): void {
-    if (this.game?.activeModal?.type !== "curator-check") {
+  resolveQuizChoice(choiceIndex: number): void {
+    if (this.game?.activeModal?.type !== "quiz") {
       return;
     }
 
-    const { scenario } = this.game.activeModal;
-    const success = choiceIndex === scenario.correctIndex;
-    this.game.activeModal = null;
-    this.syncSimulationLoop(true);
-
-    if (success) {
-      this.completeProgram(
-        scenario.difficulty === "Expert"
-          ? { coins: 14, reputation: 10, curiosity: 6 }
-          : { coins: 10, reputation: 8, curiosity: 5 },
-        `${scenario.style} solved cleanly. Visitor flow improves.`
-      );
-      return;
-    }
-
-    this.award(
-      scenario.difficulty === "Expert"
-        ? { coins: -5, reputation: -4, curiosity: -2 }
-        : { coins: -3, reputation: -3, curiosity: -1 },
-      "The curator check slipped. The museum loses a little confidence and a few coins, but never the last one."
-    );
+    const { question } = this.game.activeModal;
+    this.concludeStudyRound({
+      mode: "quiz",
+      success: choiceIndex === question.correctIndex,
+      successRewards: this.studySuccessReward("quiz", question.difficulty),
+      failureRewards: this.studyFailureReward("quiz", question.difficulty),
+      successMessage: `${question.style} solved cleanly. ${question.subject} confidence improves.`,
+      failureMessage: `${question.subject} slipped this round. The study streak dips, but the last coin stays safe.`
+    });
   }
 
   handleMatchCard(cardId: string): void {
@@ -1213,12 +1293,30 @@ export class MuseumGameController {
       modal.locked = false;
 
       if (modal.deck.every((entry) => entry.matched)) {
-        const reward = Math.max(12, 32 - modal.attempts);
-        this.game.activeModal = null;
-        this.syncSimulationLoop(true);
-        this.completeProgram({ coins: reward, reputation: 5, curiosity: 7 }, `Match Pairs cleared in ${modal.attempts} tries.`);
+        const reward = Math.max(8, 18 - modal.attempts);
+        this.finishStudyRound();
+        this.completeProgram(
+          "match-pairs",
+          {
+            diplomas: modal.attempts <= 4 ? 2 : 1,
+            coins: reward,
+            reputation: 5,
+            curiosity: 7
+          },
+          `Match pairs cleared in ${modal.attempts} tries.`
+        );
       }
 
+      return;
+    }
+
+    if (modal.attempts >= MATCH_PAIR_ATTEMPT_LIMIT) {
+      this.finishStudyRound();
+      this.recordStudyFailure(
+        "match-pairs",
+        { coins: -3, reputation: -2, curiosity: -1 },
+        "The match board timed out. A redraft quest has been added to your board."
+      );
       return;
     }
 
@@ -1308,6 +1406,7 @@ export class MuseumGameController {
       day: 1,
       timer: 0,
       coins: 34,
+      diplomas: 0,
       reputation: 52,
       curiosity: 48,
       revenueEarned: 0,
@@ -1315,13 +1414,22 @@ export class MuseumGameController {
       visitorsSeen: 0,
       roomsOpenedToday: 0,
       programsHosted: 0,
+      immersiveVisits: 0,
       photospheresVisited: 0,
+      resources: createStudyResources(),
+      activeQuests: [],
+      questsCompleted: 0,
+      completedMcqCount: 0,
+      completedQuizCount: 0,
+      completedFreeTextCount: 0,
+      completedMatchPairsCount: 0,
       selectedRoomId: startingRoom.id,
       unlockedRoomIds,
       viewedRoomIds: [],
-      recentQuestionIds: [],
-      recentEstimationIds: [],
-      recentCuratorCheckIds: [],
+      recentMcqIds: [],
+      recentFreeTextIds: [],
+      recentQuizIds: [],
+      recentQuestIds: [],
       roomLevels: createRoomNumberMap(this.content.roomBlueprints, 0),
       roomVisitCounts: createRoomNumberMap(this.content.roomBlueprints, 0),
       dailyGoals: buildDailyGoals(theme.id),
@@ -1362,14 +1470,7 @@ export class MuseumGameController {
   }
 
   private applyGoalReward(goal: DailyGoal): void {
-    if (!this.game) {
-      return;
-    }
-
-    this.game.coins += goal.reward.coins;
-    this.game.reputation = clamp(this.game.reputation + goal.reward.reputation, 0, 100);
-    this.game.curiosity = clamp(this.game.curiosity + goal.reward.curiosity, 0, 100);
-    this.logEvent(`${goal.label} complete. Bonus secured: ${formatRewardLabel(goal.reward)}.`);
+    this.award(goal.reward, `${goal.label} complete. Bonus secured: ${formatRewardLabel(goal.reward)}.`);
   }
 
   private findRoom(roomId: string): RoomBlueprint | undefined {
@@ -1380,9 +1481,9 @@ export class MuseumGameController {
     return this.content.miniGames.find((miniGame) => miniGame.id === miniGameId);
   }
 
-  private findPhotosphereNode(nodeId: string): PhotosphereNode | undefined {
+  private findImmersiveNode(nodeId: string): ImmersiveNode | undefined {
     for (const room of this.content.roomBlueprints) {
-      const node = room.photosphereMap?.nodes.find((entry) => entry.id === nodeId);
+      const node = room.immersiveMap?.nodes.find((entry) => entry.id === nodeId);
       if (node) {
         return node;
       }
@@ -1391,12 +1492,12 @@ export class MuseumGameController {
     return undefined;
   }
 
-  private startViewerNode(room: RoomBlueprint): PhotosphereNode | undefined {
-    if (!room.photosphereMap) {
+  private startImmersiveNode(room: RoomBlueprint): ImmersiveNode | undefined {
+    if (!room.immersiveMap) {
       return undefined;
     }
 
-    return room.photosphereMap.nodes.find((node) => node.id === room.photosphereMap?.startNodeId) ?? room.photosphereMap.nodes[0];
+    return room.immersiveMap.nodes.find((node) => node.id === room.immersiveMap?.startNodeId) ?? room.immersiveMap.nodes[0];
   }
 
   private clearMovementKeys(): void {
@@ -1408,13 +1509,13 @@ export class MuseumGameController {
   }
 
   private preferredForwardEdge(
-    node: PhotosphereNode,
+    node: ImmersiveNode,
     previousNodeId: string | null,
     currentYaw: number,
     options: {
       preferTraversable?: boolean;
     } = {}
-  ): PhotosphereEdge | undefined {
+  ): ImmersiveEdge | undefined {
     const forwardEdges = node.edges.filter((edge) => edge.toNodeId !== previousNodeId);
     if (!forwardEdges.length) {
       return undefined;
@@ -1431,7 +1532,7 @@ export class MuseumGameController {
     })[0];
   }
 
-  private canTraverseViewerEdge(edge: PhotosphereEdge | undefined): boolean {
+  private canTraverseViewerEdge(edge: ImmersiveEdge | undefined): boolean {
     if (!edge) {
       return false;
     }
@@ -1439,51 +1540,55 @@ export class MuseumGameController {
     return this.isRoomUnlocked(edge.roomId);
   }
 
-  private nextCallQuestion(): CallQuestion {
+  private nextStudyMode(): StudyMode {
+    return selectStudyMode(this.content);
+  }
+
+  private nextMcqQuestion(): McqQuestion {
     if (!this.game) {
-      return fallbackCallQuestion(this.content);
+      return fallbackMcqQuestion(this.content);
     }
 
-    const { item, recentIds } = selectCallQuestion({
+    const { item, recentIds } = selectMcqQuestion({
       content: this.content,
-      recentIds: this.game.recentQuestionIds,
+      recentIds: this.game.recentMcqIds,
       completedGoalsCount: this.completedGoalsCount,
       programsHosted: this.game.programsHosted
     });
 
-    this.game.recentQuestionIds = recentIds;
+    this.game.recentMcqIds = recentIds;
     return item;
   }
 
-  private nextEstimationScenario() {
+  private nextFreeTextQuestion(): FreeTextQuestion {
     if (!this.game) {
-      return fallbackEstimationScenario(this.content);
+      return fallbackFreeTextQuestion(this.content);
     }
 
-    const { item, recentIds } = selectEstimationScenario({
+    const { item, recentIds } = selectFreeTextQuestion({
       content: this.content,
-      recentIds: this.game.recentEstimationIds,
+      recentIds: this.game.recentFreeTextIds,
       completedGoalsCount: this.completedGoalsCount,
       selectedRoomLevel: this.roomLevel(this.game.selectedRoomId)
     });
 
-    this.game.recentEstimationIds = recentIds;
+    this.game.recentFreeTextIds = recentIds;
     return item;
   }
 
-  private nextCuratorScenario() {
+  private nextQuizQuestion(): QuizQuestion {
     if (!this.game) {
-      return fallbackCuratorScenario(this.content);
+      return fallbackQuizQuestion(this.content);
     }
 
-    const { item, recentIds } = selectCuratorScenario({
+    const { item, recentIds } = selectQuizQuestion({
       content: this.content,
-      recentIds: this.game.recentCuratorCheckIds,
+      recentIds: this.game.recentQuizIds,
       completedGoalsCount: this.completedGoalsCount,
       reputation: this.game.reputation
     });
 
-    this.game.recentCuratorCheckIds = recentIds;
+    this.game.recentQuizIds = recentIds;
     return item;
   }
 
@@ -1491,8 +1596,8 @@ export class MuseumGameController {
     return this.game?.roomLevels[roomId] ?? 0;
   }
 
-  private hasWalkthrough(room: RoomBlueprint): boolean {
-    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath || room.splatPath);
+  private hasImmersiveScene(room: RoomBlueprint): boolean {
+    return Boolean(room.immersiveMap?.nodes.length || room.splatPath || room.panoramaPath);
   }
 
   private roomUpgradeCost(room: RoomBlueprint): number {
@@ -1500,12 +1605,17 @@ export class MuseumGameController {
     return Math.round(Math.max(24, room.cost * 0.55 + 24 + level * 18));
   }
 
+  private totalResources(resources?: StudyResources): number {
+    const current = resources ?? this.game?.resources ?? createStudyResources();
+    return current.paper + current.ink + current.revisionTokens;
+  }
+
   private canUpgradeRoom(room: RoomBlueprint): boolean {
     if (!this.game || !this.isRoomUnlocked(room.id)) {
       return false;
     }
 
-    return this.roomLevel(room.id) < MAX_ROOM_LEVEL && this.game.coins >= this.roomUpgradeCost(room);
+    return this.roomLevel(room.id) < MAX_ROOM_LEVEL && this.totalResources() >= this.roomUpgradeCost(room);
   }
 
   private effectiveRewardRate(room: RoomBlueprint): number {
@@ -1541,7 +1651,7 @@ export class MuseumGameController {
       return false;
     }
 
-    if (this.isRoomUnlocked(room.id) || this.game.coins < room.cost) {
+    if (this.isRoomUnlocked(room.id) || this.game.diplomas < room.diplomaRequirement) {
       return false;
     }
 
@@ -1554,13 +1664,10 @@ export class MuseumGameController {
     }
 
     const nextActivity: ActivityEntry[] = [{ id: createId(), message }, ...this.game.activity];
-    this.game.activity = nextActivity.slice(0, 8);
+    this.game.activity = nextActivity.slice(0, ACTIVITY_LOG_LIMIT);
   }
 
-  private award(
-    rewards: { coins?: number; reputation?: number; curiosity?: number },
-    message: string
-  ): void {
+  private award(rewards: RewardBundle, message: string): void {
     if (!this.game) {
       return;
     }
@@ -1582,20 +1689,112 @@ export class MuseumGameController {
 
     this.game.reputation = clamp(this.game.reputation + (rewards.reputation ?? 0), 0, 100);
     this.game.curiosity = clamp(this.game.curiosity + (rewards.curiosity ?? 0), 0, 100);
+    this.game.diplomas = Math.max(0, this.game.diplomas + (rewards.diplomas ?? 0));
+    this.applyResourceReward(rewards);
     this.logEvent(message);
     this.checkGoals();
   }
 
-  private completeProgram(
-    rewards: { coins?: number; reputation?: number; curiosity?: number },
-    message: string
-  ): void {
+  private applyResourceReward(rewards: RewardBundle): void {
+    if (!this.game) {
+      return;
+    }
+
+    this.game.resources.paper = Math.max(0, this.game.resources.paper + (rewards.paper ?? 0));
+    this.game.resources.ink = Math.max(0, this.game.resources.ink + (rewards.ink ?? 0));
+    this.game.resources.revisionTokens = Math.max(0, this.game.resources.revisionTokens + (rewards.revisionTokens ?? 0));
+  }
+
+  private recordStudyCompletion(mode: StudyMode): void {
     if (!this.game) {
       return;
     }
 
     this.game.programsHosted += 1;
+
+    if (mode === "mcq") {
+      this.game.completedMcqCount += 1;
+      return;
+    }
+
+    if (mode === "quiz") {
+      this.game.completedQuizCount += 1;
+      return;
+    }
+
+    if (mode === "free-text") {
+      this.game.completedFreeTextCount += 1;
+      return;
+    }
+
+    this.game.completedMatchPairsCount += 1;
+  }
+
+  private completeProgram(mode: StudyMode, rewards: RewardBundle, message: string): void {
+    this.recordStudyCompletion(mode);
     this.award(rewards, message);
+  }
+
+  private recordStudyFailure(mode: StudyMode, rewards: RewardBundle, message: string): void {
+    this.recordStudyCompletion(mode);
+    this.assignQuest(QUEST_TRIGGER_BY_MODE[mode]);
+    this.award(rewards, message);
+  }
+
+  private assignQuest(trigger: QuestTrigger): void {
+    if (!this.game) {
+      return;
+    }
+
+    const selection = selectQuest({
+      content: this.content,
+      recentIds: this.game.recentQuestIds,
+      trigger
+    });
+
+    if (!selection) {
+      return;
+    }
+
+    if (this.game.activeQuests.some((quest) => quest.id === selection.item.id)) {
+      return;
+    }
+
+    this.game.recentQuestIds = selection.recentIds;
+
+    this.game.activeQuests = [
+      ...this.game.activeQuests,
+      {
+        ...selection.item,
+        createdAtDay: this.game.day
+      }
+    ].slice(-ACTIVE_QUEST_LIMIT);
+
+    this.logEvent(`Quest added: ${selection.item.title}.`);
+  }
+
+  private spendResources(totalCost: number): boolean {
+    if (!this.game || this.totalResources() < totalCost) {
+      return false;
+    }
+
+    let remaining = totalCost;
+    const resources = this.game.resources;
+
+    const spend = (key: keyof StudyResources) => {
+      if (remaining <= 0) {
+        return;
+      }
+
+      const spendAmount = Math.min(resources[key], remaining);
+      resources[key] -= spendAmount;
+      remaining -= spendAmount;
+    };
+
+    spend("paper");
+    spend("ink");
+    spend("revisionTokens");
+    return remaining === 0;
   }
 
   private unlockRoom(roomId: string): void {
@@ -1609,11 +1808,10 @@ export class MuseumGameController {
       return;
     }
 
-    this.game.coins -= room.cost;
     this.game.unlockedRoomIds = [...this.game.unlockedRoomIds, room.id];
     this.game.selectedRoomId = room.id;
     this.game.roomsOpenedToday += 1;
-    this.logEvent(`${room.label} opened for visitors.`);
+    this.logEvent(`${room.label} unlocked at ${room.diplomaRequirement} diplomas. Diplomas stay in your record and are never spent.`);
     this.checkGoals();
   }
 
@@ -1629,9 +1827,12 @@ export class MuseumGameController {
     }
 
     const cost = this.roomUpgradeCost(room);
-    this.game.coins -= cost;
+    if (!this.spendResources(cost)) {
+      return;
+    }
+
     this.game.roomLevels[room.id] = this.roomLevel(room.id) + 1;
-    this.logEvent(`${room.label} upgraded to Tier ${this.roomLevel(room.id) + 1}.`);
+    this.logEvent(`${room.label} upgraded to Tier ${this.roomLevel(room.id) + 1} using study resources.`);
     this.checkGoals();
   }
 
@@ -1739,7 +1940,7 @@ export class MuseumGameController {
     return pickWeightedItem(
       candidates.map((room) => ({
         item: room,
-        weight: room.rewardRate + this.roomLevel(room.id) * 2 + (room.miniGameId ? 1.4 : 0) + (this.hasWalkthrough(room) ? 0.8 : 0)
+        weight: room.rewardRate + this.roomLevel(room.id) * 2 + (room.miniGameId ? 1.4 : 0) + (this.hasImmersiveScene(room) ? 0.8 : 0)
       }))
     );
   }
@@ -1827,17 +2028,40 @@ export class MuseumGameController {
       .filter((coin) => coin.ttl > 0);
   }
 
-  private openCallModal(question: CallQuestion): void {
+  private openStudyMode(mode: StudyMode, miniGame: MiniGameDefinition | null): void {
     if (!this.game) {
       return;
     }
 
     this.closeRoomViewer();
-    this.game.activeModal = {
-      type: "call",
-      question
-    };
-    this.syncSimulationLoop(true);
+
+    switch (mode) {
+      case "mcq":
+        this.setActiveModal({
+          type: "mcq",
+          miniGame,
+          question: this.nextMcqQuestion()
+        });
+        return;
+      case "quiz":
+        this.setActiveModal({
+          type: "quiz",
+          miniGame,
+          question: this.nextQuizQuestion()
+        });
+        return;
+      case "free-text":
+        this.setActiveModal({
+          type: "free-text",
+          miniGame,
+          question: this.nextFreeTextQuestion(),
+          answer: ""
+        });
+        return;
+      case "match-pairs":
+        this.setActiveModal(this.createMatchPairsModal(miniGame));
+        return;
+    }
   }
 
   private openArchiveModal(focusAssetId: string | null = null): void {
@@ -1846,11 +2070,10 @@ export class MuseumGameController {
     }
 
     this.closeRoomViewer();
-    this.game.activeModal = {
+    this.setActiveModal({
       type: "archive",
       focusAssetId
-    };
-    this.syncSimulationLoop(true);
+    });
   }
 
   private triggerCallEvent(): void {
@@ -1858,18 +2081,20 @@ export class MuseumGameController {
       return;
     }
 
-    this.game.pendingCall = this.nextCallQuestion();
+    this.game.pendingCall = this.nextStudyMode();
+    this.logEvent(`${formatStudyModeLabel(this.game.pendingCall)} round queued on the study board.`);
   }
 
-  private markWalkthroughVisited(room: RoomBlueprint): void {
+  private markImmersiveVisit(room: RoomBlueprint): void {
     if (!this.game || this.game.viewedRoomIds.includes(room.id)) {
       return;
     }
 
     this.game.viewedRoomIds = [...this.game.viewedRoomIds, room.id];
-    this.game.photospheresVisited += 1;
+    this.game.immersiveVisits += 1;
+    this.game.photospheresVisited = this.game.immersiveVisits;
     this.game.programsHosted += 1;
-    this.logEvent(`Immersive walkthrough opened for ${room.label}.`);
+    this.logEvent(`Immersive splat scene opened for ${room.label}.`);
     this.checkGoals();
   }
 
@@ -1981,12 +2206,49 @@ export class MuseumGameController {
         completed: Boolean(matchingGoal && (matchingGoal as Record<string, unknown>).completed)
       };
     });
+    const immersiveVisits = Math.max(
+      0,
+      asFiniteNumber(raw.immersiveVisits, asFiniteNumber(raw.photospheresVisited, 0)),
+    );
+    const rawResources = raw.resources && typeof raw.resources === "object" ? raw.resources as Record<string, unknown> : {};
+    const resources: StudyResources = {
+      paper: Math.max(0, asFiniteNumber(rawResources.paper, 0)),
+      ink: Math.max(0, asFiniteNumber(rawResources.ink, 0)),
+      revisionTokens: Math.max(0, asFiniteNumber(rawResources.revisionTokens, 0))
+    };
+    const activeQuests = Array.isArray(raw.activeQuests)
+      ? raw.activeQuests
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => {
+            const quest = entry as Record<string, unknown>;
+            const reward = quest.resourceReward && typeof quest.resourceReward === "object"
+              ? quest.resourceReward as Record<string, unknown>
+              : createStudyResources();
+            const trigger = normalizeQuestTrigger(quest.trigger);
+
+            return {
+              id: typeof quest.id === "string" ? quest.id : createId(),
+              title: typeof quest.title === "string" ? quest.title : "Study Quest",
+              detail: typeof quest.detail === "string" ? quest.detail : "Review the last missed topic and redraft it on paper.",
+              trigger,
+              resourceReward: {
+                paper: Math.max(0, asFiniteNumber(reward.paper, 0)),
+                ink: Math.max(0, asFiniteNumber(reward.ink, 0)),
+                revisionTokens: Math.max(0, asFiniteNumber(reward.revisionTokens, 0))
+              },
+              createdAtDay: Math.max(1, asFiniteNumber(quest.createdAtDay, fallback.day))
+            };
+          })
+          .slice(-ACTIVE_QUEST_LIMIT)
+      : [];
+    const pendingCall = isStudyMode(raw.pendingCall) ? raw.pendingCall : null;
 
     return {
       ...fallback,
       day: Math.max(1, asFiniteNumber(raw.day, fallback.day)),
       timer: Math.max(0, asFiniteNumber(raw.timer, fallback.timer)),
       coins: Math.max(0, asFiniteNumber(raw.coins, fallback.coins)),
+      diplomas: Math.max(0, asFiniteNumber(raw.diplomas, fallback.diplomas)),
       reputation: clamp(asFiniteNumber(raw.reputation, fallback.reputation), 0, 100),
       curiosity: clamp(asFiniteNumber(raw.curiosity, fallback.curiosity), 0, 100),
       revenueEarned: Math.max(0, asFiniteNumber(raw.revenueEarned, 0)),
@@ -1994,13 +2256,22 @@ export class MuseumGameController {
       visitorsSeen: Math.max(0, asFiniteNumber(raw.visitorsSeen, 0)),
       roomsOpenedToday: Math.max(0, asFiniteNumber(raw.roomsOpenedToday, 0)),
       programsHosted: Math.max(0, asFiniteNumber(raw.programsHosted, 0)),
-      photospheresVisited: Math.max(0, asFiniteNumber(raw.photospheresVisited, 0)),
+      immersiveVisits,
+      photospheresVisited: immersiveVisits,
+      resources,
+      activeQuests,
+      questsCompleted: Math.max(0, asFiniteNumber(raw.questsCompleted, 0)),
+      completedMcqCount: Math.max(0, asFiniteNumber(raw.completedMcqCount, 0)),
+      completedQuizCount: Math.max(0, asFiniteNumber(raw.completedQuizCount, 0)),
+      completedFreeTextCount: Math.max(0, asFiniteNumber(raw.completedFreeTextCount, 0)),
+      completedMatchPairsCount: Math.max(0, asFiniteNumber(raw.completedMatchPairsCount, 0)),
       selectedRoomId,
       unlockedRoomIds: unlockedRoomIds.length ? Array.from(new Set(unlockedRoomIds)) : fallback.unlockedRoomIds,
       viewedRoomIds: asStringArray(raw.viewedRoomIds).filter((roomId) => validRoomIds.has(roomId)),
-      recentQuestionIds: asStringArray(raw.recentQuestionIds).slice(-7),
-      recentEstimationIds: asStringArray(raw.recentEstimationIds).slice(-5),
-      recentCuratorCheckIds: asStringArray(raw.recentCuratorCheckIds).slice(-5),
+      recentMcqIds: asStringArray(raw.recentMcqIds ?? raw.recentQuestionIds).slice(-8),
+      recentFreeTextIds: asStringArray(raw.recentFreeTextIds ?? raw.recentEstimationIds).slice(-6),
+      recentQuizIds: asStringArray(raw.recentQuizIds ?? raw.recentCuratorCheckIds).slice(-8),
+      recentQuestIds: asStringArray(raw.recentQuestIds).slice(-10),
       roomLevels: asNumberRecord(raw.roomLevels, this.content.roomBlueprints),
       roomVisitCounts: asNumberRecord(raw.roomVisitCounts, this.content.roomBlueprints),
       dailyGoals,
@@ -2069,11 +2340,11 @@ export class MuseumGameController {
                   ? (entry as Record<string, unknown>).message as string
                   : "Museum log restored."
             }))
-            .slice(0, 8)
+            .slice(0, ACTIVITY_LOG_LIMIT)
         : [],
       nextVisitorSpawnAt: Math.max(0.5, asFiniteNumber(raw.nextVisitorSpawnAt, fallback.nextVisitorSpawnAt)),
       nextCallAt: Math.max(4, asFiniteNumber(raw.nextCallAt, fallback.nextCallAt)),
-      pendingCall: null,
+      pendingCall,
       activeModal: null
     };
   }
@@ -2084,7 +2355,7 @@ export class MuseumGameController {
     }
 
     const payload: SavedGamePayload = {
-      version: 3,
+      version: 4,
       selectedThemeId: this.selectedThemeId,
       savedAt: new Date().toISOString(),
       game: JSON.parse(JSON.stringify(this.game)) as GameSession

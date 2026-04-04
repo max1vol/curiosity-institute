@@ -1,38 +1,37 @@
 # The Curiosity Institute
 
-The Curiosity Institute is a casual museum management game built around direct avatar control.
+The Curiosity Institute is now a Year 6 learning game built on top of the same direct-avatar museum floor.
 
-The player is the curator: a small on-floor character moving through the museum in real time, collecting coin pickups, responding to visitors, opening rooms, and handling live public-question events.
+The player is still the curator moving in real time through the building, but the progression loop is now curriculum-led: hard study rounds award diplomas, diplomas unlock new rooms without being spent, and failed work can create rewrite quests that reward paper, ink, and revision tokens.
 
 ## Core Fantasy
 
 The game should feel like:
 
-- running a cozy museum with the readability of a premium mobile tycoon game
-- physically moving the curator through the space instead of only tapping menus
-- watching visitors flow through rooms while the museum grows wing by wing
-- making the museum feel intelligent and alive through questions, reviews, and guided expansion
+- walking through a tactile 3D school-museum hybrid instead of navigating flat menus
+- earning progress through hard Year 6 work rather than buying everything with currency
+- unlocking study wings through diploma milestones while keeping coin pickups for ambient floor energy
+- turning mistakes into concrete follow-up quests such as rewriting on paper or reworking an answer you cannot edit again
+- using immersive splat rooms and generated art to make the curriculum world feel alive
 
 ## Main Gameplay Loop
 
-1. Guide the curator through the museum floor in a top-down 3D view.
-2. Collect ticket income and exhibit income as coins pop into the world.
-3. Watch tourists enter rooms, gather around highlights, and reveal demand.
-4. Unlock and expand new rooms over time.
-5. React to live events, especially Call the Curator questions from the public.
+1. Guide the curator through the Year 6 floor in a top-down 3D view.
+2. Enter challenge hubs or queued study alerts to launch a weighted random hard round.
+3. Clear MCQ, quiz, free-text, and match-pairs activities to earn diplomas and reputation.
+4. Unlock new rooms when you reach diploma gates; diplomas remain on your record and are never spent.
+5. Use quest rewards such as paper, ink, and revision tokens to upgrade rooms and keep progression moving.
 
-## Additional Gameplay: Call The Curator
+## Study System
 
-During normal play, the curator can receive incoming public questions inspired by the British Museum's History Hotline concept.
+Every prompted study round comes from the generated Year 6 curriculum deck with this weighted mix:
 
-That means:
+- `quiz`: 50%
+- `free-text`: 25%
+- `mcq`: 20%
+- `match-pairs`: 5%
 
-- a live call event can appear while the player is already managing the floor
-- the caller is a member of the public asking a history or museum-related question
-- the event should feel like part of the museum fantasy, not a detached quiz menu
-- good answers can improve reputation, curiosity, or demand for specific exhibition branches
-
-Visually, the mechanic is represented in the gameplay concepts as a handset icon with a question mark above the curator.
+Failure paths can generate quests based on the work that went wrong, including rewrite-on-paper style tasks and locked-topic recovery tasks.
 
 ## Three Main 3D Gameplay Directions
 
@@ -160,7 +159,7 @@ What it includes:
 - a live `Call The Curator` hotline event loop
 - mini-games for quiz, estimation, curator checks, and match pairs
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
-- immersive room photospheres generated from concept art, rendered in a mouse, swipe, and arrow-key driven 3D viewer
+- immersive room scenes that prefer Gaussian splats and fall back to panorama textures in the 3D viewer
 - an opaque, non-blurred interface so the deployed app stays readable instead of smearing the whole screen
 
 ## App Structure
@@ -171,33 +170,36 @@ What it includes:
 - `output/` remains the source-of-truth for generated render libraries and reports
 - `static/` is build-time generated from those source directories for the app
 
-## Photosphere Pipeline
+## Immersive Scene Pipeline
 
-This repo also contains a second Google-image pipeline that turns each playable room concept into a generated panoramic photosphere and feeds those images back into the SvelteKit app.
+This repo also contains an immersive-scene pipeline for the playable rooms. The app now prefers Gaussian splat assets from `output/splats/` whenever they exist, and falls back to generated panorama textures from `output/photospheres/` when a room does not have a splat scene yet.
 
 What it does:
 
 - reads the room-driving concept art from `docs/concept-art/`
-- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic room view
-- converts that panorama into a 2:1 photosphere texture with `ffmpeg`
+- discovers splat assets under `output/splats/` and wires them into the game automatically
+- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic room view for fallback coverage
+- converts that panorama into a 2:1 viewer texture with `ffmpeg`
 - retries Google failures up to five times per room by default
 - treats transient server-side model failures, including worker-branch fanout failures, with backoff and retry
 - records attempt failures and deduplicated final failures in `output/photospheres/reports/`
-- exposes the generated textures through `static/output/photospheres/` so clicking an unlocked room opens the 3D viewer
+- exposes splats through `static/output/splats/` and fallback panoramas through `static/output/photospheres/` so opening an unlocked room loads the immersive viewer
 
 Run it with:
 
 ```bash
-KEYS_FILE=/absolute/path/to/keys.txt GOOGLE_AUTH_MODE=service-account npm run photospheres
+KEYS_FILE=/absolute/path/to/keys.txt GOOGLE_AUTH_MODE=service-account npm run splats
 ```
 
 For a no-network pass that keeps the same file layout:
 
 ```bash
-npm run photospheres:dry
+npm run splats:dry
 ```
 
-Override the retry budget with `--retries`, `PHOTOSPHERE_RETRY_LIMIT`, or the shared `RETRY_LIMIT` env var.
+Override the retry budget with `--retries`, `SPLAT_RETRY_LIMIT`, `PHOTOSPHERE_RETRY_LIMIT`, or the shared `RETRY_LIMIT` env var.
+
+Legacy compatibility wrappers remain available through `npm run photospheres` and `npm run photospheres:dry`.
 
 ## Local Development
 

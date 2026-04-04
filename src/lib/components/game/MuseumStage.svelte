@@ -1,5 +1,6 @@
 <script lang="ts">
   import { WORLD } from "$lib/game/controller.svelte";
+  import { formatStudyModeLabel } from "$lib/game/study-helpers";
   import type { GameSession, ObjectivePill, RoomBlueprint, ThemeDefinition } from "$lib/game/types";
 
   interface Props {
@@ -11,7 +12,7 @@
     onRoomClick: (roomId: string) => void;
     onWorldClick: (event: MouseEvent, worldElement: HTMLElement) => void;
     openHotline: () => void;
-    openMiniGame: (miniGameId: "match-pairs" | "estimation" | "curator-check") => void;
+    openMiniGame: (miniGameId: "study-quiz" | "match-pairs" | "estimation" | "curator-check") => void;
   }
 
   let {
@@ -37,20 +38,20 @@
   }
 
   function canUnlock(room: RoomBlueprint): boolean {
-    if (!game || isUnlocked(room.id) || game.coins < room.cost) {
+    if (!game || isUnlocked(room.id) || game.diplomas < room.diplomaRequirement) {
       return false;
     }
 
     return room.requiredRoomIds.every((requiredId) => isUnlocked(requiredId));
   }
 
-  function roomHasWalkthrough(room: RoomBlueprint): boolean {
-    return Boolean(room.photosphereMap?.nodes.length || room.photospherePath || room.splatPath);
+  function roomHasImmersiveScene(room: RoomBlueprint): boolean {
+    return Boolean(room.immersiveMap?.nodes.length || room.splatPath || room.panoramaPath);
   }
 
   function roomReward(room: RoomBlueprint): string {
     if (room.miniGameId) {
-      return "Program payout";
+      return "Diplomas + quest hooks";
     }
 
     return `~${Math.round(6 + room.rewardRate * 2)} coin drops`;
@@ -58,11 +59,11 @@
 
   function roomBadge(room: RoomBlueprint): string {
     if (!game) {
-      return room.cost ? `${room.cost} coins` : "Ready";
+      return room.diplomaRequirement ? `${room.diplomaRequirement} diplomas` : "Ready";
     }
 
     if (!isUnlocked(room.id)) {
-      return `${room.cost} coins`;
+      return `${room.diplomaRequirement} diplomas`;
     }
 
     const level = (game.roomLevels[room.id] ?? 0) + 1;
@@ -71,7 +72,7 @@
       return `Tier ${level}`;
     }
 
-    return room.miniGameId ? "Program" : roomHasWalkthrough(room) ? "Walk" : "Open";
+    return room.miniGameId ? "Program" : roomHasImmersiveScene(room) ? "Walk" : "Open";
   }
 
   function roomMeta(room: RoomBlueprint): string {
@@ -86,11 +87,13 @@
         return `Needs ${room.requiredRoomIds.map((requiredId) => rooms.find((item) => item.id === requiredId)?.label ?? requiredId).join(" + ")}`;
       }
 
-      return canUnlock(room) ? `Unlock ready · ${roomReward(room)}` : `Need ${room.cost - game.coins} coins · ${roomReward(room)}`;
+      return canUnlock(room)
+        ? `Unlock ready · ${roomReward(room)}`
+        : `Need ${Math.max(0, room.diplomaRequirement - game.diplomas)} diplomas · ${roomReward(room)}`;
     }
 
     const visits = game.roomVisitCounts[room.id] ?? 0;
-    const typeLabel = room.miniGameId ? "Program wing" : roomHasWalkthrough(room) ? "Immersive wing" : "Gallery wing";
+    const typeLabel = room.miniGameId ? "Program wing" : roomHasImmersiveScene(room) ? "Immersive wing" : "Gallery wing";
 
     return `${visits} visits · ${typeLabel}`;
   }
@@ -149,14 +152,14 @@
   <div class="stage-topline">
     <div class="stage-topline-copy">
       <p class="eyebrow">Live Floor</p>
-      <h2>{theme ? `${theme.label} Floor` : "Museum Floor"}</h2>
-      <p class="stage-caption">Quiz format, answer order, and memory decks now rotate from larger challenge pools.</p>
+      <h2>{theme ? `${theme.label} Year 6 Floor` : "Year 6 Floor"}</h2>
+      <p class="stage-caption">Every study hub launches a weighted random hard round: quiz 50%, free text 25%, MCQ 20%, match pairs 5%.</p>
     </div>
     <div class="topline-actions">
-      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("match-pairs")}>Memory Deck</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("estimation")}>Blind Estimate</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("curator-check")}>Triage Drill</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={openHotline}>Hotline Quiz</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("study-quiz")}>English Hub</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("estimation")}>Maths Hub</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("curator-check")}>Science Hub</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={openHotline}>Start Study Mix</button>
     </div>
   </div>
 
@@ -164,7 +167,7 @@
     <div
       bind:this={worldElement}
       class="museum-world"
-      aria-label="Playable museum floor"
+      aria-label="Playable Year 6 study floor"
       role="button"
       tabindex="0"
       style={theme ? `--world-image:url(${theme.heroImage})` : ""}
@@ -219,16 +222,16 @@
       {:else}
         <div class="stage-empty">
           <p class="eyebrow">Ready To Play</p>
-          <h3>Start a museum day to activate the floor.</h3>
-          <p>The SvelteKit app keeps generated museum imagery derived from the source concept art live in the same repo-driven world.</p>
+          <h3>Start a Year 6 study day to activate the floor.</h3>
+          <p>The SvelteKit app turns the repo art into diploma-gated study wings with splat rooms, quests, and harder curriculum rounds.</p>
         </div>
       {/if}
     </div>
 
     {#if game?.pendingCall}
       <div class="phone-indicator">
-        <span>Hotline Ringing</span>
-        <strong>Answer the curator call</strong>
+        <span>Study Alert</span>
+        <strong>Open the queued {formatStudyModeLabel(game.pendingCall)} round</strong>
       </div>
     {/if}
   </div>

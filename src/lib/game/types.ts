@@ -8,36 +8,51 @@ export interface RenderView {
   intersectsWith: string[];
 }
 
-export interface PhotosphereEdge {
+export type Vector3Tuple = [number, number, number];
+
+export interface ImmersiveEdge {
   id: string;
   toNodeId: string;
   roomId: string;
   label: string;
   headingDeg: number;
   targetHeadingDeg: number;
+  panoramaPath: string;
   imagePath: string;
 }
 
 export type SplatFormat = "ply" | "splat" | "ksplat" | "spz";
 
-export interface PhotosphereNode {
+export interface ImmersiveNode {
   id: string;
   roomId: string;
   label: string;
+  panoramaPath: string;
+  panoramaSourcePath: string;
+  panoramaMetadataPath: string;
   imagePath: string;
   sourcePath: string;
   metadataPath: string;
   splatPath?: string;
   splatMetadataPath?: string;
   splatFormat?: SplatFormat;
-  edges: PhotosphereEdge[];
+  splatSceneCenter?: Vector3Tuple;
+  splatLookAt?: Vector3Tuple;
+  splatCameraUp?: Vector3Tuple;
+  splatCameraRadius?: number;
+  splatHeadingOffsetDeg?: number;
+  edges: ImmersiveEdge[];
 }
 
-export interface PhotosphereMap {
+export interface ImmersiveMap {
   roomId: string;
   startNodeId: string;
-  nodes: PhotosphereNode[];
+  nodes: ImmersiveNode[];
 }
+
+export type PhotosphereEdge = ImmersiveEdge;
+export type PhotosphereNode = ImmersiveNode;
+export type PhotosphereMap = ImmersiveMap;
 
 export interface ThemePalette {
   accent: string;
@@ -71,6 +86,7 @@ export interface RoomBlueprint {
   previewAsset: string;
   blurb: string;
   cost: number;
+  diplomaRequirement: number;
   startUnlocked: boolean;
   requiredRoomIds: string[];
   immersiveNeighbors?: string[];
@@ -79,34 +95,51 @@ export interface RoomBlueprint {
   miniGameId?: MiniGameId;
   artPath: string;
   renderViews: RenderView[];
-  photosphereMap: PhotosphereMap | null;
-  photospherePath: string;
-  photosphereSourcePath: string;
-  photosphereMetadataPath: string;
+  immersiveMap: ImmersiveMap | null;
+  panoramaPath: string;
+  panoramaSourcePath: string;
+  panoramaMetadataPath: string;
   splatPath?: string;
   splatMetadataPath?: string;
   splatFormat?: SplatFormat;
+  splatSceneCenter?: Vector3Tuple;
+  splatLookAt?: Vector3Tuple;
+  splatCameraUp?: Vector3Tuple;
+  splatCameraRadius?: number;
+  splatHeadingOffsetDeg?: number;
+  photosphereMap: ImmersiveMap | null;
+  photospherePath: string;
+  photosphereSourcePath: string;
+  photosphereMetadataPath: string;
   previewPath: string;
   previewRenderViews: RenderView[];
 }
 
 export type MiniGameId = "study-quiz" | "estimation" | "curator-check" | "match-pairs";
 
+export interface RewardBundle {
+  coins?: number;
+  reputation?: number;
+  curiosity?: number;
+  diplomas?: number;
+  paper?: number;
+  ink?: number;
+  revisionTokens?: number;
+}
+
 export interface MiniGameDefinition {
   id: MiniGameId;
   label: string;
   roomId: string;
+  subjectFocus?: string;
   artAsset: string;
   description: string;
   formatNote: string;
   difficultyLabel: string;
-  reward: {
-    coins: number;
-    reputation: number;
-    curiosity: number;
-  };
+  reward: RewardBundle;
   artPath: string;
   renderViews: RenderView[];
+  panoramaPath: string;
   photospherePath: string;
 }
 
@@ -125,19 +158,29 @@ export interface RenderLibrary {
   views: RenderView[];
 }
 
-export interface PhotosphereAsset {
+export interface PanoramaAsset {
   asset: string;
+  panoramaPath: string;
+  panoramaSourcePath: string;
+  panoramaMetadataPath: string;
   imagePath: string;
   sourcePath: string;
   metadataPath: string;
   profile: string;
 }
 
+export type PhotosphereAsset = PanoramaAsset;
+
 export interface SplatAsset {
   asset: string;
   splatPath: string;
   metadataPath: string;
   format: SplatFormat;
+  sceneCenter?: Vector3Tuple;
+  lookAt?: Vector3Tuple;
+  cameraUp?: Vector3Tuple;
+  cameraRadius?: number;
+  headingOffsetDeg?: number;
 }
 
 export interface ConceptAsset {
@@ -148,7 +191,8 @@ export interface ConceptAsset {
   displayPath: string;
   originalPath: string;
   renderLibrary: RenderLibrary | null;
-  photosphere: PhotosphereAsset | null;
+  panorama: PanoramaAsset | null;
+  photosphere: PanoramaAsset | null;
   splat: SplatAsset | null;
 }
 
@@ -159,10 +203,12 @@ export interface ConceptGroup {
   items: ConceptAsset[];
 }
 
-export interface CallQuestion {
+export interface McqQuestion {
   id: string;
   style: string;
   difficulty: ChallengeDifficulty;
+  subject: string;
+  topic: string;
   category: string;
   context: string;
   prompt: string;
@@ -172,23 +218,32 @@ export interface CallQuestion {
   failure: string;
 }
 
-export interface EstimationScenario {
+export type CallQuestion = McqQuestion;
+
+export interface FreeTextQuestion {
   id: string;
   style: string;
   difficulty: ChallengeDifficulty;
+  subject: string;
+  topic: string;
   category: string;
-  clue: string;
+  context: string;
   prompt: string;
-  min: number;
-  max: number;
-  value: number;
-  unit: string;
+  placeholder: string;
+  acceptedAnswers: string[];
+  modelAnswer: string;
+  success: string;
+  failure: string;
 }
 
-export interface CuratorCheckScenario {
+export type EstimationScenario = FreeTextQuestion;
+
+export interface QuizQuestion {
   id: string;
   style: string;
   difficulty: ChallengeDifficulty;
+  subject: string;
+  topic: string;
   category: string;
   context: string;
   prompt: string;
@@ -196,14 +251,54 @@ export interface CuratorCheckScenario {
   correctIndex: number;
 }
 
+export type CuratorCheckScenario = QuizQuestion;
+
+export interface MatchPairDefinition {
+  id: string;
+  subject: string;
+  left: string;
+  right: string;
+}
+
+export type QuestTrigger =
+  | "mcq-failure"
+  | "quiz-failure"
+  | "free-text-failure"
+  | "locked-submission"
+  | "match-pairs-failure";
+
+export interface QuestResourceReward {
+  paper: number;
+  ink: number;
+  revisionTokens: number;
+}
+
+export interface StudyResources extends QuestResourceReward {}
+
+export interface QuestDefinition {
+  id: string;
+  title: string;
+  detail: string;
+  trigger: QuestTrigger;
+  resourceReward: QuestResourceReward;
+}
+
+export interface QuestState extends QuestDefinition {
+  createdAtDay: number;
+}
+
+export type StudyMode = "quiz" | "free-text" | "mcq" | "match-pairs";
+
 export type DailyGoalKind =
-  | "visitors-served"
-  | "revenue-earned"
   | "rooms-opened"
-  | "programs-hosted"
-  | "photospheres-visited"
-  | "reputation"
-  | "curiosity";
+  | "diplomas-earned"
+  | "challenge-completed"
+  | "mcq-completed"
+  | "quiz-completed"
+  | "free-text-completed"
+  | "match-pairs-completed"
+  | "immersive-scenes-visited"
+  | "quests-completed";
 
 export interface DailyGoal {
   id: string;
@@ -211,11 +306,7 @@ export interface DailyGoal {
   label: string;
   detail: string;
   target: number;
-  reward: {
-    coins: number;
-    reputation: number;
-    curiosity: number;
-  };
+  reward: QuestResourceReward;
   completed: boolean;
 }
 
@@ -234,6 +325,8 @@ export interface GameContent {
   summary: {
     conceptArtCount: number;
     renderLibraryCount: number;
+    immersiveCount: number;
+    panoramaCount: number;
     photosphereCount: number;
     splatCount: number;
     themeCount: number;
@@ -247,10 +340,12 @@ export interface GameContent {
   conceptGroups: ConceptGroup[];
   conceptArt: ConceptAsset[];
   renderLibraries: RenderLibrary[];
-  callDeck: CallQuestion[];
-  estimationDeck: EstimationScenario[];
-  curatorCheckDeck: CuratorCheckScenario[];
-  matchPairsDeck: string[];
+  mcqDeck: McqQuestion[];
+  quizDeck: QuizQuestion[];
+  freeTextDeck: FreeTextQuestion[];
+  matchPairDeck: MatchPairDefinition[];
+  questDeck: QuestDefinition[];
+  studyModeWeights: Record<StudyMode, number>;
 }
 
 export interface ActivityEntry {
@@ -300,23 +395,26 @@ export interface MatchCard {
 
 export type ModalState =
   | {
-      type: "call";
-      question: CallQuestion;
+      type: "mcq";
+      miniGame: MiniGameDefinition | null;
+      question: McqQuestion;
     }
   | {
-      type: "estimation";
-      miniGame: MiniGameDefinition;
-      scenario: EstimationScenario;
-      guess: number;
+      type: "free-text";
+      miniGame: MiniGameDefinition | null;
+      question: FreeTextQuestion;
+      answer: string;
     }
   | {
-      type: "curator-check";
-      miniGame: MiniGameDefinition;
-      scenario: CuratorCheckScenario;
+      type: "quiz";
+      miniGame: MiniGameDefinition | null;
+      question: QuizQuestion;
     }
   | {
       type: "match-pairs";
-      miniGame: MiniGameDefinition;
+      miniGame: MiniGameDefinition | null;
+      subject: string;
+      topic: string;
       deck: MatchCard[];
       attempts: number;
       locked: boolean;
@@ -330,6 +428,7 @@ export interface GameSession {
   day: number;
   timer: number;
   coins: number;
+  diplomas: number;
   reputation: number;
   curiosity: number;
   revenueEarned: number;
@@ -337,13 +436,22 @@ export interface GameSession {
   visitorsSeen: number;
   roomsOpenedToday: number;
   programsHosted: number;
+  immersiveVisits: number;
   photospheresVisited: number;
+  resources: StudyResources;
+  activeQuests: QuestState[];
+  questsCompleted: number;
+  completedMcqCount: number;
+  completedQuizCount: number;
+  completedFreeTextCount: number;
+  completedMatchPairsCount: number;
   selectedRoomId: string;
   unlockedRoomIds: string[];
   viewedRoomIds: string[];
-  recentQuestionIds: string[];
-  recentEstimationIds: string[];
-  recentCuratorCheckIds: string[];
+  recentMcqIds: string[];
+  recentFreeTextIds: string[];
+  recentQuizIds: string[];
+  recentQuestIds: string[];
   roomLevels: Record<string, number>;
   roomVisitCounts: Record<string, number>;
   dailyGoals: DailyGoal[];
@@ -353,7 +461,7 @@ export interface GameSession {
   activity: ActivityEntry[];
   nextVisitorSpawnAt: number;
   nextCallAt: number;
-  pendingCall: CallQuestion | null;
+  pendingCall: StudyMode | null;
   activeModal: ModalState | null;
 }
 

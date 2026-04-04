@@ -1,143 +1,147 @@
-import type { DailyGoal, GameSession } from "./types";
+import type { DailyGoal, GameSession, QuestResourceReward } from "./types";
 
 export const MAX_ROOM_LEVEL = 3;
 
 function buildGoal(definition: Omit<DailyGoal, "completed">): DailyGoal {
   return {
     ...definition,
-    completed: false
+    completed: false,
   };
+}
+
+function reward(paper: number, ink: number, revisionTokens: number): QuestResourceReward {
+  return { paper, ink, revisionTokens };
 }
 
 export function buildDailyGoals(themeId: string): DailyGoal[] {
   if (themeId === "heritage-hall") {
     return [
       buildGoal({
-        id: "heritage-visitors",
-        kind: "visitors-served",
-        label: "Welcome The Morning Crowd",
-        detail: "Guide at least 8 visitors cleanly through the floor.",
-        target: 8,
-        reward: { coins: 24, reputation: 5, curiosity: 3 }
+        id: "heritage-rewrite",
+        kind: "free-text-completed",
+        label: "Rewrite Your Essay On Paper",
+        detail: "Finish 1 extended answer and redraft it carefully, as if edits are no longer available.",
+        target: 1,
+        reward: reward(2, 1, 1),
       }),
       buildGoal({
-        id: "heritage-expansion",
-        kind: "rooms-opened",
-        label: "Reopen New Wings",
-        detail: "Unlock 2 additional rooms during the day.",
+        id: "heritage-diplomas",
+        kind: "diplomas-earned",
+        label: "Earn Reading Diplomas",
+        detail: "Secure 2 diplomas from the harder Year 6 curriculum rounds.",
         target: 2,
-        reward: { coins: 18, reputation: 4, curiosity: 4 }
+        reward: reward(1, 1, 2),
       }),
       buildGoal({
-        id: "heritage-programs",
-        kind: "programs-hosted",
-        label: "Keep The Floor Active",
-        detail: "Host 3 tours, mini-games, or immersive view sessions.",
-        target: 3,
-        reward: { coins: 16, reputation: 4, curiosity: 6 }
-      })
+        id: "heritage-open-wing",
+        kind: "rooms-opened",
+        label: "Open A New Study Wing",
+        detail: "Use your diplomas to unlock 1 new room without spending them.",
+        target: 1,
+        reward: reward(1, 0, 2),
+      }),
     ];
   }
 
   if (themeId === "marble-atrium") {
     return [
       buildGoal({
-        id: "marble-revenue",
-        kind: "revenue-earned",
-        label: "Hit Institutional Revenue",
-        detail: "Generate 120 coins from guests, pickups, and programs.",
-        target: 120,
-        reward: { coins: 28, reputation: 4, curiosity: 3 }
-      }),
-      buildGoal({
-        id: "marble-expansion",
-        kind: "rooms-opened",
-        label: "Broaden The Route",
-        detail: "Unlock 2 new spaces to raise throughput.",
+        id: "marble-working",
+        kind: "quiz-completed",
+        label: "Show The Working",
+        detail: "Complete 2 harder quiz rounds and keep your method tidy enough to check again.",
         target: 2,
-        reward: { coins: 20, reputation: 5, curiosity: 4 }
+        reward: reward(2, 0, 1),
       }),
       buildGoal({
-        id: "marble-programs",
-        kind: "programs-hosted",
-        label: "Program The Day",
-        detail: "Complete 4 tours, mini-games, or immersive view sessions.",
-        target: 4,
-        reward: { coins: 18, reputation: 6, curiosity: 5 }
-      })
+        id: "marble-diplomas",
+        kind: "diplomas-earned",
+        label: "Collect Maths Diplomas",
+        detail: "Earn 3 diplomas from the weighted curriculum mix.",
+        target: 3,
+        reward: reward(1, 1, 2),
+      }),
+      buildGoal({
+        id: "marble-match",
+        kind: "challenge-completed",
+        label: "Finish The Revision Circuit",
+        detail: "Complete 3 study activities of any kind to build revision momentum.",
+        target: 3,
+        reward: reward(1, 2, 1),
+      }),
     ];
   }
 
   if (themeId === "glasshouse-museum") {
     return [
       buildGoal({
+        id: "glasshouse-redraft",
+        kind: "free-text-completed",
+        label: "If You Cannot Edit, Redraft",
+        detail: "Complete 1 free-text answer and treat the rewrite on paper as the improvement step.",
+        target: 1,
+        reward: reward(2, 1, 2),
+      }),
+      buildGoal({
+        id: "glasshouse-match",
+        kind: "match-pairs-completed",
+        label: "Lock The Vocabulary Pairs",
+        detail: "Clear 1 match-pairs round from the Year 6 vocabulary and humanities deck.",
+        target: 1,
+        reward: reward(1, 1, 1),
+      }),
+      buildGoal({
         id: "glasshouse-immersive",
-        kind: "photospheres-visited",
-        label: "Walk The Atmosphere",
-        detail: "Enter 2 unique immersive room views.",
+        kind: "immersive-scenes-visited",
+        label: "Walk The Splat Rooms",
+        detail: "Enter 2 immersive study spaces while building your diploma total.",
         target: 2,
-        reward: { coins: 18, reputation: 3, curiosity: 8 }
+        reward: reward(1, 0, 2),
       }),
-      buildGoal({
-        id: "glasshouse-curiosity",
-        kind: "curiosity",
-        label: "Raise Wonder",
-        detail: "Push museum curiosity to 65 or higher.",
-        target: 65,
-        reward: { coins: 20, reputation: 4, curiosity: 6 }
-      }),
-      buildGoal({
-        id: "glasshouse-programs",
-        kind: "programs-hosted",
-        label: "Keep It Lively",
-        detail: "Deliver 4 tours, mini-games, or immersive view sessions.",
-        target: 4,
-        reward: { coins: 16, reputation: 4, curiosity: 7 }
-      })
     ];
   }
 
   return [
     buildGoal({
-      id: "default-visitors",
-      kind: "visitors-served",
-      label: "Welcome Visitors",
-      detail: "Serve 8 visitors during the day.",
-      target: 8,
-      reward: { coins: 20, reputation: 4, curiosity: 3 }
-    }),
-    buildGoal({
-      id: "default-programs",
-      kind: "programs-hosted",
-      label: "Run Public Programs",
-      detail: "Complete 3 tours, mini-games, or immersive visits.",
-      target: 3,
-      reward: { coins: 18, reputation: 4, curiosity: 5 }
-    }),
-    buildGoal({
-      id: "default-expansion",
-      kind: "rooms-opened",
-      label: "Open More Of The Floor",
-      detail: "Unlock 2 new rooms.",
+      id: "default-diplomas",
+      kind: "diplomas-earned",
+      label: "Earn Starter Diplomas",
+      detail: "Collect 2 diplomas from Year 6 challenge rounds.",
       target: 2,
-      reward: { coins: 16, reputation: 3, curiosity: 5 }
-    })
+      reward: reward(1, 1, 1),
+    }),
+    buildGoal({
+      id: "default-quiz",
+      kind: "quiz-completed",
+      label: "Complete Quick Quiz Rounds",
+      detail: "Finish 2 quiz rounds from the weighted challenge pool.",
+      target: 2,
+      reward: reward(1, 0, 2),
+    }),
+    buildGoal({
+      id: "default-room",
+      kind: "rooms-opened",
+      label: "Unlock The Next Room",
+      detail: "Use non-spendable diplomas to unlock 1 more study room.",
+      target: 1,
+      reward: reward(2, 1, 0),
+    }),
   ];
 }
 
-export function formatRewardLabel(reward: DailyGoal["reward"]): string {
+export function formatRewardLabel(rewardValue: QuestResourceReward): string {
   const parts: string[] = [];
 
-  if (reward.coins) {
-    parts.push(`${reward.coins} coins`);
+  if (rewardValue.paper) {
+    parts.push(`${rewardValue.paper} paper`);
   }
 
-  if (reward.reputation) {
-    parts.push(`${reward.reputation}% reputation`);
+  if (rewardValue.ink) {
+    parts.push(`${rewardValue.ink} ink`);
   }
 
-  if (reward.curiosity) {
-    parts.push(`${reward.curiosity}% curiosity`);
+  if (rewardValue.revisionTokens) {
+    parts.push(`${rewardValue.revisionTokens} revision token${rewardValue.revisionTokens === 1 ? "" : "s"}`);
   }
 
   return parts.join(" · ");
@@ -149,20 +153,24 @@ export function goalProgressForGame(game: GameSession | null, goal: DailyGoal): 
   }
 
   switch (goal.kind) {
-    case "visitors-served":
-      return game.visitorsServed;
-    case "revenue-earned":
-      return game.revenueEarned;
     case "rooms-opened":
       return game.roomsOpenedToday;
-    case "programs-hosted":
+    case "diplomas-earned":
+      return game.diplomas;
+    case "challenge-completed":
       return game.programsHosted;
-    case "photospheres-visited":
-      return game.photospheresVisited;
-    case "reputation":
-      return game.reputation;
-    case "curiosity":
-      return game.curiosity;
+    case "mcq-completed":
+      return game.completedMcqCount;
+    case "quiz-completed":
+      return game.completedQuizCount;
+    case "free-text-completed":
+      return game.completedFreeTextCount;
+    case "match-pairs-completed":
+      return game.completedMatchPairsCount;
+    case "immersive-scenes-visited":
+      return game.immersiveVisits;
+    case "quests-completed":
+      return game.questsCompleted;
     default:
       return 0;
   }
