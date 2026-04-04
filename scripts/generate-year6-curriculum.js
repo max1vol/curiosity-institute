@@ -14,6 +14,7 @@ const candidateModels = [
   "gemini-2.0-flash",
   "gemini-1.5-flash",
 ].filter(Boolean);
+const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.GOOGLE_REQUEST_TIMEOUT_MS ?? "60000", 10);
 
 const prompt = `
 Generate hard UK Year 6 curriculum game content as strict JSON.
@@ -61,11 +62,17 @@ matchPairDeck:
 
 questDeck:
 - Exactly 12 items.
-- Each item keys: id, title, detail, trigger, resourceReward.
+- Each item keys: id, title, detail, trigger, trackType, resourceReward, diplomaReward.
+- trackType must be one of:
+  "resource-test", "mastery-quest", "final-test"
 - trigger must be one of:
-  "mcq-failure", "quiz-failure", "free-text-failure", "locked-submission", "match-pairs-failure"
+  "mcq-failure", "quiz-failure", "free-text-failure", "locked-submission", "match-pairs-failure", "mastery-review", "final-diploma-test"
 - resourceReward keys: paper, ink, revisionTokens
 - resourceReward values must be integers from 0 to 3
+- diplomaReward must be 0 or 1.
+- At least 4 quests must be resource-test plain tests that mainly award resources.
+- At least 4 quests must be mastery-quest quests that are adapted to the learner's performance and feel unique to that learner.
+- At least 1 quest must be a final-test quest that awards the diploma if passed.
 - At least 2 quests must explicitly mention rewriting or reworking an answer on paper.
 - At least 1 quest must explicitly mention not being able to edit the work anymore.
 
@@ -98,43 +105,110 @@ function validatePayload(payload) {
   validateDeck("freeTextDeck", payload.freeTextDeck, 12);
   validateDeck("matchPairDeck", payload.matchPairDeck, 16);
   validateDeck("questDeck", payload.questDeck, 12);
+
+  const questTrackTypes = new Set(["resource-test", "mastery-quest", "final-test"]);
+  const questTriggers = new Set([
+    "mcq-failure",
+    "quiz-failure",
+    "free-text-failure",
+    "locked-submission",
+    "match-pairs-failure",
+    "mastery-review",
+    "final-diploma-test",
+  ]);
+  let resourceTestCount = 0;
+  let masteryQuestCount = 0;
+  let finalTestCount = 0;
+
+  for (const quest of payload.questDeck) {
+    if (!quest || typeof quest !== "object") {
+      throw new Error("questDeck items must be objects.");
+    }
+
+    if (typeof quest.id !== "string" || typeof quest.title !== "string" || typeof quest.detail !== "string") {
+      throw new Error("questDeck items must include id, title, and detail strings.");
+    }
+
+    if (!questTrackTypes.has(quest.trackType)) {
+      throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has an invalid trackType.`);
+    }
+
+    if (!questTriggers.has(quest.trigger)) {
+      throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has an invalid trigger.`);
+    }
+
+    if (!quest.resourceReward || typeof quest.resourceReward !== "object") {
+      throw new Error(`questDeck item ${quest.id ?? "<unknown>"} is missing resourceReward.`);
+    }
+
+    for (const key of ["paper", "ink", "revisionTokens"]) {
+      const value = quest.resourceReward[key];
+
+      if (!Number.isInteger(value) || value < 0 || value > 3) {
+        throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has invalid resourceReward.${key}.`);
+      }
+    }
+
+    if (!Number.isInteger(quest.diplomaReward) || quest.diplomaReward < 0 || quest.diplomaReward > 1) {
+      throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has invalid diplomaReward.`);
+    }
+
+    if (quest.trackType === "resource-test") {
+      resourceTestCount += 1;
+    } else if (quest.trackType === "mastery-quest") {
+      masteryQuestCount += 1;
+    } else if (quest.trackType === "final-test") {
+      finalTestCount += 1;
+    }
+  }
+
+  if (resourceTestCount < 4 || masteryQuestCount < 4 || finalTestCount < 1) {
+    throw new Error("questDeck must include resource-test, mastery-quest, and final-test entries.");
+  }
 }
 
 async function requestCurriculum(model, apiKey) {
   const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`);
   url.searchParams.set("key", apiKey);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), Number.isFinite(REQUEST_TIMEOUT_MS) ? REQUEST_TIMEOUT_MS : 60000);
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: "application/json",
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
-  const responseJson = await response.json();
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          responseMimeType: "application/json",
+        },
+      }),
+      signal: controller.signal,
+    });
+    const responseJson = await response.json();
 
-  if (!response.ok) {
-    const message = responseJson?.error?.message ?? `Gemini request failed with ${response.status}`;
-    throw new Error(message);
+    if (!response.ok) {
+      const message = responseJson?.error?.message ?? `Gemini request failed with ${response.status}`;
+      throw new Error(message);
+    }
+
+    const text = extractText(responseJson);
+    if (!text) {
+      throw new Error("Gemini returned no text payload.");
+    }
+
+    return JSON.parse(text);
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const text = extractText(responseJson);
-  if (!text) {
-    throw new Error("Gemini returned no text payload.");
-  }
-
-  return JSON.parse(text);
 }
 
 function toBase64Url(value) {
@@ -190,41 +264,49 @@ async function exchangeServiceAccountForAccessToken(serviceAccount) {
 
 async function requestCurriculumWithServiceAccount(model, serviceAccount, projectId, location) {
   const accessToken = await exchangeServiceAccountForAccessToken(serviceAccount);
-  const response = await fetch(
-    `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          responseMimeType: "application/json",
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), Number.isFinite(REQUEST_TIMEOUT_MS) ? REQUEST_TIMEOUT_MS : 60000);
+
+  try {
+    const response = await fetch(
+      `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
         },
-      }),
-    },
-  );
-  const responseJson = await response.json();
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: "application/json",
+          },
+        }),
+        signal: controller.signal,
+      },
+    );
+    const responseJson = await response.json();
 
-  if (!response.ok) {
-    const message = responseJson?.error?.message ?? `Vertex request failed with ${response.status}`;
-    throw new Error(message);
+    if (!response.ok) {
+      const message = responseJson?.error?.message ?? `Vertex request failed with ${response.status}`;
+      throw new Error(message);
+    }
+
+    const text = extractText(responseJson);
+    if (!text) {
+      throw new Error("Vertex Gemini returned no text payload.");
+    }
+
+    return JSON.parse(text);
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const text = extractText(responseJson);
-  if (!text) {
-    throw new Error("Vertex Gemini returned no text payload.");
-  }
-
-  return JSON.parse(text);
 }
 
 function toModuleSource(payload, model) {

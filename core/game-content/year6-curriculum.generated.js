@@ -811,132 +811,156 @@ export const YEAR6_CURRICULUM = {
       "title": "Fraction Fix-Up",
       "detail": "You struggled with the fraction multiplication. Revisit your fraction rules and try again. Make sure to write out the steps on paper!",
       "trigger": "mcq-failure",
+      "trackType": "resource-test",
       "resourceReward": {
         "paper": 2,
         "ink": 1,
         "revisionTokens": 0
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-quiz-grammar-deep-dive",
       "title": "Grammar Grandmaster",
-      "detail": "That grammar quiz was tough! Spend some time reviewing subordinate and relative clauses. Draw a sentence tree diagram to map them out on paper.",
-      "trigger": "quiz-failure",
+      "detail": "That grammar quiz was tough! This mastery quest is unique to your last answer, so spend some time reviewing subordinate and relative clauses. Draw a sentence tree diagram to map them out on paper.",
+      "trigger": "mastery-review",
+      "trackType": "mastery-quest",
       "resourceReward": {
         "paper": 2,
         "ink": 1,
         "revisionTokens": 1
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-freetext-science-explain",
       "title": "Scientific Scrutiny",
-      "detail": "Your explanation of photosynthesis needs more scientific detail. Rework your answer, focusing on precise terminology. You won't be able to edit this one again, so make it count!",
-      "trigger": "free-text-failure",
+      "detail": "Your explanation of photosynthesis needs more scientific detail. This mastery quest is tailored to your wording, so rework your answer and focus on precise terminology. You won't be able to edit this one again, so make it count!",
+      "trigger": "mastery-review",
+      "trackType": "mastery-quest",
       "resourceReward": {
         "paper": 0,
         "ink": 0,
         "revisionTokens": 2
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-locked-history-research",
       "title": "History Hunt",
       "detail": "A topic is locked! You need to research the key impacts of the Roman Empire on Britain before you can proceed. Find three major contributions.",
       "trigger": "locked-submission",
+      "trackType": "resource-test",
       "resourceReward": {
         "paper": 1,
         "ink": 1,
         "revisionTokens": 1
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-match-geography-maps",
       "title": "Map Masterclass",
-      "detail": "You struggled with matching geographical features. Take a world map and label five major climate zones. This will help reinforce your knowledge.",
-      "trigger": "match-pairs-failure",
+      "detail": "You struggled with matching geographical features. This mastery quest adapts to your route and takes your performance into account, so label five major climate zones on a world map.",
+      "trigger": "mastery-review",
+      "trackType": "mastery-quest",
       "resourceReward": {
         "paper": 1,
         "ink": 2,
         "revisionTokens": 0
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-mcq-percentage-practice",
       "title": "Percentage Power-Up",
       "detail": "Reverse percentages can be tricky! Write down the steps for calculating an original price after a percentage increase. Practice with a few examples.",
       "trigger": "mcq-failure",
+      "trackType": "resource-test",
       "resourceReward": {
         "paper": 1,
         "ink": 0,
         "revisionTokens": 1
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-quiz-algebra-rethink",
       "title": "Algebraic Ascent",
-      "detail": "Your algebraic equation didn't quite balance. Go back and carefully rearrange the terms, showing each step on paper to avoid errors.",
-      "trigger": "quiz-failure",
+      "detail": "Your algebraic equation didn't quite balance. This mastery quest is unique to your performance, so go back and carefully rearrange the terms on paper to avoid errors.",
+      "trigger": "mastery-review",
+      "trackType": "mastery-quest",
       "resourceReward": {
         "paper": 2,
         "ink": 1,
         "revisionTokens": 0
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-freetext-english-rephrase",
       "title": "Word Weaver",
-      "detail": "Your explanation of personification could be clearer. Rework your definition and example, aiming for conciseness and impact. You cannot re-submit this answer.",
-      "trigger": "free-text-failure",
+      "detail": "Your explanation of personification could be clearer. This mastery quest is unique to your last response, so rework your definition and example for conciseness and impact. You cannot re-submit this answer.",
+      "trigger": "mastery-review",
+      "trackType": "mastery-quest",
       "resourceReward": {
         "paper": 0,
         "ink": 0,
         "revisionTokens": 2
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-locked-science-diagram",
       "title": "Body System Blueprint",
       "detail": "Unlock the next science challenge by drawing and labelling the main parts of the human circulatory system.",
       "trigger": "locked-submission",
+      "trackType": "resource-test",
       "resourceReward": {
         "paper": 1,
         "ink": 2,
         "revisionTokens": 0
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-match-history-timeline",
       "title": "Timeline Traveller",
-      "detail": "Matching historical figures and events proved difficult. Create a short timeline of the Norman Conquest to put key events in order.",
-      "trigger": "match-pairs-failure",
+      "detail": "Matching historical figures and events proved difficult. This mastery quest adapts to your missed pairs, so create a short timeline of the Norman Conquest to put key events in order.",
+      "trigger": "mastery-review",
+      "trackType": "mastery-quest",
       "resourceReward": {
         "paper": 1,
         "ink": 1,
         "revisionTokens": 1
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-mcq-science-review",
       "title": "Light Lab",
-      "detail": "The light question was missed. Conduct a simple experiment at home to observe reflection and refraction, then draw what you saw.",
+      "detail": "The light question was missed. This is a plain resource test, so conduct a simple experiment at home to observe reflection and refraction, then draw what you saw.",
       "trigger": "mcq-failure",
+      "trackType": "resource-test",
       "resourceReward": {
         "paper": 1,
         "ink": 1,
         "revisionTokens": 0
-      }
+      },
+      "diplomaReward": 0
     },
     {
       "id": "quest-quiz-geography-mapping",
       "title": "Global Grid",
-      "detail": "You struggled with the coordinate question. Practice plotting points in all four quadrants on a grid you draw yourself.",
-      "trigger": "quiz-failure",
+      "detail": "You struggled with the coordinate question. This is the final diploma test for this route, so practice plotting points in all four quadrants on a grid you draw yourself and pass to earn the diploma.",
+      "trigger": "final-diploma-test",
+      "trackType": "final-test",
       "resourceReward": {
         "paper": 1,
         "ink": 1,
         "revisionTokens": 1
-      }
+      },
+      "diplomaReward": 1
     }
   ]
 };

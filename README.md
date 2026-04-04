@@ -33,6 +33,8 @@ Every prompted study round comes from the generated Year 6 curriculum deck with 
 
 Failure paths can generate quests based on the work that went wrong, including rewrite-on-paper style tasks and locked-topic recovery tasks.
 
+The quest deck now also separates plain resource tests, adaptive mastery quests, and final diploma tests. Resource tests earn paper, ink, and revision tokens. Mastery quests are meant to be personalized follow-ups based on the learner's performance. Final tests award the diploma when passed.
+
 ## Three Main 3D Gameplay Directions
 
 These three concept images show the same gameplay idea with clearly different visual languages:
@@ -113,6 +115,7 @@ Supported auth modes:
 3. Run `npm run render`.
 
 You can also keep credentials outside the repo in a shell-style keys file and run with `KEYS_FILE=/absolute/path/to/keys.txt npm run render`.
+The curriculum generator follows the same pattern, so `KEYS_FILE=../keys.txt node scripts/generate-year6-curriculum.js` will load local Google credentials when present.
 
 If that keys file contains `GOOGLE_SERVICE_ACCOUNT_JSON`, you can force Vertex-style auth with `GOOGLE_AUTH_MODE=service-account`.
 
@@ -150,14 +153,14 @@ Pipeline entrypoint:
 
 ## Playable App
 
-This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a lightweight museum-management game.
+This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a Year 6 learning game.
 
 What it includes:
 
 - direct curator movement with `WASD`, arrow keys, or click-to-move
-- coin collection, visitor flow, room unlocking, and guided expansion
-- a live `Call The Curator` hotline event loop
-- mini-games for quiz, estimation, curator checks, and match pairs
+- hard Year 6 study rounds with weighted MCQ, quiz, free-text, and match-pairs formats
+- diploma-gated room unlocks and quest-resource-based upgrades
+- optional Google account sign-in for per-account autosave slots on the same browser
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
 - immersive room scenes that prefer Gaussian splats and fall back to panorama textures in the 3D viewer
 - an opaque, non-blurred interface so the deployed app stays readable instead of smearing the whole screen
@@ -210,6 +213,10 @@ To sync the repo assets into the app and start the local dev server:
 ```bash
 npm run dev
 ```
+
+To enable Google sign-in in the client UI, set `PUBLIC_GOOGLE_CLIENT_ID` to a Google OAuth web client ID before starting the app.
+
+The repo `prepare` step also enables `.githooks/`, which auto-normalizes legacy local branch prefixes to `max1vol/*`.
 
 The app sync happens automatically before `dev`, `build`, `preview`, and `check`.
 

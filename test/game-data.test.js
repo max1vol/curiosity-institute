@@ -96,7 +96,17 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
   for (const quest of data.questDeck) {
     assert.ok(quest.title.length > 0);
     assert.ok(quest.resourceReward.paper + quest.resourceReward.ink + quest.resourceReward.revisionTokens > 0);
+    assert.ok(["resource-test", "mastery-quest", "final-test"].includes(quest.trackType));
+    assert.ok(Number.isInteger(quest.diplomaReward));
   }
+
+  assert.ok(data.questDeck.some((quest) => quest.trackType === "resource-test"));
+  assert.ok(data.questDeck.some((quest) => quest.trackType === "mastery-quest" && quest.trigger === "mastery-review"));
+  assert.ok(
+    data.questDeck.some(
+      (quest) => quest.trackType === "final-test" && quest.trigger === "final-diploma-test" && quest.diplomaReward === 1,
+    ),
+  );
 });
 
 test("buildGameData discovers splat-backed immersive rooms", async () => {
