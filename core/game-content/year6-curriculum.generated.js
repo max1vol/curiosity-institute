@@ -1,724 +1,716 @@
 export const YEAR6_CURRICULUM = {
-  "generatedAt": "2026-04-03T20:19:58.160Z",
+  "generatedAt": "2026-04-04T18:55:01.580Z",
   "model": "gemini-2.5-flash",
   "mcqDeck": [
     {
-      "id": "maths-fraction-multiply-expert",
+      "id": "maths-ratio-scaling-expert",
       "style": "Challenge",
       "difficulty": "Expert",
       "subject": "Maths",
-      "topic": "Fractions",
-      "context": "Solving complex fraction problems.",
-      "prompt": "A recipe requires 3/4 kg of flour. If you only have 2/5 of the required amount, how much flour do you have?",
+      "topic": "Ratio and Proportion",
+      "context": "A specific shade of green paint is made by mixing blue and yellow paint in a ratio of 3:5. You have 1.2 litres of blue paint.",
+      "prompt": "What is the maximum amount of green paint (in litres) you can make?",
       "choices": [
-        "3/10 kg",
-        "6/20 kg",
-        "15/8 kg",
-        "8/15 kg"
-      ],
-      "correctIndex": 0,
-      "success": "Excellent fraction work!",
-      "failure": "Review multiplying fractions."
-    },
-    {
-      "id": "english-passive-voice-expert",
-      "style": "Grammar Guru",
-      "difficulty": "Expert",
-      "subject": "English",
-      "topic": "Grammar",
-      "context": "Identifying and transforming sentence structures.",
-      "prompt": "Which sentence correctly transforms 'The strong wind uprooted the ancient oak tree' into the passive voice?",
-      "choices": [
-        "The ancient oak tree was uprooted by the strong wind.",
-        "The ancient oak tree uprooted the strong wind.",
-        "Uprooted by the strong wind was the ancient oak tree.",
-        "The strong wind was uprooting the ancient oak tree."
-      ],
-      "correctIndex": 0,
-      "success": "Masterful passive voice!",
-      "failure": "Active vs. Passive needs a refresh."
-    },
-    {
-      "id": "science-light-refraction-advanced",
-      "style": "Science Sleuth",
-      "difficulty": "Advanced",
-      "subject": "Science",
-      "topic": "Light",
-      "context": "Understanding how light interacts with different materials.",
-      "prompt": "What phenomenon causes a spoon to appear bent when placed in a glass of water?",
-      "choices": [
-        "Reflection",
-        "Refraction",
-        "Diffraction",
-        "Absorption"
+        "3.2 litres",
+        "2 litres",
+        "1.92 litres",
+        "2.4 litres"
       ],
       "correctIndex": 1,
-      "success": "Spot on with refraction!",
-      "failure": "Light behaves in tricky ways."
+      "success": "Excellent ratio work!",
+      "failure": "Revisit ratio scaling."
     },
     {
-      "id": "history-roman-impact-expert",
-      "style": "Historian's Challenge",
+      "id": "english-subordinate-expert",
+      "style": "Analysis",
+      "difficulty": "Expert",
+      "subject": "English",
+      "topic": "Grammar - Clauses",
+      "context": "In the sentence: 'Although it was raining heavily, the children decided to play outside because they loved splashing in puddles.'",
+      "prompt": "How many subordinate clauses are present in the sentence?",
+      "choices": [
+        "One",
+        "Two",
+        "Three",
+        "None"
+      ],
+      "correctIndex": 1,
+      "success": "Clause detection mastered!",
+      "failure": "Review subordinate clauses."
+    },
+    {
+      "id": "science-ecosystem-advanced",
+      "style": "Application",
+      "difficulty": "Advanced",
+      "subject": "Science",
+      "topic": "Living Things and Their Habitats",
+      "context": "A sudden, prolonged drought affects a grassland ecosystem.",
+      "prompt": "Which of the following is the most immediate and widespread impact on the food web?",
+      "choices": [
+        "An increase in decomposer populations.",
+        "A decrease in primary consumer populations.",
+        "An increase in predator populations.",
+        "A shift in the ecosystem's dominant plant species."
+      ],
+      "correctIndex": 1,
+      "success": "Understood ecosystem dynamics!",
+      "failure": "Think about food web foundations."
+    },
+    {
+      "id": "history-roman-legacy-expert",
+      "style": "Synthesis",
       "difficulty": "Expert",
       "subject": "History",
-      "topic": "Roman Empire",
-      "context": "Analysing the long-term effects of Roman rule in Britain.",
-      "prompt": "Which of these is NOT a significant lasting impact of the Roman occupation on Britain?",
+      "topic": "Ancient Rome",
+      "context": "The Roman Empire left a lasting impact on Britain.",
+      "prompt": "Which of these Roman innovations primarily facilitated long-distance trade and military movement across their empire?",
       "choices": [
-        "Introduction of Christianity",
-        "Establishment of road networks",
-        "Founding of major cities like London",
-        "Widespread adoption of the Latin language"
+        "Advanced sewerage systems",
+        "Underfloor heating (hypocausts)",
+        "Extensive network of paved roads",
+        "Public baths and forums"
       ],
-      "correctIndex": 3,
-      "success": "Keen historical insight!",
-      "failure": "Revisit Roman legacy."
+      "correctIndex": 2,
+      "success": "Key Roman legacy identified!",
+      "failure": "Consider infrastructure's purpose."
     },
     {
       "id": "geography-climate-zone-advanced",
-      "style": "World Explorer",
+      "style": "Categorisation",
       "difficulty": "Advanced",
       "subject": "Geography",
       "topic": "Climate Zones",
-      "context": "Identifying characteristics of global climate regions.",
-      "prompt": "Which climate zone is characterised by high temperatures, heavy rainfall, and dense biodiversity, typically found near the Equator?",
+      "context": "Consider a region characterised by hot, dry summers and mild, wet winters, often found on the western coasts of continents.",
+      "prompt": "Which climate zone is being described?",
       "choices": [
-        "Temperate",
+        "Tropical",
+        "Mediterranean",
         "Polar",
-        "Tropical Rainforest",
-        "Desert"
-      ],
-      "correctIndex": 2,
-      "success": "Excellent geographical knowledge!",
-      "failure": "Climate zones can be tricky."
-    },
-    {
-      "id": "maths-ratio-problem-advanced",
-      "style": "Problem Solver",
-      "difficulty": "Advanced",
-      "subject": "Maths",
-      "topic": "Ratio",
-      "context": "Applying ratio to real-world scenarios.",
-      "prompt": "A fruit punch is made by mixing orange juice and pineapple juice in a ratio of 3:2. If you want to make 2.5 litres of punch, how much orange juice do you need?",
-      "choices": [
-        "1 litre",
-        "1.25 litres",
-        "1.5 litres",
-        "1.75 litres"
-      ],
-      "correctIndex": 2,
-      "success": "Ratio master!",
-      "failure": "Double-check your ratio calculations."
-    },
-    {
-      "id": "english-subordinate-clause-expert",
-      "style": "Sentence Architect",
-      "difficulty": "Expert",
-      "subject": "English",
-      "topic": "Grammar",
-      "context": "Understanding complex sentence structures.",
-      "prompt": "In the sentence 'Although it was raining heavily, the children decided to play outside', what type of clause is 'Although it was raining heavily'?",
-      "choices": [
-        "Main clause",
-        "Relative clause",
-        "Subordinate clause",
-        "Noun phrase"
-      ],
-      "correctIndex": 2,
-      "success": "Grammar genius!",
-      "failure": "Clauses can be confusing."
-    },
-    {
-      "id": "science-circulatory-system-advanced",
-      "style": "Body Explorer",
-      "difficulty": "Advanced",
-      "subject": "Science",
-      "topic": "Human Body",
-      "context": "Identifying components and functions of the circulatory system.",
-      "prompt": "Which component of blood is primarily responsible for carrying oxygen around the body?",
-      "choices": [
-        "White blood cells",
-        "Platelets",
-        "Plasma",
-        "Red blood cells"
-      ],
-      "correctIndex": 3,
-      "success": "Fantastic human body knowledge!",
-      "failure": "Review blood components."
-    },
-    {
-      "id": "history-viking-settlement-expert",
-      "style": "Past Investigator",
-      "difficulty": "Expert",
-      "subject": "History",
-      "topic": "Vikings",
-      "context": "Analysing the motivations and impacts of Viking settlement.",
-      "prompt": "Which of these was a primary reason for the Vikings' extensive settlement in parts of Britain, particularly the Danelaw?",
-      "choices": [
-        "To spread Christianity",
-        "To escape political turmoil in Scandinavia",
-        "To find fertile land for farming and new trading opportunities",
-        "To establish a unified British kingdom"
-      ],
-      "correctIndex": 2,
-      "success": "You're a Viking expert!",
-      "failure": "Revisit Viking expansion."
-    },
-    {
-      "id": "geography-contour-lines-advanced",
-      "style": "Map Master",
-      "difficulty": "Advanced",
-      "subject": "Geography",
-      "topic": "Map Skills",
-      "context": "Interpreting topographical maps.",
-      "prompt": "On a topographical map, what do closely spaced contour lines indicate?",
-      "choices": [
-        "A flat area",
-        "A gentle slope",
-        "A steep slope",
-        "A river valley"
-      ],
-      "correctIndex": 2,
-      "success": "You've mapped it out!",
-      "failure": "Contour lines can be tricky."
-    },
-    {
-      "id": "maths-percentage-increase-expert",
-      "style": "Financial Whiz",
-      "difficulty": "Expert",
-      "subject": "Maths",
-      "topic": "Percentages",
-      "context": "Calculating percentage changes.",
-      "prompt": "A shop increases the price of a toy by 20%. If the new price is £24, what was the original price?",
-      "choices": [
-        "£19.20",
-        "£20.00",
-        "£28.80",
-        "£22.00"
+        "Temperate"
       ],
       "correctIndex": 1,
-      "success": "Percentage pro!",
-      "failure": "Reverse percentage needs practice."
+      "success": "Climate zone expertise!",
+      "failure": "Review global climate patterns."
     },
     {
-      "id": "english-literary-metaphor-advanced",
-      "style": "Literary Critic",
-      "difficulty": "Advanced",
-      "subject": "English",
-      "topic": "Literary Devices",
-      "context": "Identifying figures of speech.",
-      "prompt": "Which of the following sentences contains a metaphor?",
+      "id": "maths-algebra-expert",
+      "style": "Problem Solving",
+      "difficulty": "Expert",
+      "subject": "Maths",
+      "topic": "Algebra",
+      "context": "If 3x + 7 = 22, and y = x - 2, what is the value of y?",
+      "prompt": "Calculate the value of y.",
       "choices": [
-        "The clouds looked like fluffy cotton wool.",
-        "The wind whispered secrets through the trees.",
-        "Her smile was the sun breaking through a cloudy day.",
-        "He ran as fast as a cheetah."
+        "3",
+        "5",
+        "7",
+        "1"
+      ],
+      "correctIndex": 3,
+      "success": "Algebraic wizardry!",
+      "failure": "Check your calculations."
+    },
+    {
+      "id": "english-figurative-expert",
+      "style": "Interpretation",
+      "difficulty": "Expert",
+      "subject": "English",
+      "topic": "Figurative Language",
+      "context": "In the poem, 'The wind whispered secrets through the rustling leaves.'",
+      "prompt": "What literary device is primarily used in this line to evoke a sense of mystery and life?",
+      "choices": [
+        "Simile",
+        "Metaphor",
+        "Personification",
+        "Hyperbole"
       ],
       "correctIndex": 2,
-      "success": "Literary insight!",
-      "failure": "Metaphors are more direct than similes."
+      "success": "Figurative language decoded!",
+      "failure": "Recall literary devices."
+    },
+    {
+      "id": "science-light-reflection-advanced",
+      "style": "Conceptual",
+      "difficulty": "Advanced",
+      "subject": "Science",
+      "topic": "Light",
+      "context": "You are looking at your reflection in a still pond.",
+      "prompt": "Why does your reflection appear upside down if the surface of the water is slightly disturbed?",
+      "choices": [
+        "The light rays bend differently.",
+        "The water surface acts like a concave mirror.",
+        "The disturbed surface causes irregular reflection.",
+        "This phenomenon does not occur."
+      ],
+      "correctIndex": 2,
+      "success": "Understood light behaviour!",
+      "failure": "Consider how surfaces affect light."
+    },
+    {
+      "id": "history-ww2-impact-expert",
+      "style": "Consequence",
+      "difficulty": "Expert",
+      "subject": "History",
+      "topic": "World War 2",
+      "context": "World War 2 profoundly changed British society.",
+      "prompt": "Which of these was a direct long-term social consequence in Britain after WWII?",
+      "choices": [
+        "Immediate end to rationing.",
+        "Formation of the European Union.",
+        "Creation of the National Health Service.",
+        "Return to pre-war class structures."
+      ],
+      "correctIndex": 2,
+      "success": "WW2 impact identified!",
+      "failure": "Review post-war reforms."
+    },
+    {
+      "id": "geography-rivers-features-advanced",
+      "style": "Identification",
+      "difficulty": "Advanced",
+      "subject": "Geography",
+      "topic": "Rivers",
+      "context": "As a river flows from its source to its mouth, its characteristics change.",
+      "prompt": "Which landform is typically created by deposition in the lower course of a mature river?",
+      "choices": [
+        "V-shaped valley",
+        "Waterfall",
+        "Meander",
+        "Floodplain"
+      ],
+      "correctIndex": 3,
+      "success": "River features known!",
+      "failure": "Distinguish erosion from deposition."
+    },
+    {
+      "id": "maths-volume-expert",
+      "style": "Measurement",
+      "difficulty": "Expert",
+      "subject": "Maths",
+      "topic": "Volume",
+      "context": "A rectangular prism has a length of 8 cm, a width of 5 cm, and a volume of 200 cubic cm.",
+      "prompt": "What is the height of the prism?",
+      "choices": [
+        "4 cm",
+        "5 cm",
+        "6 cm",
+        "2.5 cm"
+      ],
+      "correctIndex": 1,
+      "success": "Volume calculation perfect!",
+      "failure": "Recall volume formula."
+    },
+    {
+      "id": "english-modal-verbs-advanced",
+      "style": "Usage",
+      "difficulty": "Advanced",
+      "subject": "English",
+      "topic": "Grammar - Modal Verbs",
+      "context": "Consider the sentence: 'You _______ complete this challenging task by yourself, if you try hard enough.'",
+      "prompt": "Which modal verb best fits the blank to express strong possibility or ability?",
+      "choices": [
+        "should",
+        "might",
+        "could",
+        "can"
+      ],
+      "correctIndex": 3,
+      "success": "Modal verb mastery!",
+      "failure": "Review modal verb meanings."
     }
   ],
   "quizDeck": [
     {
-      "id": "maths-algebra-equation-expert",
-      "style": "Algebra Ace",
+      "id": "maths-percentages-reasoning-expert",
+      "style": "Reasoning",
       "difficulty": "Expert",
       "subject": "Maths",
-      "topic": "Algebra",
-      "context": "Solving multi-step algebraic equations.",
-      "prompt": "If 3x + 7 = 2x + 15, what is the value of x?",
+      "topic": "Percentages",
+      "context": "A shop offers a 20% discount on a toy. Later, they increase the discounted price by 20%.",
+      "prompt": "Is the final price of the toy higher, lower, or the same as the original price?",
       "choices": [
-        "x = 5",
-        "x = 8",
-        "x = 22",
-        "x = 10"
+        "Higher",
+        "Lower",
+        "The same",
+        "Depends on the original price"
       ],
       "correctIndex": 1
     },
     {
-      "id": "english-cohesive-devices-advanced",
-      "style": "Writing Wizard",
+      "id": "english-passive-active-reasoning-advanced",
+      "style": "Reasoning",
       "difficulty": "Advanced",
       "subject": "English",
-      "topic": "Writing",
-      "context": "Identifying elements that create flow in writing.",
-      "prompt": "Which of these words would best act as a cohesive device to link two contrasting ideas in a paragraph?",
+      "topic": "Grammar - Voice",
+      "context": "A journalist wants to emphasise the bravery of the firefighters rather than the fire itself.",
+      "prompt": "Which sentence structure should they primarily use?",
       "choices": [
-        "Consequently",
-        "Furthermore",
-        "However",
-        "Similarly"
-      ],
-      "correctIndex": 2
-    },
-    {
-      "id": "science-classification-expert",
-      "style": "Biologist Brain",
-      "difficulty": "Expert",
-      "subject": "Science",
-      "topic": "Living Things",
-      "context": "Applying scientific classification principles.",
-      "prompt": "A scientist discovers a new organism that is multicellular, has cell walls, and obtains nutrients by absorption. Into which kingdom would it most likely be classified?",
-      "choices": [
-        "Animalia",
-        "Plantae",
-        "Fungi",
-        "Protista"
-      ],
-      "correctIndex": 2
-    },
-    {
-      "id": "history-victorian-impact-advanced",
-      "style": "Victorian Scholar",
-      "difficulty": "Advanced",
-      "subject": "History",
-      "topic": "Victorians",
-      "context": "Understanding the social changes during the Victorian era.",
-      "prompt": "Which of these significant social reforms was NOT primarily a characteristic of the Victorian era in Britain?",
-      "choices": [
-        "The rise of public education for all children.",
-        "Major improvements in sanitation and public health.",
-        "The abolition of the transatlantic slave trade.",
-        "Increased focus on child labour laws and factory conditions."
-      ],
-      "correctIndex": 2
-    },
-    {
-      "id": "geography-globalisation-expert",
-      "style": "Global Thinker",
-      "difficulty": "Expert",
-      "subject": "Geography",
-      "topic": "Globalisation",
-      "context": "Understanding complex global economic processes.",
-      "prompt": "Which factor is most responsible for the rapid increase in globalisation over the last few decades?",
-      "choices": [
-        "Increased local farming",
-        "Advances in transportation and communication technology",
-        "Decrease in international trade agreements",
-        "Strict national border controls"
+        "Passive voice, focusing on the fire.",
+        "Active voice, focusing on the firefighters.",
+        "Passive voice, focusing on the damage.",
+        "Active voice, focusing on the building."
       ],
       "correctIndex": 1
     },
     {
-      "id": "maths-coordinates-advanced",
-      "style": "Coordinate Coder",
-      "difficulty": "Advanced",
-      "subject": "Maths",
-      "topic": "Coordinates",
-      "context": "Interpreting and plotting points in all four quadrants.",
-      "prompt": "A square has vertices at (2,2), (-2,2), and (-2,-2). What are the coordinates of the fourth vertex?",
-      "choices": [
-        "(2,-2)",
-        "(-2,0)",
-        "(0,2)",
-        "(2,0)"
-      ],
-      "correctIndex": 0
-    },
-    {
-      "id": "english-relative-clause-expert",
-      "style": "Grammar Architect",
+      "id": "science-materials-properties-expert",
+      "style": "Reasoning",
       "difficulty": "Expert",
-      "subject": "English",
-      "topic": "Grammar",
-      "context": "Identifying and using relative clauses.",
-      "prompt": "Which sentence correctly uses a relative clause to add extra information about the subject?",
+      "subject": "Science",
+      "topic": "Properties of Materials",
+      "context": "You need to build a bridge that can support heavy loads and withstand harsh weather.",
+      "prompt": "Which combination of material properties would be most crucial for the main support beams?",
       "choices": [
-        "The book was exciting, and it was about space.",
-        "The book, which was about space, was exciting.",
-        "Exciting was the book about space.",
-        "About space was the exciting book."
+        "High flexibility and low density.",
+        "High strength and high resistance to corrosion.",
+        "Good electrical conductivity and transparency.",
+        "High thermal insulation and low melting point."
       ],
       "correctIndex": 1
     },
     {
-      "id": "science-forces-levers-advanced",
-      "style": "Physics Pundit",
-      "difficulty": "Advanced",
-      "subject": "Science",
-      "topic": "Forces",
-      "context": "Understanding the mechanics of simple machines.",
-      "prompt": "In a first-class lever, where is the fulcrum located relative to the effort and load?",
-      "choices": [
-        "Between the effort and the load",
-        "At one end, with the load in the middle",
-        "At one end, with the effort in the middle",
-        "It can be anywhere"
-      ],
-      "correctIndex": 0
-    },
-    {
-      "id": "history-ww2-causes-expert",
-      "style": "War Historian",
-      "difficulty": "Expert",
-      "subject": "History",
-      "topic": "World War II",
-      "context": "Analysing the complex causes leading to global conflict.",
-      "prompt": "Which of these factors was NOT a significant long-term cause of World War II?",
-      "choices": [
-        "The Treaty of Versailles' harsh terms on Germany.",
-        "The failure of the League of Nations to prevent aggression.",
-        "The rise of aggressive totalitarian regimes.",
-        "The immediate assassination of Archduke Franz Ferdinand."
-      ],
-      "correctIndex": 3
-    },
-    {
-      "id": "geography-rivers-formation-advanced",
-      "style": "Earth Scientist",
-      "difficulty": "Advanced",
-      "subject": "Geography",
-      "topic": "Physical Geography",
-      "context": "Understanding natural processes shaping landscapes.",
-      "prompt": "Which process is primarily responsible for the formation of a V-shaped valley in the upper course of a river?",
-      "choices": [
-        "Lateral erosion",
-        "Deposition",
-        "Vertical erosion",
-        "Meandering"
-      ],
-      "correctIndex": 2
-    },
-    {
-      "id": "maths-volume-problem-expert",
-      "style": "Spatial Thinker",
-      "difficulty": "Expert",
-      "subject": "Maths",
-      "topic": "Volume",
-      "context": "Calculating the volume of compound shapes.",
-      "prompt": "A rectangular prism has a length of 5cm, width of 3cm, and height of 4cm. If a cube with side length 2cm is removed from it, what is the remaining volume?",
-      "choices": [
-        "60 cubic cm",
-        "52 cubic cm",
-        "56 cubic cm",
-        "48 cubic cm"
-      ],
-      "correctIndex": 2
-    },
-    {
-      "id": "english-vocabulary-etymology-advanced",
-      "style": "Word Originator",
-      "difficulty": "Advanced",
-      "subject": "English",
-      "topic": "Vocabulary",
-      "context": "Understanding the origins of words.",
-      "prompt": "Which pair of words shares a common Latin root related to 'light'?",
-      "choices": [
-        "Vision and Vista",
-        "Luminous and Illuminate",
-        "Audible and Audience",
-        "Benevolent and Benefit"
-      ],
-      "correctIndex": 1
-    },
-    {
-      "id": "science-evolution-adaptations-expert",
-      "style": "Evolutionary Thinker",
-      "difficulty": "Expert",
-      "subject": "Science",
-      "topic": "Evolution",
-      "context": "Understanding how species change over time.",
-      "prompt": "Which term describes a characteristic that helps an organism survive and reproduce in its specific environment?",
-      "choices": [
-        "Mutation",
-        "Inheritance",
-        "Adaptation",
-        "Variation"
-      ],
-      "correctIndex": 2
-    },
-    {
-      "id": "history-ancient-greece-legacy-advanced",
-      "style": "Classical Scholar",
+      "id": "history-industrial-revolution-reasoning-advanced",
+      "style": "Reasoning",
       "difficulty": "Advanced",
       "subject": "History",
-      "topic": "Ancient Greece",
-      "context": "Identifying the enduring contributions of ancient civilisations.",
-      "prompt": "Which concept, fundamental to modern governance, originated in Ancient Greece?",
+      "topic": "Industrial Revolution",
+      "context": "During the Industrial Revolution, many people moved from rural areas to cities.",
+      "prompt": "What was the primary economic 'pull' factor attracting people to urban centres?",
       "choices": [
-        "Absolute Monarchy",
-        "Feudalism",
-        "Democracy",
-        "Theocracy"
+        "Better sanitation and public health.",
+        "Access to higher education for children.",
+        "Availability of factory jobs and higher wages.",
+        "Improved agricultural techniques in cities."
       ],
       "correctIndex": 2
     },
     {
-      "id": "geography-environmental-issues-expert",
-      "style": "Eco-Champion",
+      "id": "geography-deforestation-reasoning-expert",
+      "style": "Reasoning",
       "difficulty": "Expert",
       "subject": "Geography",
       "topic": "Environmental Issues",
-      "context": "Understanding global environmental challenges.",
-      "prompt": "Which of these is a primary consequence of deforestation on a global scale?",
+      "context": "Large-scale deforestation is occurring in a tropical rainforest.",
+      "prompt": "Which of the following is the most significant global impact of this deforestation?",
       "choices": [
-        "Increased biodiversity",
-        "Lower atmospheric carbon dioxide levels",
-        "Desertification and soil erosion",
-        "Improved local water cycles"
+        "A decrease in local rainfall.",
+        "An increase in soil erosion.",
+        "A reduction in global biodiversity and carbon sequestration.",
+        "A shift in local climate patterns."
       ],
       "correctIndex": 2
     },
     {
-      "id": "maths-mean-average-advanced",
-      "style": "Data Analyst",
+      "id": "maths-mean-median-reasoning-advanced",
+      "style": "Reasoning",
       "difficulty": "Advanced",
       "subject": "Maths",
       "topic": "Statistics",
-      "context": "Calculating and applying measures of average.",
-      "prompt": "The mean height of 4 children is 140cm. If a fifth child joins them with a height of 150cm, what is the new mean height of all 5 children?",
+      "context": "A class has test scores: 50, 60, 70, 70, 100. A new student joins with a score of 10.",
+      "prompt": "How will adding the new student's score affect the mean and median of the class scores?",
       "choices": [
-        "142cm",
-        "142.5cm",
-        "145cm",
-        "148cm"
+        "Both mean and median will decrease.",
+        "Mean will decrease, median will increase.",
+        "Mean will increase, median will decrease.",
+        "Both mean and median will increase."
+      ],
+      "correctIndex": 0
+    },
+    {
+      "id": "english-inference-reasoning-expert",
+      "style": "Reasoning",
+      "difficulty": "Expert",
+      "subject": "English",
+      "topic": "Reading Comprehension - Inference",
+      "context": "The old house stood silent, its windows like vacant eyes staring out at the overgrown garden. A faint, musty smell clung to the air, and a single, dusty rocking chair swayed gently on the porch, though no breeze stirred.",
+      "prompt": "What can you infer about the house and its recent history from this description?",
+      "choices": [
+        "It is brand new and recently built.",
+        "It is well-maintained and frequently visited.",
+        "It has been abandoned for some time.",
+        "A family is currently living there."
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": "science-food-chains-reasoning-advanced",
+      "style": "Reasoning",
+      "difficulty": "Advanced",
+      "subject": "Science",
+      "topic": "Food Chains",
+      "context": "In a forest ecosystem, foxes eat rabbits, and rabbits eat grass. If a disease drastically reduces the rabbit population...",
+      "prompt": "What is the most likely immediate effect on the fox and grass populations?",
+      "choices": [
+        "Fox population increases, grass population decreases.",
+        "Fox population decreases, grass population increases.",
+        "Both fox and grass populations decrease.",
+        "Both fox and grass populations increase."
       ],
       "correctIndex": 1
+    },
+    {
+      "id": "history-viking-impact-reasoning-advanced",
+      "style": "Reasoning",
+      "difficulty": "Advanced",
+      "subject": "History",
+      "topic": "The Vikings",
+      "context": "The Vikings established settlements and trade routes in various parts of Britain.",
+      "prompt": "How did Viking influence primarily impact the English language?",
+      "choices": [
+        "It introduced a completely new grammar system.",
+        "It led to the adoption of many Norse words into Old English.",
+        "It caused English to be replaced by Old Norse.",
+        "It had no significant impact on the English language."
+      ],
+      "correctIndex": 1
+    },
+    {
+      "id": "geography-urbanisation-reasoning-advanced",
+      "style": "Reasoning",
+      "difficulty": "Advanced",
+      "subject": "Geography",
+      "topic": "Human Geography",
+      "context": "Many cities around the world are experiencing rapid population growth.",
+      "prompt": "Which of these is a common 'push' factor contributing to people leaving rural areas for cities?",
+      "choices": [
+        "Better job opportunities in cities.",
+        "Access to more advanced healthcare in cities.",
+        "Lack of essential services and resources in rural areas.",
+        "Desire for a faster-paced lifestyle."
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": "maths-angles-reasoning-expert",
+      "style": "Reasoning",
+      "difficulty": "Expert",
+      "subject": "Maths",
+      "topic": "Geometry - Angles",
+      "context": "Two angles on a straight line are in the ratio 2:3.",
+      "prompt": "What is the measure of the smaller angle?",
+      "choices": [
+        "36 degrees",
+        "72 degrees",
+        "108 degrees",
+        "60 degrees"
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": "english-prepositional-phrases-reasoning-advanced",
+      "style": "Reasoning",
+      "difficulty": "Advanced",
+      "subject": "English",
+      "topic": "Grammar - Phrases",
+      "context": "Consider the sentence: 'The cat, with its sleek black fur, darted silently across the moonlit garden, towards the old oak tree.'",
+      "prompt": "Which of the following describes the primary function of the prepositional phrase 'towards the old oak tree'?",
+      "choices": [
+        "To describe the cat's appearance.",
+        "To indicate the manner of movement.",
+        "To specify the direction of movement.",
+        "To provide extra information about the garden."
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": "science-circuit-analogy-expert",
+      "style": "Reasoning",
+      "difficulty": "Expert",
+      "subject": "Science",
+      "topic": "Electricity",
+      "context": "Imagine an electrical circuit as a water system.",
+      "prompt": "In this analogy, what would the 'voltage' most closely represent?",
+      "choices": [
+        "The amount of water flowing (current).",
+        "The size of the pipes (resistance).",
+        "The pressure pushing the water (potential difference).",
+        "The water reservoir (power source)."
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": "history-ancient-greece-democracy-advanced",
+      "style": "Reasoning",
+      "difficulty": "Advanced",
+      "subject": "History",
+      "topic": "Ancient Greece",
+      "context": "Ancient Athens is often credited with developing early forms of democracy.",
+      "prompt": "Who was typically excluded from participating in Athenian democracy?",
+      "choices": [
+        "Wealthy male citizens.",
+        "Citizens over the age of 30.",
+        "Women, slaves, and foreigners.",
+        "All free men."
+      ],
+      "correctIndex": 2
+    },
+    {
+      "id": "english-word-origins-reasoning-expert",
+      "style": "Reasoning",
+      "difficulty": "Expert",
+      "subject": "English",
+      "topic": "Vocabulary - Etymology",
+      "context": "Many English words have Latin or Greek roots.",
+      "prompt": "Knowing this, which word is most likely derived from a Greek root meaning 'earth' or 'land'?",
+      "choices": [
+        "Audience",
+        "Geography",
+        "Manufacture",
+        "Aquatic"
+      ],
+      "correctIndex": 1
+    },
+    {
+      "id": "science-forces-friction-expert",
+      "style": "Reasoning",
+      "difficulty": "Expert",
+      "subject": "Science",
+      "topic": "Forces",
+      "context": "You push a heavy box across a rough floor.",
+      "prompt": "If you want to reduce the force needed to move the box, what is the most effective action?",
+      "choices": [
+        "Increase the weight of the box.",
+        "Apply force at a downward angle.",
+        "Place rollers or wheels under the box.",
+        "Increase the surface area of the box in contact with the floor."
+      ],
+      "correctIndex": 2
     }
   ],
   "freeTextDeck": [
     {
-      "id": "maths-explain-division-fraction-expert",
-      "style": "Maths Explainer",
+      "id": "maths-prime-factors-expert",
+      "style": "Explanation",
       "difficulty": "Expert",
       "subject": "Maths",
-      "topic": "Fractions",
-      "context": "Justifying mathematical methods.",
-      "prompt": "Explain the 'invert and multiply' rule when dividing fractions. Why does it work?",
-      "placeholder": "Your explanation here...",
+      "topic": "Number Properties",
+      "context": "The number 72 has several factors.",
+      "prompt": "List all the prime factors of 72.",
+      "placeholder": "Enter prime factors, separated by commas...",
       "acceptedAnswers": [
-        "Dividing by a fraction is the same as multiplying by its reciprocal.",
-        "You flip the second fraction and then multiply across.",
-        "It works because division is the inverse of multiplication, so dividing by 1/2 is like multiplying by 2.",
-        "To divide fractions, multiply the first fraction by the reciprocal of the second fraction."
+        "2,3",
+        "3,2",
+        "2, 3",
+        "3, 2"
       ],
-      "modelAnswer": "Dividing by a fraction is equivalent to multiplying by its reciprocal (the inverted fraction). This works because division is the inverse operation of multiplication. For example, dividing by 1/2 is the same as multiplying by 2.",
-      "success": "Clear explanation!",
-      "failure": "Needs more detail."
+      "modelAnswer": "The prime factors of 72 are 2 and 3.",
+      "success": "Correct prime factors!",
+      "failure": "Recheck your prime factorisation."
     },
     {
-      "id": "english-define-personification-advanced",
-      "style": "Literary Lexicon",
+      "id": "english-cohesion-advanced",
+      "style": "Analysis",
       "difficulty": "Advanced",
       "subject": "English",
-      "topic": "Literary Devices",
-      "context": "Defining literary terms accurately.",
-      "prompt": "Define 'personification' and provide a short example.",
-      "placeholder": "Definition and example...",
+      "topic": "Writing - Cohesion",
+      "context": "Read the following paragraph: 'The storm raged. Trees swayed wildly. Rain hammered the windows. Suddenly, a flash of lightning illuminated the sky.'",
+      "prompt": "Identify one cohesive device that could be added to improve the flow between the first two sentences.",
+      "placeholder": "Suggest a word or phrase...",
       "acceptedAnswers": [
-        "Giving human qualities to inanimate objects or animals. E.g., The wind howled.",
-        "When an object does something a person does. E.g., The sun smiled.",
-        "Making non-human things act like humans. E.g., The flowers danced.",
-        "Attributing human characteristics to non-human entities. E.g., The clock watched."
+        "Meanwhile",
+        "As a result",
+        "Consequently",
+        "At the same time"
       ],
-      "modelAnswer": "Personification is a literary device where human qualities or actions are attributed to inanimate objects, animals, or abstract ideas. For example: 'The angry storm raged outside.'",
-      "success": "Excellent definition!",
-      "failure": "Review literary devices."
+      "modelAnswer": "Adding 'Meanwhile,' or 'As a result,' would improve cohesion.",
+      "success": "Great cohesive insight!",
+      "failure": "Think about linking words."
     },
     {
-      "id": "science-describe-photosynthesis-expert",
-      "style": "Nature's Process",
+      "id": "science-photosynthesis-expert",
+      "style": "Explanation",
       "difficulty": "Expert",
       "subject": "Science",
       "topic": "Plants",
-      "context": "Explaining fundamental biological processes.",
-      "prompt": "Describe the key inputs and outputs of photosynthesis. Where does it primarily occur in a plant?",
-      "placeholder": "Inputs, outputs, and location...",
+      "context": "Plants are essential for life on Earth.",
+      "prompt": "Name the two main raw materials that a plant needs for photosynthesis.",
+      "placeholder": "List the materials...",
       "acceptedAnswers": [
-        "Inputs: sunlight, water, carbon dioxide. Outputs: glucose, oxygen. Occurs in chloroplasts/leaves.",
-        "Plants take in CO2 and water, use sunlight, make sugar and O2. In leaves.",
-        "Sunlight, H2O, CO2 go in. Sugar and O2 come out. Happens in chloroplasts.",
-        "Carbon dioxide, water, light energy are used to produce glucose and oxygen. In the leaves."
+        "Carbon dioxide, water",
+        "Water, carbon dioxide",
+        "CO2, H2O",
+        "H2O, CO2"
       ],
-      "modelAnswer": "Photosynthesis uses carbon dioxide and water as inputs, along with light energy. It produces glucose (sugar) and oxygen as outputs. This process primarily occurs in the chloroplasts within the leaves of plants.",
-      "success": "Biology brilliance!",
-      "failure": "Photosynthesis is vital!"
+      "modelAnswer": "The two main raw materials for photosynthesis are carbon dioxide and water.",
+      "success": "Photosynthesis understood!",
+      "failure": "Recall plant needs."
     },
     {
-      "id": "history-norman-conquest-impact-advanced",
-      "style": "Historical Analyst",
+      "id": "history-anglo-saxon-legacy-advanced",
+      "style": "Recall",
       "difficulty": "Advanced",
       "subject": "History",
-      "topic": "Norman Conquest",
-      "context": "Analysing the long-term consequences of historical events.",
-      "prompt": "Identify two significant, long-term impacts of the Norman Conquest on English society or culture.",
-      "placeholder": "Impact 1, Impact 2...",
+      "topic": "Anglo-Saxons",
+      "context": "The Anglo-Saxons had a profound impact on early England.",
+      "prompt": "Name one significant contribution of the Anglo-Saxons to modern English society or language.",
+      "placeholder": "Provide an example...",
       "acceptedAnswers": [
-        "Introduction of French language into English, Domesday Book/feudal system.",
-        "Changed language, new ruling class, feudalism.",
-        "English language evolved, new architecture, strong central government.",
-        "French words in English, new aristocracy, castles."
+        "Days of the week names",
+        "Many common words",
+        "Structure of local government",
+        "Village names"
       ],
-      "modelAnswer": "Two significant impacts include: 1. A profound change in the English language, introducing many French words. 2. The establishment of a strong feudal system and a new Norman aristocracy, changing land ownership and power structures.",
-      "success": "Great historical insight!",
-      "failure": "The Normans changed a lot!"
+      "modelAnswer": "The names of many days of the week (e.g., Tuesday, Wednesday) come from Anglo-Saxon gods.",
+      "success": "Anglo-Saxon legacy recognised!",
+      "failure": "Consider their lasting impact."
     },
     {
-      "id": "geography-explain-volcano-advanced",
-      "style": "Geology Expert",
-      "difficulty": "Advanced",
-      "subject": "Geography",
-      "topic": "Physical Geography",
-      "context": "Explaining geological processes.",
-      "prompt": "Briefly explain how a volcanic eruption occurs, mentioning tectonic plates.",
-      "placeholder": "How volcanoes erupt...",
-      "acceptedAnswers": [
-        "Tectonic plates move, magma rises through cracks, pressure builds, erupts.",
-        "Plates collide or pull apart, magma forces its way up, then explodes.",
-        "Magma from mantle rises where plates meet or separate, erupts as lava/ash.",
-        "Movement of plates creates openings, allowing molten rock to surface forcefully."
-      ],
-      "modelAnswer": "Volcanic eruptions occur when tectonic plates either collide, causing one to subduct, or pull apart. This allows magma from the Earth's mantle to rise to the surface through cracks in the crust. Pressure builds up from gases and molten rock, eventually leading to an eruption of lava, ash, and gases.",
-      "success": "Fantastic geological understanding!",
-      "failure": "Volcanoes are powerful!"
-    },
-    {
-      "id": "maths-justify-ratio-advanced",
-      "style": "Logical Mathematician",
-      "difficulty": "Advanced",
-      "subject": "Maths",
-      "topic": "Ratio",
-      "context": "Justifying mathematical reasoning.",
-      "prompt": "A recipe uses sugar and flour in a ratio of 1:3. If you double the amount of sugar, why must you also double the amount of flour to keep the same ratio?",
-      "placeholder": "Explain your reasoning...",
-      "acceptedAnswers": [
-        "To maintain proportionality, if one part of the ratio is scaled, the other must be scaled equally.",
-        "Ratios compare quantities proportionally. Doubling one without the other changes the balance.",
-        "Because the relationship between sugar and flour must stay the same for the ratio to be constant.",
-        "If you don't double both, the ratio changes from 1:3 to something else."
-      ],
-      "modelAnswer": "Ratios represent a proportional relationship between quantities. To keep the ratio of 1:3 constant, any change applied to one part of the ratio (e.g., doubling the sugar) must be applied equally to the other part (doubling the flour). This ensures the relative amounts remain consistent.",
-      "success": "Ratio reasoning is sound!",
-      "failure": "Ratios need careful balancing."
-    },
-    {
-      "id": "english-explain-semi-colon-expert",
-      "style": "Punctuation Pro",
+      "id": "geography-water-cycle-expert",
+      "style": "Description",
       "difficulty": "Expert",
-      "subject": "English",
-      "topic": "Punctuation",
-      "context": "Explaining complex punctuation rules.",
-      "prompt": "When is it appropriate to use a semi-colon (;) instead of a full stop or a comma?",
-      "placeholder": "Explain semi-colon usage...",
+      "subject": "Geography",
+      "topic": "Water Cycle",
+      "context": "The water cycle is a continuous process.",
+      "prompt": "Explain the difference between evaporation and condensation in the water cycle.",
+      "placeholder": "Describe the difference...",
       "acceptedAnswers": [
-        "To join two closely related independent clauses without a conjunction.",
-        "To separate items in a complex list where items already contain commas.",
-        "When two complete sentences are linked but could stand alone, and you want a stronger link than a comma.",
-        "For lists with internal commas, or linking related sentences."
+        "Evaporation is liquid to gas, condensation is gas to liquid",
+        "Evaporation turns water into vapour, condensation turns vapour into water",
+        "Evaporation warms, condensation cools",
+        "Evaporation rises, condensation falls"
       ],
-      "modelAnswer": "A semi-colon is used to join two closely related independent clauses (complete sentences) that are not connected by a coordinating conjunction (e.g., and, but, or). It can also be used to separate items in a complex list where individual items already contain commas.",
-      "success": "Semi-colon mastery!",
-      "failure": "Punctuation is precise."
+      "modelAnswer": "Evaporation is when liquid water turns into water vapour (a gas), while condensation is when water vapour cools and turns back into liquid water droplets.",
+      "success": "Water cycle stages clear!",
+      "failure": "Review the states of water."
     },
     {
-      "id": "science-electricity-circuit-advanced",
-      "style": "Circuit Builder",
+      "id": "maths-decimal-division-expert",
+      "style": "Calculation",
+      "difficulty": "Expert",
+      "subject": "Maths",
+      "topic": "Decimals",
+      "context": "You need to divide 15.6 by 0.12.",
+      "prompt": "What is the result of this division?",
+      "placeholder": "Enter the number...",
+      "acceptedAnswers": [
+        "130",
+        "130.0"
+      ],
+      "modelAnswer": "15.6 divided by 0.12 is 130.",
+      "success": "Decimal division perfected!",
+      "failure": "Double-check decimal places."
+    },
+    {
+      "id": "english-formal-register-advanced",
+      "style": "Application",
       "difficulty": "Advanced",
+      "subject": "English",
+      "topic": "Writing - Register",
+      "context": "You are writing a formal letter to your headteacher.",
+      "prompt": "Rewrite the informal sentence 'I wanna ask if I can go on the trip.' into a suitable formal register.",
+      "placeholder": "Rewrite the sentence formally...",
+      "acceptedAnswers": [
+        "I would like to enquire if I may attend the trip.",
+        "I would like to ask if I can attend the trip.",
+        "I wish to request permission to attend the trip."
+      ],
+      "modelAnswer": "I would like to enquire if I may attend the trip.",
+      "success": "Formal tone achieved!",
+      "failure": "Consider audience and purpose."
+    },
+    {
+      "id": "science-classification-expert",
+      "style": "Categorisation",
+      "difficulty": "Expert",
       "subject": "Science",
-      "topic": "Electricity",
-      "context": "Understanding basic electrical circuits.",
-      "prompt": "What is the main difference between a series circuit and a parallel circuit in terms of how components are connected?",
-      "placeholder": "Series vs. Parallel...",
+      "topic": "Living Things",
+      "context": "Scientists classify living organisms into groups.",
+      "prompt": "What are the five main kingdoms into which living organisms are typically classified?",
+      "placeholder": "List the kingdoms...",
       "acceptedAnswers": [
-        "Series: components form a single path. Parallel: components have multiple paths.",
-        "In series, current flows through each item one after another. In parallel, current splits.",
-        "Series has one loop, parallel has branches.",
-        "One path for series, many paths for parallel."
+        "Animals, Plants, Fungi, Protists, Monera",
+        "Animalia, Plantae, Fungi, Protista, Monera",
+        "Animals, Plants, Fungi, Protista, Bacteria"
       ],
-      "modelAnswer": "In a series circuit, components are connected end-to-end, forming a single path for the current to flow through. In a parallel circuit, components are connected across the same two points, providing multiple separate paths for the current.",
-      "success": "Excellent circuit knowledge!",
-      "failure": "Circuits can be confusing."
+      "modelAnswer": "The five main kingdoms are Animals (Animalia), Plants (Plantae), Fungi, Protists (Protista), and Monera (Bacteria/Archaea).",
+      "success": "Classification knowledge solid!",
+      "failure": "Recall the biological kingdoms."
     },
     {
-      "id": "history-ancient-maya-achievements-expert",
-      "style": "Ancient Civilisation Expert",
-      "difficulty": "Expert",
-      "subject": "History",
-      "topic": "Ancient Civilisations",
-      "context": "Identifying key achievements of the Maya civilisation.",
-      "prompt": "Name two significant intellectual or technological achievements of the Ancient Maya civilisation.",
-      "placeholder": "Achievement 1, Achievement 2...",
-      "acceptedAnswers": [
-        "Advanced writing system (hieroglyphs), sophisticated calendar system, concept of zero.",
-        "Developed writing, accurate calendars, built pyramids.",
-        "Hieroglyphic writing, complex mathematics (zero), astronomy.",
-        "Calendar, writing, architecture."
-      ],
-      "modelAnswer": "Two significant achievements of the Ancient Maya include: 1. Their advanced writing system (hieroglyphs). 2. Their sophisticated understanding of mathematics (including the concept of zero) and astronomy, which led to highly accurate calendar systems.",
-      "success": "Maya history mastered!",
-      "failure": "The Maya were brilliant!"
-    },
-    {
-      "id": "geography-fairtrade-explain-advanced",
-      "style": "Ethical Geographer",
+      "id": "history-ancient-egypt-beliefs-advanced",
+      "style": "Description",
       "difficulty": "Advanced",
-      "subject": "Geography",
-      "topic": "Globalisation",
-      "context": "Understanding ethical consumption and global trade.",
-      "prompt": "Explain the primary goal of Fairtrade and why it is considered important.",
-      "placeholder": "Goal and importance...",
+      "subject": "History",
+      "topic": "Ancient Egypt",
+      "context": "Ancient Egyptians had complex beliefs about the afterlife.",
+      "prompt": "Name one significant practice or belief related to the Egyptian afterlife.",
+      "placeholder": "Describe a belief/practice...",
       "acceptedAnswers": [
-        "To ensure producers in developing countries get fair prices and better working conditions. It helps reduce poverty.",
-        "Fair prices for farmers, good conditions for workers. Important for sustainability and equality.",
-        "Supports ethical trade by paying producers a minimum price and social premium. Fights exploitation.",
-        "Helps farmers in poor countries by giving them a better deal, which is important for their livelihoods."
+        "Mummification",
+        "Book of the Dead",
+        "Judgment by Osiris",
+        "Preservation of body"
       ],
-      "modelAnswer": "The primary goal of Fairtrade is to ensure that producers in developing countries receive fair prices for their goods, along with decent working conditions and a 'social premium' for community development. It's important because it aims to combat poverty, exploitation, and climate change by promoting sustainable and ethical trade practices.",
-      "success": "Excellent Fairtrade insight!",
-      "failure": "Fairtrade helps many people."
+      "modelAnswer": "Mummification was a key practice to preserve the body, believed to be necessary for the soul's journey to the afterlife.",
+      "success": "Ancient Egyptian beliefs understood!",
+      "failure": "Recall afterlife practices."
     },
     {
-      "id": "maths-area-compound-expert",
-      "style": "Geometry Genius",
+      "id": "geography-map-scale-expert",
+      "style": "Application",
+      "difficulty": "Expert",
+      "subject": "Geography",
+      "topic": "Maps and Atlases",
+      "context": "A map has a scale of 1:50,000.",
+      "prompt": "If a road measures 4 cm on the map, what is its actual length in kilometres?",
+      "placeholder": "Enter length in km...",
+      "acceptedAnswers": [
+        "2 km",
+        "2km",
+        "2.0 km",
+        "2.0km"
+      ],
+      "modelAnswer": "The actual length of the road is 2 kilometres.",
+      "success": "Map scale calculated!",
+      "failure": "Check your unit conversions."
+    },
+    {
+      "id": "maths-fractions-of-amounts-expert",
+      "style": "Problem Solving",
       "difficulty": "Expert",
       "subject": "Maths",
-      "topic": "Area",
-      "context": "Calculating the area of complex shapes.",
-      "prompt": "A shape is made from a rectangle (6cm by 4cm) with a square (2cm by 2cm) cut out from its centre. What is the area of the remaining shape?",
-      "placeholder": "Calculate and explain...",
+      "topic": "Fractions",
+      "context": "A group of students are sharing a bag of 60 sweets. Tom takes 1/3, Sarah takes 2/5 of the remainder.",
+      "prompt": "How many sweets are left in the bag?",
+      "placeholder": "Enter the number of sweets...",
       "acceptedAnswers": [
-        "Area of rectangle = 24 sq cm. Area of square = 4 sq cm. Remaining area = 20 sq cm.",
-        "24 minus 4 equals 20 square centimetres.",
-        "Total area (6x4) minus cut out area (2x2) = 20 sq cm.",
-        "20 cm squared. Calculate full rectangle then subtract the hole."
+        "24"
       ],
-      "modelAnswer": "First, calculate the area of the large rectangle: 6cm x 4cm = 24 sq cm. Then, calculate the area of the square cut out: 2cm x 2cm = 4 sq cm. Subtract the cut-out area from the rectangle's area: 24 sq cm - 4 sq cm = 20 sq cm. The remaining area is 20 sq cm.",
-      "success": "Area calculation perfection!",
-      "failure": "Check your compound area steps."
+      "modelAnswer": "There are 24 sweets left in the bag.",
+      "success": "Fractions of amounts mastered!",
+      "failure": "Break down the problem steps."
     },
     {
-      "id": "english-passive-voice-explain-advanced",
-      "style": "Grammar Guru",
-      "difficulty": "Advanced",
+      "id": "english-word-choice-impact-expert",
+      "style": "Analysis",
+      "difficulty": "Expert",
       "subject": "English",
-      "topic": "Grammar",
-      "context": "Explaining the purpose of grammatical structures.",
-      "prompt": "When might a writer choose to use the passive voice instead of the active voice?",
-      "placeholder": "Reasons for passive voice...",
+      "topic": "Writing - Vocabulary",
+      "context": "Consider the sentence: 'The old wizard's eyes glinted with ancient mischief.'",
+      "prompt": "Explain the impact of using the word 'glinted' instead of 'shone' in this sentence.",
+      "placeholder": "Explain the impact...",
       "acceptedAnswers": [
-        "When the doer of the action is unknown, unimportant, or when focusing on the action/recipient.",
-        "To hide who did something, or if the action is more important than the actor.",
-        "If the subject is clear from context, or to create a formal tone.",
-        "When you don't know who did it, or you don't want to say."
+        "Suggests quick, sharp light; implies cunning/slyness",
+        "More intense, brief flash; adds mystery",
+        "Implies a sudden, sharp reflection; hints at hidden motives"
       ],
-      "modelAnswer": "A writer might choose the passive voice when the doer of the action is unknown, unimportant, or when they want to emphasize the action itself or the recipient of the action, rather than the agent. It can also be used to create a more formal or objective tone.",
-      "success": "Excellent grammatical reasoning!",
-      "failure": "Active vs. Passive has its uses."
+      "modelAnswer": "Using 'glinted' suggests a brief, sharp, reflective sparkle, often implying cunning, intelligence, or a hidden emotion, making the mischief seem more active and subtle than 'shone'.",
+      "success": "Word choice analysis strong!",
+      "failure": "Think about subtle differences in meaning."
     }
   ],
   "matchPairDeck": [
     {
-      "id": "maths-fraction-decimal",
+      "id": "maths-decimal-fraction",
       "subject": "Maths",
-      "left": "3/8",
-      "right": "0.375"
+      "left": "0.75",
+      "right": "3/4"
     },
     {
-      "id": "english-word-antonym",
+      "id": "english-homophone-pair",
       "subject": "English",
-      "left": "Benevolent",
-      "right": "Malevolent"
+      "left": "Weather",
+      "right": "Whether"
     },
     {
       "id": "science-planet-feature",
@@ -727,240 +719,282 @@ export const YEAR6_CURRICULUM = {
       "right": "Red Planet"
     },
     {
-      "id": "history-person-event",
+      "id": "history-roman-invasion",
       "subject": "History",
-      "left": "William the Conqueror",
-      "right": "Battle of Hastings"
+      "left": "43 AD",
+      "right": "Roman invasion of Britain"
     },
     {
-      "id": "geography-feature-definition",
+      "id": "geography-continent-ocean",
       "subject": "Geography",
-      "left": "Estuary",
-      "right": "Mouth of a river where tide meets river current"
+      "left": "Asia",
+      "right": "Pacific Ocean"
     },
     {
-      "id": "maths-percentage-fraction",
+      "id": "maths-area-perimeter",
       "subject": "Maths",
-      "left": "62.5%",
-      "right": "5/8"
-    },
-    {
-      "id": "english-literary-device",
-      "subject": "English",
-      "left": "Hyperbole",
-      "right": "Exaggeration for effect"
-    },
-    {
-      "id": "science-body-system",
-      "subject": "Science",
-      "left": "Circulatory System",
-      "right": "Transports blood, oxygen, nutrients"
-    },
-    {
-      "id": "history-era-characteristic",
-      "subject": "History",
-      "left": "Victorian Era",
-      "right": "Industrial Revolution"
-    },
-    {
-      "id": "geography-latitude-line",
-      "subject": "Geography",
-      "left": "Tropic of Capricorn",
-      "right": "23.5 degrees South"
-    },
-    {
-      "id": "maths-algebra-term",
-      "subject": "Maths",
-      "left": "Coefficient",
-      "right": "Number multiplying a variable"
+      "left": "Space inside a shape",
+      "right": "Area"
     },
     {
       "id": "english-prefix-meaning",
       "subject": "English",
-      "left": "Mal-",
-      "right": "Bad or evil"
+      "left": "Un-",
+      "right": "Not"
     },
     {
-      "id": "science-material-property",
+      "id": "science-skeletal-function",
       "subject": "Science",
-      "left": "Conductor",
-      "right": "Allows electricity to flow"
+      "left": "Rib Cage",
+      "right": "Protects vital organs"
     },
     {
-      "id": "history-ancient-civilisation",
+      "id": "history-norman-conquest",
       "subject": "History",
-      "left": "Ancient Egypt",
-      "right": "Hieroglyphs"
+      "left": "1066",
+      "right": "Battle of Hastings"
     },
     {
-      "id": "geography-environmental-term",
+      "id": "geography-river-feature",
       "subject": "Geography",
-      "left": "Deforestation",
-      "right": "Clearing of forests"
+      "left": "Meander",
+      "right": "River bend"
     },
     {
-      "id": "maths-shape-property",
+      "id": "maths-type-of-angle",
       "subject": "Maths",
-      "left": "Rhombus",
-      "right": "All sides equal length, opposite angles equal"
+      "left": "Angle greater than 90 degrees",
+      "right": "Obtuse"
+    },
+    {
+      "id": "english-punctuation-use",
+      "subject": "English",
+      "left": "Colon",
+      "right": "Introduces a list or explanation"
+    },
+    {
+      "id": "science-energy-source",
+      "subject": "Science",
+      "left": "Wind Turbine",
+      "right": "Renewable energy"
+    },
+    {
+      "id": "history-viking-boats",
+      "subject": "History",
+      "left": "Longship",
+      "right": "Viking vessel"
+    },
+    {
+      "id": "geography-latitude-longitude",
+      "subject": "Geography",
+      "left": "Equator",
+      "right": "0 degrees latitude"
+    },
+    {
+      "id": "maths-roman-numeral",
+      "subject": "Maths",
+      "left": "LXXV",
+      "right": "75"
     }
   ],
   "questDeck": [
     {
-      "id": "quest-mcq-review-fractions",
-      "title": "Fraction Fix-Up",
-      "detail": "You struggled with the fraction multiplication. Revisit your fraction rules and try again. Make sure to write out the steps on paper!",
+      "id": "quest-mcq-fail-ratio",
+      "title": "Ratio Recalibration",
+      "detail": "Your ratio scaling was off. Research 'direct proportion' and 'unit method' for ratios. On paper, rework the original problem and create two new, similar problems, solving them step-by-step. This precision is vital for your diploma.",
       "trigger": "mcq-failure",
-      "trackType": "resource-test",
       "resourceReward": {
-        "paper": 2,
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-quiz-fail-percentages",
+      "title": "Percentage Perfection",
+      "detail": "The percentage logic proved tricky. Write a short explanation (on paper) demonstrating why successive percentage changes don't simply cancel out. Use a clear example. Your diploma depends on understanding these nuances.",
+      "trigger": "quiz-failure",
+      "resourceReward": {
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-freetext-fail-photosynthesis",
+      "title": "Photosynthesis Primer",
+      "detail": "You missed key details about photosynthesis. Draw a labelled diagram of a plant leaf and indicate where water and carbon dioxide enter, and oxygen leaves. Explain the role of sunlight. Aim for a perfect, concise summary.",
+      "trigger": "free-text-failure",
+      "resourceReward": {
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-matchpairs-fail-history",
+      "title": "Historical Connections",
+      "detail": "Some historical dates/events were mismatched. Create a timeline of the events you struggled with, adding 3 key facts for each. This deepens your understanding for the diploma.",
+      "trigger": "match-pairs-failure",
+      "resourceReward": {
+        "paper": 0,
         "ink": 1,
         "revisionTokens": 0
-      },
-      "diplomaReward": 0
+      }
     },
     {
-      "id": "quest-quiz-grammar-deep-dive",
-      "title": "Grammar Grandmaster",
-      "detail": "That grammar quiz was tough! This mastery quest is unique to your last answer, so spend some time reviewing subordinate and relative clauses. Draw a sentence tree diagram to map them out on paper.",
-      "trigger": "mastery-review",
-      "trackType": "mastery-quest",
+      "id": "quest-locked-submission-english",
+      "title": "Grammar Guardian",
+      "detail": "Your last English submission was locked due to significant errors. Revisit the topics of clauses and sentence structure. Write a complex sentence with at least one main clause and two subordinate clauses, ensuring perfect punctuation. This work cannot be edited once submitted.",
+      "trigger": "locked-submission",
       "resourceReward": {
-        "paper": 2,
+        "paper": 0,
         "ink": 1,
-        "revisionTokens": 1
-      },
-      "diplomaReward": 0
+        "revisionTokens": 0
+      }
     },
     {
-      "id": "quest-freetext-science-explain",
-      "title": "Scientific Scrutiny",
-      "detail": "Your explanation of photosynthesis needs more scientific detail. This mastery quest is tailored to your wording, so rework your answer and focus on precise terminology. You won't be able to edit this one again, so make it count!",
-      "trigger": "mastery-review",
-      "trackType": "mastery-quest",
+      "id": "quest-mcq-mastery-maths",
+      "title": "Algebra Ace",
+      "detail": "You aced the algebra challenge! Now, try to explain to a 'younger student' (write it down) how to solve a two-step algebraic equation. Make your explanation crystal clear and easy to follow. This proves true mastery.",
+      "trigger": "mcq-mastery",
       "resourceReward": {
         "paper": 0,
         "ink": 0,
-        "revisionTokens": 2
-      },
-      "diplomaReward": 0
-    },
-    {
-      "id": "quest-locked-history-research",
-      "title": "History Hunt",
-      "detail": "A topic is locked! You need to research the key impacts of the Roman Empire on Britain before you can proceed. Find three major contributions.",
-      "trigger": "locked-submission",
-      "trackType": "resource-test",
-      "resourceReward": {
-        "paper": 1,
-        "ink": 1,
         "revisionTokens": 1
-      },
-      "diplomaReward": 0
+      }
     },
     {
-      "id": "quest-match-geography-maps",
-      "title": "Map Masterclass",
-      "detail": "You struggled with matching geographical features. This mastery quest adapts to your route and takes your performance into account, so label five major climate zones on a world map.",
-      "trigger": "mastery-review",
-      "trackType": "mastery-quest",
-      "resourceReward": {
-        "paper": 1,
-        "ink": 2,
-        "revisionTokens": 0
-      },
-      "diplomaReward": 0
-    },
-    {
-      "id": "quest-mcq-percentage-practice",
-      "title": "Percentage Power-Up",
-      "detail": "Reverse percentages can be tricky! Write down the steps for calculating an original price after a percentage increase. Practice with a few examples.",
-      "trigger": "mcq-failure",
-      "trackType": "resource-test",
-      "resourceReward": {
-        "paper": 1,
-        "ink": 0,
-        "revisionTokens": 1
-      },
-      "diplomaReward": 0
-    },
-    {
-      "id": "quest-quiz-algebra-rethink",
-      "title": "Algebraic Ascent",
-      "detail": "Your algebraic equation didn't quite balance. This mastery quest is unique to your performance, so go back and carefully rearrange the terms on paper to avoid errors.",
-      "trigger": "mastery-review",
-      "trackType": "mastery-quest",
-      "resourceReward": {
-        "paper": 2,
-        "ink": 1,
-        "revisionTokens": 0
-      },
-      "diplomaReward": 0
-    },
-    {
-      "id": "quest-freetext-english-rephrase",
-      "title": "Word Weaver",
-      "detail": "Your explanation of personification could be clearer. This mastery quest is unique to your last response, so rework your definition and example for conciseness and impact. You cannot re-submit this answer.",
-      "trigger": "mastery-review",
-      "trackType": "mastery-quest",
+      "id": "quest-quiz-mastery-science",
+      "title": "Ecosystem Expert",
+      "detail": "Your understanding of ecosystems is excellent! Research a specific endangered ecosystem (e.g., coral reefs, Amazon rainforest). Write a paragraph explaining the main threats and one possible solution. This demonstrates applied knowledge.",
+      "trigger": "quiz-mastery",
       "resourceReward": {
         "paper": 0,
         "ink": 0,
-        "revisionTokens": 2
-      },
-      "diplomaReward": 0
-    },
-    {
-      "id": "quest-locked-science-diagram",
-      "title": "Body System Blueprint",
-      "detail": "Unlock the next science challenge by drawing and labelling the main parts of the human circulatory system.",
-      "trigger": "locked-submission",
-      "trackType": "resource-test",
-      "resourceReward": {
-        "paper": 1,
-        "ink": 2,
-        "revisionTokens": 0
-      },
-      "diplomaReward": 0
-    },
-    {
-      "id": "quest-match-history-timeline",
-      "title": "Timeline Traveller",
-      "detail": "Matching historical figures and events proved difficult. This mastery quest adapts to your missed pairs, so create a short timeline of the Norman Conquest to put key events in order.",
-      "trigger": "mastery-review",
-      "trackType": "mastery-quest",
-      "resourceReward": {
-        "paper": 1,
-        "ink": 1,
         "revisionTokens": 1
-      },
-      "diplomaReward": 0
+      }
     },
     {
-      "id": "quest-mcq-science-review",
-      "title": "Light Lab",
-      "detail": "The light question was missed. This is a plain resource test, so conduct a simple experiment at home to observe reflection and refraction, then draw what you saw.",
+      "id": "quest-freetext-mastery-geography",
+      "title": "Map Master",
+      "detail": "Fantastic work on map scales! Now, using a map of your local area (or an online map), calculate the real-world distance between two points, given the map's scale. Document your steps. This practical application solidifies your diploma readiness.",
+      "trigger": "free-text-mastery",
+      "resourceReward": {
+        "paper": 0,
+        "ink": 0,
+        "revisionTokens": 1
+      }
+    },
+    {
+      "id": "quest-matchpairs-mastery-english",
+      "title": "Vocabulary Virtuoso",
+      "detail": "Perfect pairing of English terms! Select 5 challenging vocabulary words and write a sentence for each, ensuring the word's meaning is clear from context. This showcases your refined linguistic skills for your diploma.",
+      "trigger": "match-pairs-mastery",
+      "resourceReward": {
+        "paper": 0,
+        "ink": 0,
+        "revisionTokens": 1
+      }
+    },
+    {
+      "id": "quest-mcq-fail-english-grammar",
+      "title": "Clause Clarity",
+      "detail": "Subordinate clauses were a sticking point. Find 3 sentences from a book you're reading and identify all main and subordinate clauses. Underline them on paper. This focused practice will clear up any confusion for the diploma.",
       "trigger": "mcq-failure",
-      "trackType": "resource-test",
       "resourceReward": {
         "paper": 1,
-        "ink": 1,
+        "ink": 0,
         "revisionTokens": 0
-      },
-      "diplomaReward": 0
+      }
     },
     {
-      "id": "quest-quiz-geography-mapping",
+      "id": "quest-quiz-fail-history-industrial",
+      "title": "Industrial Insights",
+      "detail": "You missed a key aspect of the Industrial Revolution's impact. Research 'social changes' and 'urbanisation' during this period. Write a short paragraph explaining how factory work changed family life. Rewrite your original answer for clarity.",
+      "trigger": "quiz-failure",
+      "resourceReward": {
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-freetext-fail-geography-watercycle",
+      "title": "Water Cycle Whiz",
+      "detail": "Your water cycle explanation needs more precision. Draw a detailed diagram of the water cycle, labelling all key processes (evaporation, condensation, precipitation, collection). Ensure each label has a brief, accurate definition.",
+      "trigger": "free-text-failure",
+      "resourceReward": {
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-mcq-fail-science-light",
+      "title": "Light Logic",
+      "detail": "The light reflection question was tough. Conduct a small experiment: observe your reflection in a still spoon (concave) and then a shiny ball (convex). Note the differences and explain why they occur. This hands-on learning is crucial.",
+      "trigger": "mcq-failure",
+      "resourceReward": {
+        "paper": 0,
+        "ink": 1,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-quiz-fail-maths-angles",
+      "title": "Angle Accuracy",
+      "detail": "The angle ratio problem requires more practice. Draw three different examples of angles on a straight line, each with a different ratio. Calculate and label the angles for each. Your diploma needs perfect angle work.",
+      "trigger": "quiz-failure",
+      "resourceReward": {
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-freetext-fail-maths-fractions",
+      "title": "Fraction Formula",
+      "detail": "The fractions of amounts problem proved challenging. Write out the step-by-step method for solving 'fractions of a remainder' problems. Then, rework the original problem on paper, clearly showing each step. This clear method is key for your diploma.",
+      "trigger": "free-text-failure",
+      "resourceReward": {
+        "paper": 1,
+        "ink": 0,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-matchpairs-fail-geography",
       "title": "Global Grid",
-      "detail": "You struggled with the coordinate question. This is the final diploma test for this route, so practice plotting points in all four quadrants on a grid you draw yourself and pass to earn the diploma.",
-      "trigger": "final-diploma-test",
-      "trackType": "final-test",
+      "detail": "Latitude and longitude proved tricky. Draw a simple globe and label the Equator, Prime Meridian, Tropic of Cancer, and Tropic of Capricorn. Add 3 key facts about each line. This will secure your geography foundation.",
+      "trigger": "match-pairs-failure",
       "resourceReward": {
-        "paper": 1,
+        "paper": 0,
         "ink": 1,
+        "revisionTokens": 0
+      }
+    },
+    {
+      "id": "quest-mcq-mastery-history",
+      "title": "Roman Researcher",
+      "detail": "You showed excellent knowledge of Roman legacy! Research another significant Roman contribution to Britain (e.g., towns, law, language). Write a short paragraph explaining its importance. This demonstrates advanced historical thinking for your diploma.",
+      "trigger": "mcq-mastery",
+      "resourceReward": {
+        "paper": 0,
+        "ink": 0,
         "revisionTokens": 1
-      },
-      "diplomaReward": 1
+      }
+    },
+    {
+      "id": "quest-locked-submission-maths",
+      "title": "Decimal Discipline",
+      "detail": "Your last Maths submission was locked due to repeated decimal errors. Practice 5 complex decimal division problems, showing all your working out. Remember, this work cannot be edited once submitted, so check every step meticulously.",
+      "trigger": "locked-submission",
+      "resourceReward": {
+        "paper": 0,
+        "ink": 1,
+        "revisionTokens": 0
+      }
     }
   ]
 };

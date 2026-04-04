@@ -2,7 +2,7 @@
 
 The Curiosity Institute is now a Year 6 learning game built on top of the same direct-avatar museum floor.
 
-The player is still the curator moving in real time through the building, but the progression loop is now curriculum-led: hard study rounds award diplomas, diplomas unlock new rooms without being spent, and failed work can create rewrite quests that reward paper, ink, and revision tokens.
+The player is still the curator moving in real time through the building, but the progression loop is now curriculum-led: plain study tests award paper, ink, and revision tokens, adaptive perfection quests react to each learner's performance, and final tests award diplomas that unlock new rooms without being spent.
 
 ## Core Fantasy
 
@@ -18,9 +18,10 @@ The game should feel like:
 
 1. Guide the curator through the Year 6 floor in a top-down 3D view.
 2. Enter challenge hubs or queued study alerts to launch a weighted random hard round.
-3. Clear MCQ, quiz, free-text, and match-pairs activities to earn diplomas and reputation.
-4. Unlock new rooms when you reach diploma gates; diplomas remain on your record and are never spent.
-5. Use quest rewards such as paper, ink, and revision tokens to upgrade rooms and keep progression moving.
+3. Clear MCQ, quiz, free-text, and match-pairs activities to earn resources and strengthen topic performance.
+4. Convert weak or promising topics into adaptive perfection quests, then pass the final test to earn the diploma.
+5. Unlock new rooms when you reach diploma gates; diplomas remain on your record and are never spent.
+6. Use earned resources such as paper, ink, and revision tokens to upgrade rooms and keep progression moving.
 
 ## Study System
 
@@ -31,7 +32,7 @@ Every prompted study round comes from the generated Year 6 curriculum deck with 
 - `mcq`: 20%
 - `match-pairs`: 5%
 
-Failure paths can generate quests based on the work that went wrong, including rewrite-on-paper style tasks and locked-topic recovery tasks.
+Failure and strong performance both feed adaptive perfection quests, including rewrite-on-paper style tasks and locked-topic recovery tasks that lead into final diploma tests.
 
 The quest deck now also separates plain resource tests, adaptive mastery quests, and final diploma tests. Resource tests earn paper, ink, and revision tokens. Mastery quests are meant to be personalized follow-ups based on the learner's performance. Final tests award the diploma when passed.
 

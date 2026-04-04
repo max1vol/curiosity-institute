@@ -28,7 +28,7 @@ export function buildDailyGoals(themeId: string): DailyGoal[] {
         id: "heritage-diplomas",
         kind: "diplomas-earned",
         label: "Earn Reading Diplomas",
-        detail: "Secure 2 diplomas from the harder Year 6 curriculum rounds.",
+        detail: "Secure 2 diplomas by finishing perfection quests and passing the final tests.",
         target: 2,
         reward: reward(1, 1, 2),
       }),
@@ -57,7 +57,7 @@ export function buildDailyGoals(themeId: string): DailyGoal[] {
         id: "marble-diplomas",
         kind: "diplomas-earned",
         label: "Collect Maths Diplomas",
-        detail: "Earn 3 diplomas from the weighted curriculum mix.",
+        detail: "Earn 3 diplomas from perfected topics and their final tests.",
         target: 3,
         reward: reward(1, 1, 2),
       }),
@@ -103,10 +103,10 @@ export function buildDailyGoals(themeId: string): DailyGoal[] {
 
   return [
     buildGoal({
-      id: "default-diplomas",
-      kind: "diplomas-earned",
-      label: "Earn Starter Diplomas",
-      detail: "Collect 2 diplomas from Year 6 challenge rounds.",
+        id: "default-diplomas",
+        kind: "diplomas-earned",
+        label: "Earn Starter Diplomas",
+        detail: "Collect 2 diplomas from completed perfection quests and final tests.",
       target: 2,
       reward: reward(1, 1, 1),
     }),
