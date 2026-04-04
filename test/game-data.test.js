@@ -96,17 +96,24 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
   for (const quest of data.questDeck) {
     assert.ok(quest.title.length > 0);
     assert.ok(quest.resourceReward.paper + quest.resourceReward.ink + quest.resourceReward.revisionTokens > 0);
-    assert.ok(["resource-test", "mastery-quest", "final-test"].includes(quest.trackType));
-    assert.ok(Number.isInteger(quest.diplomaReward));
+    assert.ok(
+      [
+        "mcq-failure",
+        "mcq-mastery",
+        "quiz-failure",
+        "quiz-mastery",
+        "free-text-failure",
+        "free-text-mastery",
+        "locked-submission",
+        "match-pairs-failure",
+        "match-pairs-mastery",
+      ].includes(quest.trigger),
+    );
   }
 
-  assert.ok(data.questDeck.some((quest) => quest.trackType === "resource-test"));
-  assert.ok(data.questDeck.some((quest) => quest.trackType === "mastery-quest" && quest.trigger === "mastery-review"));
-  assert.ok(
-    data.questDeck.some(
-      (quest) => quest.trackType === "final-test" && quest.trigger === "final-diploma-test" && quest.diplomaReward === 1,
-    ),
-  );
+  assert.ok(data.questDeck.some((quest) => quest.trigger.endsWith("-failure")));
+  assert.ok(data.questDeck.some((quest) => quest.trigger.endsWith("-mastery")));
+  assert.ok(data.questDeck.some((quest) => quest.trigger === "locked-submission"));
 });
 
 test("buildGameData discovers splat-backed immersive rooms", async () => {
