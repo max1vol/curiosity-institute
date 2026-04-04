@@ -6,6 +6,7 @@ import type {
   StudyMode,
   StudyResources,
 } from "./types";
+import { shuffle } from "./random";
 
 const STOP_WORDS = new Set([
   "a",
@@ -50,17 +51,6 @@ export const STUDY_MODE_LABELS: Record<StudyMode, string> = {
   "free-text": "Free Text",
   "match-pairs": "Match Pairs",
 };
-
-function shuffle<T>(items: T[]): T[] {
-  const next = [...items];
-
-  for (let index = next.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-  }
-
-  return next;
-}
 
 function normalizeText(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();

@@ -54,7 +54,7 @@
   }: Props = $props();
 
   let stageElement: HTMLDivElement | null = null;
-  let loadMessage = $state("Loading immersive scene...");
+  let loadMessage = $state("Loading Gocean scene...");
   let errorMessage = $state("");
   let fov = $state(72);
   let viewerReady = $state(false);
@@ -205,7 +205,7 @@
       return false;
     }
 
-    loadMessage = "Loading immersive scene...";
+    loadMessage = "Loading Gocean scene...";
     errorMessage = "";
     activeRenderMode = "panorama";
     clearPanoramaMaterial();
@@ -227,7 +227,7 @@
       }
 
       loadMessage = "";
-      errorMessage = "Unable to load this immersive scene.";
+      errorMessage = "Unable to load this Gocean scene.";
       activeRenderMode = "none";
       return false;
     }
@@ -331,12 +331,12 @@
       clearPanoramaMaterial();
       await disposeSplatViewer();
       if (currentLoad === loadGeneration) {
-        errorMessage = "This room node does not have a generated immersive scene yet.";
+        errorMessage = "This zone does not have a generated splat scene yet.";
       }
       return;
     }
 
-    loadMessage = "Loading immersive scene...";
+    loadMessage = "Loading Gocean scene...";
 
     if (hasSplat && node.splatPath) {
       await disposeSplatViewer();
@@ -357,7 +357,7 @@
 
       loadMessage = "";
       activeRenderMode = "none";
-      errorMessage = "Unable to load this immersive scene.";
+      errorMessage = "Unable to load this Gocean scene.";
       return;
     }
 
@@ -569,12 +569,12 @@
   });
 </script>
 
-<div aria-label={`${room.label} immersive scene viewer`} aria-modal="true" class="viewer-root" role="dialog">
+<div aria-label={`${room.label} splat scene viewer`} aria-modal="true" class="viewer-root" role="dialog">
   <div class="viewer-shell">
     <div class="viewer-stage-wrap">
       <div
         bind:this={stageElement}
-        aria-label={`${room.label} immersive scene`}
+        aria-label={`${room.label} splat scene`}
         class="viewer-stage"
         role="application"
         onpointerdown={handlePointerDown}
@@ -587,7 +587,7 @@
       <section class="viewer-tier-panel" aria-label="Tier progression panel">
         <div class="viewer-tier-topline">
           <div>
-            <p class="eyebrow">Tier Progression</p>
+            <p class="eyebrow">Splat Progression</p>
             <h2>{room.label}</h2>
           </div>
           <div class="viewer-tier-badge">{roomTierLabel}</div>
@@ -598,7 +598,7 @@
         <div class="viewer-tier-track" aria-label={`${room.label} tier progression`}>
           {#each tierSteps(roomTierMax) as tier}
             <div class:active={tier <= roomTierIndex + 1} class:current={tier === roomTierIndex + 1} class="viewer-tier-step">
-              <span>Tier</span>
+              <span>Splat</span>
               <strong>{tier}</strong>
             </div>
           {/each}
@@ -606,16 +606,16 @@
 
         <div class="viewer-tier-meta">
           <div class="viewer-tier-stat">
-            <span>Current Node</span>
+            <span>Current Splat</span>
             <strong>{node.label}</strong>
           </div>
           <div class="viewer-tier-stat">
-            <span>Connected Paths</span>
+            <span>Connected Routes</span>
             <strong>{node.edges.length}</strong>
           </div>
           <div class="viewer-tier-stat">
             <span>Upgrade Cost</span>
-            <strong>{roomUpgradeCost === null ? "Max tier" : `${roomUpgradeCost} coins`}</strong>
+            <strong>{roomUpgradeCost === null ? "Max tier" : `${roomUpgradeCost} resources`}</strong>
           </div>
         </div>
 
@@ -624,7 +624,7 @@
         </button>
       </section>
 
-      <button aria-label="Close immersive scene" class="viewer-close" type="button" onclick={close}>&times;</button>
+      <button aria-label="Close splat scene" class="viewer-close" type="button" onclick={close}>&times;</button>
 
       {#if loadMessage || errorMessage}
         <div class:viewer-status-error={!!errorMessage} class="viewer-status">
@@ -633,15 +633,15 @@
       {/if}
 
       <div class="viewer-hint">
-        <span>Current Node</span>
+        <span>Current Splat</span>
         <strong>{node.label}</strong>
-        <small class="viewer-subhint">Drag to explore, scroll to zoom, and use F/B or the travel buttons to move.</small>
+        <small class="viewer-subhint">Drag to scan, scroll to zoom, and use F/B or the route buttons to hop between splats.</small>
       </div>
 
-      <div class="viewer-travel" aria-label="Immersive scene travel controls">
+      <div class="viewer-travel" aria-label="Splat scene travel controls">
         <button class="viewer-travel-button" type="button" disabled={!backEdge || !canMoveBack} onclick={() => move("back")}>
           <span>Back</span>
-          <strong>{backEdge ? backEdge.label : "No previous room"}</strong>
+          <strong>{backEdge ? backEdge.label : "No previous zone"}</strong>
         </button>
         <button
           class="viewer-travel-button primary"
@@ -650,7 +650,7 @@
           onclick={() => move("forward")}
         >
           <span>Forward</span>
-          <strong>{forwardEdge ? forwardEdge.label : "No connected room ahead"}</strong>
+          <strong>{forwardEdge ? forwardEdge.label : "No linked splat ahead"}</strong>
         </button>
       </div>
     </div>

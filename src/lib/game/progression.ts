@@ -35,8 +35,8 @@ export function buildDailyGoals(themeId: string): DailyGoal[] {
       buildGoal({
         id: "heritage-open-wing",
         kind: "rooms-opened",
-        label: "Open A New Study Wing",
-        detail: "Use your diplomas to unlock 1 new room without spending them.",
+        label: "Open A New Sea Route",
+        detail: "Use your diplomas to unlock 1 new zone without spending them.",
         target: 1,
         reward: reward(1, 0, 2),
       }),
@@ -93,8 +93,8 @@ export function buildDailyGoals(themeId: string): DailyGoal[] {
       buildGoal({
         id: "glasshouse-immersive",
         kind: "immersive-scenes-visited",
-        label: "Walk The Splat Rooms",
-        detail: "Enter 2 immersive study spaces while building your diploma total.",
+        label: "Dive The Splat Zones",
+        detail: "Enter 2 immersive splat spaces while building your diploma total.",
         target: 2,
         reward: reward(1, 0, 2),
       }),
@@ -121,8 +121,8 @@ export function buildDailyGoals(themeId: string): DailyGoal[] {
     buildGoal({
       id: "default-room",
       kind: "rooms-opened",
-      label: "Unlock The Next Room",
-      detail: "Use non-spendable diplomas to unlock 1 more study room.",
+      label: "Unlock The Next Zone",
+      detail: "Use non-spendable diplomas to unlock 1 more Gocean zone.",
       target: 1,
       reward: reward(2, 1, 0),
     }),

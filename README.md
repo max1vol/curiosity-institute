@@ -1,27 +1,27 @@
-# The Curiosity Institute
+# Gocean Splats
 
-The Curiosity Institute is now a Year 6 learning game built on top of the same direct-avatar museum floor.
+Gocean Splats is now a Year 6 learning game built on top of the same direct-avatar splat map.
 
-The player is still the curator moving in real time through the building, but the progression loop is now curriculum-led: plain study tests award paper, ink, and revision tokens, adaptive perfection quests react to each learner's performance, and final tests award diplomas that unlock new rooms without being spent.
+The player pilots a navigator in real time through the route map, but the progression loop is still curriculum-led: plain study tests award paper, ink, and revision tokens, adaptive perfection quests react to each learner's performance, and final tests award diplomas that unlock new zones without being spent.
 
 ## Core Fantasy
 
 The game should feel like:
 
-- walking through a tactile 3D school-museum hybrid instead of navigating flat menus
+- walking through a tactile 3D Gocean splat map instead of navigating flat menus
 - earning progress through hard Year 6 work rather than buying everything with currency
-- unlocking study wings through diploma milestones while keeping coin pickups for ambient floor energy
+- unlocking study zones through diploma milestones while keeping coin pickups for ambient route energy
 - turning mistakes into concrete follow-up quests such as rewriting on paper or reworking an answer you cannot edit again
-- using immersive splat rooms and generated art to make the curriculum world feel alive
+- using immersive splat zones and generated art to make the curriculum world feel alive
 
 ## Main Gameplay Loop
 
-1. Guide the curator through the Year 6 floor in a top-down 3D view.
-2. Enter challenge hubs or queued study alerts to launch a weighted random hard round.
+1. Guide the navigator through the Year 6 route map in a top-down 3D view.
+2. Enter challenge currents or queued study alerts to launch a weighted random hard round.
 3. Clear MCQ, quiz, free-text, and match-pairs activities to earn resources and strengthen topic performance.
 4. Convert weak or promising topics into adaptive perfection quests, then pass the final test to earn the diploma.
-5. Unlock new rooms when you reach diploma gates; diplomas remain on your record and are never spent.
-6. Use earned resources such as paper, ink, and revision tokens to upgrade rooms and keep progression moving.
+5. Unlock new zones when you reach diploma gates; diplomas remain on your record and are never spent.
+6. Use earned resources such as paper, ink, and revision tokens to upgrade zones and keep progression moving.
 
 ## Study System
 
@@ -32,7 +32,7 @@ Every prompted study round comes from the generated Year 6 curriculum deck with 
 - `mcq`: 20%
 - `match-pairs`: 5%
 
-Failure and strong performance both feed adaptive perfection quests, including rewrite-on-paper style tasks and locked-topic recovery tasks that lead into final diploma tests.
+Failure and strong performance both feed adaptive perfection quests, including rewrite-on-paper style tasks and locked-topic recovery tasks that lead into final diploma tests. Plain test mode weights stay fixed, but the question picker now leans toward active weak subjects so the curriculum loop feels more coherent instead of fully random.
 
 The quest deck now also separates plain resource tests, adaptive mastery quests, and final diploma tests. Resource tests earn paper, ink, and revision tokens. Mastery quests are meant to be personalized follow-ups based on the learner's performance. Final tests award the diploma when passed.
 
@@ -41,23 +41,23 @@ The quest deck now also separates plain resource tests, adaptive mastery quests,
 These three concept images show the same gameplay idea with clearly different visual languages:
 
 - portrait mobile framing
-- direct control of the curator
+- direct control of the navigator
 - floating coin pickups
-- active exhibit or public room space
+- active splat zone or public route space
 - visible locked future expansion
 - incoming public-question call event
 
-### Direction 1: Heritage Hall
+### Direction 1: Kelp Bastion
 
 - dark green striped walls
 - pale parquet floors
 - burgundy runner
 - brass lamps and trim
-- warm heritage-museum atmosphere
+- warm harbor-route atmosphere
 
-![Direction 1: Heritage Hall](docs/concept-art/gameplay-directions/direction-1-heritage-hall.png)
+![Direction 1: Kelp Bastion](docs/concept-art/gameplay-directions/direction-1-heritage-hall.png)
 
-### Direction 2: Marble Atrium
+### Direction 2: Openwater Deck
 
 - white stone and marble architecture
 - skylit upper structure
@@ -65,17 +65,17 @@ These three concept images show the same gameplay idea with clearly different vi
 - brighter daylight mood
 - formal institutional feeling
 
-![Direction 2: Marble Atrium](docs/concept-art/gameplay-directions/direction-2-marble-atrium.png)
+![Direction 2: Openwater Deck](docs/concept-art/gameplay-directions/direction-2-marble-atrium.png)
 
-### Direction 3: Glasshouse Museum
+### Direction 3: Coral Glass Bay
 
 - brass-framed glass partitions
 - terracotta and pale stone flooring
 - indoor plants and warm daylight
-- softer modern museum mood
+- softer modern reef mood
 - central rotunda hub instead of a straight corridor
 
-![Direction 3: Glasshouse Museum](docs/concept-art/gameplay-directions/direction-3-glasshouse-museum.png)
+![Direction 3: Coral Glass Bay](docs/concept-art/gameplay-directions/direction-3-glasshouse-museum.png)
 
 ## 3D Render Pipeline
 
@@ -154,16 +154,16 @@ Pipeline entrypoint:
 
 ## Playable App
 
-This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a Year 6 learning game.
+This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a Year 6 Gocean splats game.
 
 What it includes:
 
-- direct curator movement with `WASD`, arrow keys, or click-to-move
+- direct navigator movement with `WASD`, arrow keys, or click-to-move
 - hard Year 6 study rounds with weighted MCQ, quiz, free-text, and match-pairs formats
-- diploma-gated room unlocks and quest-resource-based upgrades
+- diploma-gated zone unlocks and quest-resource-based upgrades
 - optional Google account sign-in for per-account autosave slots on the same browser
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
-- immersive room scenes that prefer Gaussian splats and fall back to panorama textures in the 3D viewer
+- immersive zone scenes that prefer Gaussian splats and fall back to panorama textures in the 3D viewer
 - an opaque, non-blurred interface so the deployed app stays readable instead of smearing the whole screen
 
 ## App Structure
@@ -176,18 +176,18 @@ What it includes:
 
 ## Immersive Scene Pipeline
 
-This repo also contains an immersive-scene pipeline for the playable rooms. The app now prefers Gaussian splat assets from `output/splats/` whenever they exist, and falls back to generated panorama textures from `output/photospheres/` when a room does not have a splat scene yet.
+This repo also contains an immersive-scene pipeline for the playable zones. The app now prefers Gaussian splat assets from `output/splats/` whenever they exist, and falls back to generated panorama textures from `output/photospheres/` when a zone does not have a splat scene yet.
 
 What it does:
 
-- reads the room-driving concept art from `docs/concept-art/`
+- reads the zone-driving concept art from `docs/concept-art/`
 - discovers splat assets under `output/splats/` and wires them into the game automatically
-- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic room view for fallback coverage
+- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic zone view for fallback coverage
 - converts that panorama into a 2:1 viewer texture with `ffmpeg`
-- retries Google failures up to five times per room by default
+- retries Google failures up to five times per zone by default
 - treats transient server-side model failures, including worker-branch fanout failures, with backoff and retry
 - records attempt failures and deduplicated final failures in `output/photospheres/reports/`
-- exposes splats through `static/output/splats/` and fallback panoramas through `static/output/photospheres/` so opening an unlocked room loads the immersive viewer
+- exposes splats through `static/output/splats/` and fallback panoramas through `static/output/photospheres/` so opening an unlocked zone loads the immersive viewer
 
 Run it with:
 

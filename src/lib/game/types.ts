@@ -306,6 +306,7 @@ export interface QuestState extends QuestDefinition {
 
 export type StudyMode = "quiz" | "free-text" | "mcq" | "match-pairs";
 export type FinalTestMode = Exclude<StudyMode, "match-pairs">;
+export type StudyStage = "resource-test" | "quest-test" | "final-test";
 
 export type DailyGoalKind =
   | "rooms-opened"
@@ -437,14 +438,14 @@ export interface FinalTestState {
 export type ModalState =
   | {
       type: "mcq";
-      stage: "resource-test" | "quest-test" | "final-test";
+      stage: StudyStage;
       questId: string | null;
       miniGame: MiniGameDefinition | null;
       question: McqQuestion;
     }
   | {
       type: "free-text";
-      stage: "resource-test" | "quest-test" | "final-test";
+      stage: StudyStage;
       questId: string | null;
       miniGame: MiniGameDefinition | null;
       question: FreeTextQuestion;
@@ -452,14 +453,14 @@ export type ModalState =
     }
   | {
       type: "quiz";
-      stage: "resource-test" | "quest-test" | "final-test";
+      stage: StudyStage;
       questId: string | null;
       miniGame: MiniGameDefinition | null;
       question: QuizQuestion;
     }
   | {
       type: "match-pairs";
-      stage: "resource-test" | "quest-test";
+      stage: Exclude<StudyStage, "final-test">;
       questId: string | null;
       miniGame: MiniGameDefinition | null;
       subject: string;

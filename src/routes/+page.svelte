@@ -62,32 +62,32 @@
 </script>
 
 <svelte:head>
-  <title>The Curiosity Institute</title>
+  <title>Gocean Splats</title>
   <meta
     name="description"
-    content="Guide the curator through a Year 6 learning museum with hard randomized quizzes, diploma-gated rooms, quests, and immersive splat scenes."
+    content="Pilot a Year 6 Gocean splats map with hard randomized quizzes, diploma-gated zones, quests, autosave, and immersive splat scenes."
   />
 </svelte:head>
 
 <div class="app-shell" style={controller.themeStyle}>
   <header class="hero">
     <div class="hero-copy">
-      <p class="eyebrow">Playable Year 6 Prototype</p>
-      <h1>The Curiosity Institute</h1>
+      <p class="eyebrow">Playable Year 6 Splat Prototype</p>
+      <h1>Gocean Splats</h1>
       <p class="hero-lede">
-        Guide the curator across a growing study floor, use plain Year 6 tests to earn paper, ink, and revision tokens,
+        Pilot a growing splat sea-chart, use plain Year 6 tests to earn paper, ink, and revision tokens,
         then turn each weak or promising topic into a personalised perfection quest and a final diploma test.
       </p>
       <div class="hero-actions">
         <button class="primary-button" type="button" onclick={() => controller.startGame()}>
-          Start New {controller.activeTheme?.label ?? "Day"}
+          Start New {controller.activeTheme?.label ?? "Voyage"}
         </button>
         <button class="ghost-button" type="button" onclick={() => controller.openArchive()}>
           Open Full Archive
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Open unlocked rooms to enter their immersive scene, then drag to pivot and use Forward or Back to travel between connected wings. Plain resource tests rotate through weighted hard formats: quiz 50%, free text 25%, MCQ 20%, and match pairs 5%.
+        Controls: WASD or arrow keys to steer the navigator across the chart. Open unlocked zones to enter their immersive splat scene, then drag to pivot and use Forward or Back to travel between connected routes. Plain resource tests still rotate through weighted hard formats: quiz 50%, free text 25%, MCQ 20%, and match pairs 5%.
       </p>
       <GoogleAccountPanel
         clientId={googleClientId}
@@ -121,8 +121,8 @@
 
   <section class="theme-picker">
     <div class="section-heading">
-      <p class="eyebrow">Choose A Direction</p>
-      <h2>Three Playable Study Worlds</h2>
+      <p class="eyebrow">Choose A Route</p>
+      <h2>Three Playable Gocean Worlds</h2>
     </div>
     <div class="theme-grid">
       {#each data.content.themes as theme (theme.id)}
@@ -161,8 +161,8 @@
     <aside class="sidebar">
       <section class="panel briefing-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Class Brief</p>
-          <h2>Study Goals</h2>
+          <p class="eyebrow">Voyage Brief</p>
+          <h2>Route Goals</h2>
         </div>
         <div class="briefing-summary">
           <div class="grade-card">
@@ -193,8 +193,8 @@
 
       <section class="panel quest-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Quest Board</p>
-          <h2>Perfection Quests</h2>
+          <p class="eyebrow">Mission Board</p>
+          <h2>Perfection Missions</h2>
         </div>
         {#if controller.game?.activeQuests.length}
           <div class="goal-grid">
@@ -216,14 +216,14 @@
             {/each}
           </div>
         {:else}
-          <div class="room-empty">Plain test performance generates unique perfection quests here. Finish them to unlock final diploma tests.</div>
+          <div class="room-empty">Plain test performance generates unique perfection missions here. Finish them to unlock final diploma tests.</div>
         {/if}
       </section>
 
       <section class="panel stats-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Study Health</p>
-          <h2>Floor Metrics</h2>
+          <p class="eyebrow">Voyage Health</p>
+          <h2>Sea Metrics</h2>
         </div>
         <div class="stats-grid">
           {#each controller.stats as item (item.label)}
@@ -238,8 +238,8 @@
       <section class="panel room-panel">
         <div class="section-heading compact">
           <div>
-            <p class="eyebrow">Selected Room</p>
-            <h2>{controller.selectedRoom?.label ?? "Choose a wing"}</h2>
+            <p class="eyebrow">Selected Zone</p>
+            <h2>{controller.selectedRoom?.label ?? "Choose a route"}</h2>
           </div>
           {#if controller.selectedRoom}
             <p class="room-tier-note">Tier {controller.selectedRoomLevel + 1} of {controller.maxRoomLevel + 1}</p>
@@ -249,11 +249,11 @@
           {#if controller.selectedRoom}
             <img src={controller.selectedRoom.previewPath || controller.selectedRoom.artPath} alt={controller.selectedRoom.label} />
           {:else}
-            <div class="room-empty">Start a day to inspect study rooms and launch challenge hubs.</div>
+            <div class="room-empty">Start a voyage to inspect study zones and launch challenge currents.</div>
           {/if}
         </div>
         <p class="room-copy">
-          {controller.selectedRoom?.blurb ?? "Select a room on the study floor to inspect it, move the curator, or unlock it."}
+          {controller.selectedRoom?.blurb ?? "Select a zone on the Gocean chart to inspect it, navigate to it, or unlock it."}
         </p>
         <div class="room-detail-grid">
           {#each controller.selectedRoomDetails as detail (detail.label)}
@@ -265,10 +265,10 @@
         </div>
         <div class="room-render-strip">
           {#each controller.selectedRoomRenderViews as view (view.id)}
-            <figure class="render-thumb">
-              <img src={view.imagePath} alt={`${controller.selectedRoom?.label ?? "Room"} ${view.label}`} />
-              <span>{view.label}</span>
-            </figure>
+          <figure class="render-thumb">
+            <img src={view.imagePath} alt={`${controller.selectedRoom?.label ?? "Zone"} ${view.label}`} />
+            <span>{view.label}</span>
+          </figure>
           {/each}
         </div>
         <div class="room-actions">
@@ -290,8 +290,8 @@
 
       <section class="panel program-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Program Board</p>
-          <h2>Year 6 Challenge Hubs</h2>
+          <p class="eyebrow">Launch Board</p>
+          <h2>Year 6 Gocean Currents</h2>
         </div>
         <div class="program-grid">
           {#each data.content.miniGames as miniGame (miniGame.id)}
@@ -312,7 +312,7 @@
                 <p>{miniGame.description}</p>
                 <div class="program-chip-row">
                   <span class="program-chip">{miniGame.formatNote}</span>
-                  <span class="program-chip">Diplomas on success · quests on failure</span>
+                  <span class="program-chip">Resources on plain tests · diplomas on finals</span>
                 </div>
               </div>
             </article>
@@ -322,8 +322,8 @@
 
       <section class="panel lab-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Render Lab</p>
-          <h2>3D Map Tricks</h2>
+          <p class="eyebrow">Splat Lab</p>
+          <h2>3D Route Tricks</h2>
         </div>
         <ul class="trick-list">
           {#each data.content.renderLab.tricks as trick (`trick-${trick}`)}
@@ -334,7 +334,7 @@
 
       <section class="panel log-panel">
         <div class="section-heading compact">
-          <p class="eyebrow">Study Log</p>
+          <p class="eyebrow">Voyage Log</p>
           <h2>Latest Activity</h2>
         </div>
         <ul class="activity-log">
@@ -343,7 +343,7 @@
               <li>{entry.message}</li>
             {/each}
           {:else}
-            <li>Start a day to generate visitor activity, study alerts, and diploma-gated room unlocks.</li>
+            <li>Start a voyage to generate traffic, study alerts, and diploma-gated zone unlocks.</li>
           {/if}
         </ul>
       </section>
@@ -353,7 +353,7 @@
   <section class="archive-panel panel">
     <div class="section-heading compact">
       <p class="eyebrow">Repo Archive</p>
-      <h2>Generated Asset Library</h2>
+      <h2>Generated Splat Library</h2>
     </div>
     <div class="archive-strip">
       {#each data.content.conceptArt as item (item.id)}
