@@ -101,19 +101,17 @@ function validatePayload(payload) {
   validateDeck("matchPairDeck", payload.matchPairDeck, 16);
   validateDeck("questDeck", payload.questDeck, 18);
 
-  const questTrackTypes = new Set(["resource-test", "mastery-quest", "final-test"]);
   const questTriggers = new Set([
     "mcq-failure",
+    "mcq-mastery",
     "quiz-failure",
+    "quiz-mastery",
     "free-text-failure",
+    "free-text-mastery",
     "locked-submission",
     "match-pairs-failure",
-    "mastery-review",
-    "final-diploma-test",
+    "match-pairs-mastery"
   ]);
-  let resourceTestCount = 0;
-  let masteryQuestCount = 0;
-  let finalTestCount = 0;
 
   for (const quest of payload.questDeck) {
     if (!quest || typeof quest !== "object") {
@@ -122,10 +120,6 @@ function validatePayload(payload) {
 
     if (typeof quest.id !== "string" || typeof quest.title !== "string" || typeof quest.detail !== "string") {
       throw new Error("questDeck items must include id, title, and detail strings.");
-    }
-
-    if (!questTrackTypes.has(quest.trackType)) {
-      throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has an invalid trackType.`);
     }
 
     if (!questTriggers.has(quest.trigger)) {
@@ -139,26 +133,10 @@ function validatePayload(payload) {
     for (const key of ["paper", "ink", "revisionTokens"]) {
       const value = quest.resourceReward[key];
 
-      if (!Number.isInteger(value) || value < 0 || value > 3) {
+      if (!Number.isInteger(value) || value < 0 || value > 1) {
         throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has invalid resourceReward.${key}.`);
       }
     }
-
-    if (!Number.isInteger(quest.diplomaReward) || quest.diplomaReward < 0 || quest.diplomaReward > 1) {
-      throw new Error(`questDeck item ${quest.id ?? "<unknown>"} has invalid diplomaReward.`);
-    }
-
-    if (quest.trackType === "resource-test") {
-      resourceTestCount += 1;
-    } else if (quest.trackType === "mastery-quest") {
-      masteryQuestCount += 1;
-    } else if (quest.trackType === "final-test") {
-      finalTestCount += 1;
-    }
-  }
-
-  if (resourceTestCount < 4 || masteryQuestCount < 4 || finalTestCount < 1) {
-    throw new Error("questDeck must include resource-test, mastery-quest, and final-test entries.");
   }
 }
 
