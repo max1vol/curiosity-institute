@@ -1,7 +1,10 @@
 <script lang="ts">
+  import { browser } from "$app/environment";
+  import { env } from "$env/dynamic/public";
+  import GoogleAccountPanel from "$lib/components/game/GoogleAccountPanel.svelte";
   import MuseumStage from "$lib/components/game/MuseumStage.svelte";
+  import { restoreGoogleSession, saveSlotIdForGoogleSession, type GoogleUserSession } from "$lib/auth/google";
   import { MuseumGameController } from "$lib/game/controller.svelte";
-  import { formatRewardLabel } from "$lib/game/progression";
   import type { ViewerMoveDirection } from "$lib/game/types";
 
   import type { PageData } from "./$types";
@@ -14,9 +17,15 @@
   let mountedController: MuseumGameController | null = null;
   let gameModalLoader = $state<Promise<GameModalModule> | null>(null);
   let roomViewerLoader = $state<Promise<RoomViewerModule> | null>(null);
+  let accountSession = $state<GoogleUserSession | null>(browser ? restoreGoogleSession() : null);
+  const googleClientId = $derived(env.PUBLIC_GOOGLE_CLIENT_ID ?? "");
 
-  const controller = $derived.by(() => new MuseumGameController(data.content));
-
+  const controller = $derived.by(
+    () =>
+      new MuseumGameController(data.content, {
+        saveSlotId: saveSlotIdForGoogleSession(accountSession)
+      })
+  );
   $effect(() => {
     const activeController = controller;
 
@@ -66,28 +75,31 @@
       <p class="eyebrow">Playable Year 6 Prototype</p>
       <h1>The Curiosity Institute</h1>
       <p class="hero-lede">
-        Guide the curator across a growing study floor, earn diplomas from hard Year 6 challenges, unlock new wings
-        without spending those diplomas, and clear rewrite quests to earn paper, ink, and revision tokens.
+        Guide the curator across a growing study floor, use plain Year 6 tests to earn paper, ink, and revision tokens,
+        then turn each weak or promising topic into a personalised perfection quest and a final diploma test.
       </p>
       <div class="hero-actions">
         <button class="primary-button" type="button" onclick={() => controller.startGame()}>
           Start New {controller.activeTheme?.label ?? "Day"}
         </button>
-        {#if controller.canResumeSavedGame}
-          <button class="ghost-button" type="button" onclick={() => controller.resumeSavedGame()}>
-            Resume Saved Day
-          </button>
-          <button class="ghost-button subtle-button" type="button" onclick={() => controller.clearSavedGame()}>
-            Clear Saved Day
-          </button>
-        {/if}
         <button class="ghost-button" type="button" onclick={() => controller.openArchive()}>
           Open Full Archive
         </button>
       </div>
       <p class="hero-note">
-        Controls: WASD or arrow keys to move on the floor. Open unlocked rooms to enter their immersive scene, then drag to pivot and use Forward or Back to travel between connected wings. Study rounds rotate through weighted hard formats: quiz 50%, free text 25%, MCQ 20%, and match pairs 5%.
+        Controls: WASD or arrow keys to move on the floor. Open unlocked rooms to enter their immersive scene, then drag to pivot and use Forward or Back to travel between connected wings. Plain resource tests rotate through weighted hard formats: quiz 50%, free text 25%, MCQ 20%, and match pairs 5%.
       </p>
+      <GoogleAccountPanel
+        clientId={googleClientId}
+        session={accountSession}
+        saveSummary={controller.saveSummary}
+        canResumeSavedGame={controller.canResumeSavedGame}
+        onSessionChange={(session) => {
+          accountSession = session;
+        }}
+        onResumeSavedGame={() => controller.resumeSavedGame()}
+        onClearSavedGame={() => controller.clearSavedGame()}
+      />
     </div>
 
     <div class="hero-preview">
@@ -182,7 +194,7 @@
       <section class="panel quest-panel">
         <div class="section-heading compact">
           <p class="eyebrow">Quest Board</p>
-          <h2>Redraft Quests</h2>
+          <h2>Perfection Quests</h2>
         </div>
         {#if controller.game?.activeQuests.length}
           <div class="goal-grid">
@@ -190,20 +202,21 @@
               <article class="goal-card">
                 <div class="goal-topline">
                   <h3>{quest.title}</h3>
-                  <strong>Day {quest.createdAtDay}</strong>
+                  <strong>{quest.stage === "final-ready" ? "Final Ready" : `Day ${quest.createdAtDay}`}</strong>
                 </div>
                 <p>{quest.detail}</p>
+                <p class="room-empty">{quest.subject} · {quest.topic} · {quest.performanceSummary}</p>
                 <div class="goal-footer">
-                  <span>{formatRewardLabel(quest.resourceReward)}</span>
+                  <span>{controller.questProgressLabel(quest)}</span>
                   <button class="ghost-button" type="button" onclick={() => controller.completeQuest(quest.id)}>
-                    Claim Resources
+                    {controller.questActionLabel(quest)}
                   </button>
                 </div>
               </article>
             {/each}
           </div>
         {:else}
-          <div class="room-empty">Missed work, locked wings, and failed rounds can generate rewrite quests here.</div>
+          <div class="room-empty">Plain test performance generates unique perfection quests here. Finish them to unlock final diploma tests.</div>
         {/if}
       </section>
 

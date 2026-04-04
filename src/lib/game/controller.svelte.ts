@@ -3,6 +3,7 @@ import type {
   ConceptAsset,
   DailyGoal,
   DailyGoalView,
+  FinalTestState,
   FloorCoin,
   FreeTextQuestion,
   GameContent,
@@ -14,7 +15,9 @@ import type {
   MiniGameId,
   ModalState,
   ObjectivePill,
+  PerformanceRecord,
   Point,
+  QuestState,
   QuestTrigger,
   RewardBundle,
   RoomAction,
@@ -36,9 +39,21 @@ import {
   selectFreeTextQuestion,
   selectMcqQuestion,
   selectQuest,
+  selectTargetedMatchPairs,
+  selectTargetedFreeTextQuestion,
+  selectTargetedMcqQuestion,
+  selectTargetedQuizQuestion,
   selectQuizQuestion,
   selectStudyMode
 } from "./challenge-selection";
+import {
+  buildAdaptiveQuestState,
+  buildFinalTestState,
+  finalTestModeForQuest,
+  shouldOfferMasteryQuest,
+  summarizePerformance,
+  updatePerformanceRecords
+} from "./diploma-flow";
 import { buildDailyGoals, formatRewardLabel, goalProgressForGame, MAX_ROOM_LEVEL } from "./progression";
 import {
   buildMatchCards,
@@ -54,7 +69,8 @@ export const WORLD = {
 } as const;
 
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
-const STORAGE_KEY = "curiosity-institute-save-v4";
+const STORAGE_KEY_PREFIX = "curiosity-institute-save-v5";
+const LEGACY_STORAGE_KEY = "curiosity-institute-save-v4";
 const SAVE_INTERVAL_MS = 2500;
 const MIN_QUESTION_COINS = 1;
 const MATCH_PAIR_ATTEMPT_LIMIT = 9;
@@ -67,6 +83,12 @@ const QUEST_TRIGGER_BY_MODE: Record<StudyMode, QuestTrigger> = {
   "free-text": "free-text-failure",
   "match-pairs": "match-pairs-failure"
 };
+const QUEST_MASTERY_TRIGGER_BY_MODE: Record<StudyMode, QuestTrigger> = {
+  mcq: "mcq-mastery",
+  quiz: "quiz-mastery",
+  "free-text": "free-text-mastery",
+  "match-pairs": "match-pairs-mastery"
+};
 
 interface SavedGamePayload {
   version: number;
@@ -74,6 +96,19 @@ interface SavedGamePayload {
   savedAt: string;
   game: GameSession;
 }
+
+interface MuseumGameControllerOptions {
+  saveSlotId?: string;
+}
+
+interface StudyQuestionContext {
+  id: string;
+  subject: string;
+  topic: string;
+  prompt: string;
+}
+
+type StudyQuestionLike = Pick<McqQuestion | QuizQuestion | FreeTextQuestion, "id" | "subject" | "topic" | "prompt">;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -221,16 +256,27 @@ function isStudyMode(value: unknown): value is StudyMode {
 
 function normalizeQuestTrigger(value: unknown): QuestTrigger {
   return value === "mcq-failure" ||
+    value === "mcq-mastery" ||
     value === "quiz-failure" ||
+    value === "quiz-mastery" ||
     value === "free-text-failure" ||
+    value === "free-text-mastery" ||
     value === "locked-submission" ||
-    value === "match-pairs-failure"
+    value === "match-pairs-failure" ||
+    value === "match-pairs-mastery" ||
+    value === "mastery-review" ||
+    value === "final-diploma-test"
     ? value
     : "locked-submission";
 }
 
+function isQuestStage(value: unknown): value is QuestState["stage"] {
+  return value === "improvement" || value === "final-ready";
+}
+
 export class MuseumGameController {
   readonly content: GameContent;
+  readonly saveSlotId: string;
 
   selectedThemeId = $state("");
   game = $state<GameSession | null>(null);
@@ -239,14 +285,19 @@ export class MuseumGameController {
   lastSavedAt = $state<string | null>(null);
 
   private readonly keys = new Set<string>();
+  private readonly storageKey: string;
+  private readonly fallbackStorageKeys: string[];
   private viewerHistory: string[] = [];
   private animationFrame = 0;
   private lastFrame = 0;
   private lastPersistAt = 0;
   private mounted = false;
 
-  constructor(content: GameContent) {
+  constructor(content: GameContent, options: MuseumGameControllerOptions = {}) {
     this.content = content;
+    this.saveSlotId = options.saveSlotId ?? "guest";
+    this.storageKey = `${STORAGE_KEY_PREFIX}:${this.saveSlotId}`;
+    this.fallbackStorageKeys = this.saveSlotId === "guest" ? [this.storageKey, LEGACY_STORAGE_KEY] : [this.storageKey];
     this.selectedThemeId = content.themes[0]?.id ?? "";
   }
 
@@ -440,18 +491,22 @@ export class MuseumGameController {
     }
 
     if (this.completedGoalsCount === this.dailyGoals.length) {
-      return "Quest board complete. Use the rest of the day to unlock more study rooms and raise the grade.";
+      return "Core goals complete. Keep farming resources with plain tests and convert polished topics into diplomas.";
+    }
+
+    if (this.game.activeQuests.some((quest) => quest.stage === "final-ready")) {
+      return "A diploma final is ready. Pass it to add a diploma without spending your resources.";
     }
 
     if (this.game.activeQuests.length) {
-      return "A redraft quest is waiting. Claim its study resources before the next hard room upgrade.";
+      return "A personalised perfection quest is waiting. Finish it, then take the final diploma test.";
     }
 
     if (this.game.pendingCall) {
-      return `A ${formatStudyModeLabel(this.game.pendingCall)} round is waiting. Clear it before your study streak dips.`;
+      return `A ${formatStudyModeLabel(this.game.pendingCall)} resource test is waiting. Clear it to stock paper, ink, and revision tokens.`;
     }
 
-    return "Balance room unlocks, diploma progress, and redraft quests to lift the grade.";
+    return "Use plain tests to earn resources, perfect weak topics through quests, and pass finals to grow your diploma record.";
   }
 
   get dailyGoals(): DailyGoalView[] {
@@ -550,7 +605,13 @@ export class MuseumGameController {
     }
 
     if (this.game.pendingCall) {
-      return `Open the queued ${formatStudyModeLabel(this.game.pendingCall)} round before the study streak cools down.`;
+      return `Open the queued ${formatStudyModeLabel(this.game.pendingCall)} resource test to keep your materials stocked.`;
+    }
+
+    const finalReadyQuest = this.game.activeQuests.find((quest) => quest.stage === "final-ready");
+
+    if (finalReadyQuest) {
+      return `${finalReadyQuest.title}: final test ready in ${finalReadyQuest.topic}. Pass it to earn the diploma.`;
     }
 
     if (this.game.activeQuests.length) {
@@ -571,7 +632,7 @@ export class MuseumGameController {
       return `Quest board complete. Use your diplomas to open ${unlockable.label}.`;
     }
 
-    return "All core quests are complete. Keep learning and chase a higher grade.";
+    return "All core quests are complete. Keep running plain tests until the next perfection quest appears.";
   }
 
   get objectivePills(): ObjectivePill[] {
@@ -833,7 +894,10 @@ export class MuseumGameController {
       return;
     }
 
-    window.localStorage.removeItem(STORAGE_KEY);
+    for (const key of this.fallbackStorageKeys) {
+      window.localStorage.removeItem(key);
+    }
+
     this.savedGameAvailable = false;
     this.lastSavedAt = null;
   }
@@ -901,7 +965,6 @@ export class MuseumGameController {
     }
 
     if (!this.isRoomUnlocked(room.id)) {
-      this.assignQuest("locked-submission");
       this.logEvent(`${room.label} is still locked. Earn more diplomas or clear the prerequisite wings.`);
       return;
     }
@@ -988,9 +1051,130 @@ export class MuseumGameController {
       return;
     }
 
-    this.game.activeQuests = this.game.activeQuests.filter((entry) => entry.id !== questId);
-    this.game.questsCompleted += 1;
-    this.award(quest.resourceReward, `${quest.title} complete. Resources gained: ${formatRewardLabel(quest.resourceReward)}.`);
+    if (quest.stage === "final-ready") {
+      this.startFinalTest(questId);
+      return;
+    }
+
+    this.startQuestPractice(questId);
+  }
+
+  questActionLabel(quest: QuestState): string {
+    if (quest.stage === "final-ready") {
+      return "Take Final Test";
+    }
+
+    return quest.currentSuccesses > 0 ? "Continue Improvement" : "Start Improvement";
+  }
+
+  questProgressLabel(quest: QuestState): string {
+    if (quest.stage === "final-ready") {
+      return `Final ${finalTestModeForQuest(quest.sourceMode).replace("-", " ")} ready`;
+    }
+
+    return `${quest.currentSuccesses}/${quest.requiredSuccesses} focused wins`;
+  }
+
+  private startQuestPractice(questId: string): void {
+    if (!this.game) {
+      return;
+    }
+
+    const quest = this.game.activeQuests.find((entry) => entry.id === questId);
+
+    if (!quest || quest.stage !== "improvement") {
+      return;
+    }
+
+    this.closeRoomViewer();
+
+    switch (quest.sourceMode) {
+      case "mcq":
+        this.setActiveModal({
+          type: "mcq",
+          stage: "resource-test",
+          questId: quest.id,
+          miniGame: this.findMiniGame("study-quiz") ?? null,
+          question: this.nextTargetedMcqQuestion(quest.subject, quest.topic, false)
+        });
+        return;
+      case "quiz":
+        this.setActiveModal({
+          type: "quiz",
+          stage: "resource-test",
+          questId: quest.id,
+          miniGame: this.findMiniGame("curator-check") ?? this.findMiniGame("study-quiz") ?? null,
+          question: this.nextTargetedQuizQuestion(quest.subject, quest.topic, false)
+        });
+        return;
+      case "free-text":
+        this.setActiveModal({
+          type: "free-text",
+          stage: "resource-test",
+          questId: quest.id,
+          miniGame: this.findMiniGame("estimation") ?? this.findMiniGame("study-quiz") ?? null,
+          question: this.nextTargetedFreeTextQuestion(quest.subject, quest.topic, false),
+          answer: ""
+        });
+        return;
+      case "match-pairs":
+        this.setActiveModal(
+          this.createMatchPairsModal(this.findMiniGame("match-pairs") ?? this.findMiniGame("study-quiz") ?? null, quest.id, quest.subject)
+        );
+        return;
+    }
+  }
+
+  startFinalTest(questId: string): void {
+    if (!this.game) {
+      return;
+    }
+
+    const quest = this.game.activeQuests.find((entry) => entry.id === questId);
+
+    if (!quest || quest.stage !== "final-ready") {
+      return;
+    }
+
+    const existingFinal = this.game.activeFinalTests.find((entry) => entry.questId === quest.id);
+    const finalTest = existingFinal ?? buildFinalTestState(quest);
+
+    if (!existingFinal) {
+      this.game.activeFinalTests = [...this.game.activeFinalTests, finalTest];
+    }
+
+    this.closeRoomViewer();
+
+    switch (finalTest.mode) {
+      case "mcq":
+        this.setActiveModal({
+          type: "mcq",
+          stage: "final-test",
+          questId: quest.id,
+          miniGame: this.findMiniGame("study-quiz") ?? null,
+          question: this.nextTargetedMcqQuestion(finalTest.subject, finalTest.topic, true)
+        });
+        return;
+      case "quiz":
+        this.setActiveModal({
+          type: "quiz",
+          stage: "final-test",
+          questId: quest.id,
+          miniGame: this.findMiniGame("curator-check") ?? this.findMiniGame("study-quiz") ?? null,
+          question: this.nextTargetedQuizQuestion(finalTest.subject, finalTest.topic, true)
+        });
+        return;
+      case "free-text":
+        this.setActiveModal({
+          type: "free-text",
+          stage: "final-test",
+          questId: quest.id,
+          miniGame: this.findMiniGame("estimation") ?? this.findMiniGame("study-quiz") ?? null,
+          question: this.nextTargetedFreeTextQuestion(finalTest.subject, finalTest.topic, true),
+          answer: ""
+        });
+        return;
+    }
   }
 
   openRoomViewer(roomId: string): void {
@@ -1121,27 +1305,27 @@ export class MuseumGameController {
     this.syncSimulationLoop(true);
   }
 
-  private studySuccessReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
+  private resourceTestSuccessReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
     const expert = difficulty === "Expert";
 
     if (mode === "mcq") {
       return expert
-        ? { diplomas: 2, coins: 12, reputation: 8, curiosity: 10 }
-        : { diplomas: 1, coins: 9, reputation: 6, curiosity: 8 };
+        ? { paper: 2, ink: 1, revisionTokens: 1, coins: 10, reputation: 6, curiosity: 8 }
+        : { paper: 1, ink: 1, revisionTokens: 1, coins: 7, reputation: 5, curiosity: 6 };
     }
 
     if (mode === "quiz") {
       return expert
-        ? { diplomas: 2, coins: 14, reputation: 9, curiosity: 6 }
-        : { diplomas: 1, coins: 10, reputation: 7, curiosity: 5 };
+        ? { paper: 1, ink: 2, revisionTokens: 1, coins: 11, reputation: 7, curiosity: 6 }
+        : { paper: 1, ink: 1, revisionTokens: 1, coins: 8, reputation: 5, curiosity: 5 };
     }
 
     return expert
-      ? { diplomas: 2, coins: 10, reputation: 7, curiosity: 8 }
-      : { diplomas: 1, coins: 7, reputation: 5, curiosity: 6 };
+      ? { paper: 2, ink: 2, revisionTokens: 1, coins: 9, reputation: 6, curiosity: 7 }
+      : { paper: 2, ink: 1, revisionTokens: 1, coins: 7, reputation: 5, curiosity: 5 };
   }
 
-  private studyFailureReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
+  private resourceTestFailureReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
     const expert = difficulty === "Expert";
 
     if (mode === "mcq") {
@@ -1161,8 +1345,51 @@ export class MuseumGameController {
       : { coins: -3, reputation: -2, curiosity: -1 };
   }
 
+  private finalTestSuccessReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
+    const expert = difficulty === "Expert";
+
+    if (mode === "mcq") {
+      return expert
+        ? { diplomas: 1, coins: 14, reputation: 9, curiosity: 8 }
+        : { diplomas: 1, coins: 12, reputation: 8, curiosity: 7 };
+    }
+
+    if (mode === "quiz") {
+      return expert
+        ? { diplomas: 1, coins: 16, reputation: 10, curiosity: 7 }
+        : { diplomas: 1, coins: 13, reputation: 9, curiosity: 6 };
+    }
+
+    return expert
+      ? { diplomas: 1, coins: 13, reputation: 9, curiosity: 8 }
+      : { diplomas: 1, coins: 11, reputation: 8, curiosity: 7 };
+  }
+
+  private finalTestFailureReward(mode: "mcq" | "quiz" | "free-text", difficulty: "Advanced" | "Expert"): RewardBundle {
+    return this.resourceTestFailureReward(mode, difficulty);
+  }
+
+  private questTestSuccessReward(mode: StudyMode): RewardBundle {
+    if (mode === "match-pairs") {
+      return { coins: 5, reputation: 3, curiosity: 4 };
+    }
+
+    return { coins: 4, reputation: 3, curiosity: 3 };
+  }
+
+  private questTestFailureReward(mode: StudyMode): RewardBundle {
+    if (mode === "match-pairs") {
+      return { coins: -2, reputation: -1, curiosity: -1 };
+    }
+
+    return { coins: -2, reputation: -2, curiosity: -1 };
+  }
+
   private concludeStudyRound({
     mode,
+    stage,
+    question,
+    questId,
     success,
     successRewards,
     failureRewards,
@@ -1170,6 +1397,9 @@ export class MuseumGameController {
     failureMessage
   }: {
     mode: StudyMode;
+    stage: "resource-test" | "quest-test" | "final-test";
+    question: StudyQuestionLike;
+    questId?: string | null;
     success: boolean;
     successRewards: RewardBundle;
     failureRewards: RewardBundle;
@@ -1178,29 +1408,339 @@ export class MuseumGameController {
   }): void {
     this.finishStudyRound();
 
-    if (success) {
-      this.completeProgram(mode, successRewards, successMessage);
+    if (stage === "final-test") {
+      if (success) {
+        this.completeFinalTest(mode, question, questId ?? null, successRewards, successMessage);
+        return;
+      }
+
+      this.recordFinalTestFailure(mode, question, questId ?? null, failureRewards, failureMessage);
       return;
     }
 
-    this.recordStudyFailure(mode, failureRewards, failureMessage);
+    if (stage === "quest-test") {
+      if (success) {
+        this.completeQuestTest(mode, question, questId ?? null, successRewards, successMessage);
+        return;
+      }
+
+      this.recordQuestTestFailure(mode, question, questId ?? null, failureRewards, failureMessage);
+      return;
+    }
+
+    if (success) {
+      this.completeResourceTest(mode, question, successRewards, successMessage);
+      return;
+    }
+
+    if (mode === "match-pairs") {
+      this.recordStudyFailure(mode, failureRewards, failureMessage);
+      return;
+    }
+
+    this.recordResourceTestFailure(mode, question, failureRewards, failureMessage);
   }
 
-  private createMatchPairsModal(miniGame: MiniGameDefinition | null): Extract<ModalState, { type: "match-pairs" }> {
-    const selectedPairs = drawMatchPairsDeck(this.content.matchPairDeck, MATCH_PAIR_DECK_SIZE);
+  private createMatchPairsModal(
+    miniGame: MiniGameDefinition | null,
+    questId: string | null = null,
+    subject?: string,
+    topic?: string
+  ): Extract<ModalState, { type: "match-pairs" }> {
+    const selectedPairs = subject
+      ? selectTargetedMatchPairs({ content: this.content, subject, pairCount: MATCH_PAIR_DECK_SIZE })
+      : drawMatchPairsDeck(this.content.matchPairDeck, MATCH_PAIR_DECK_SIZE);
     const subjects = Array.from(new Set(selectedPairs.map((pair) => pair.subject)));
-    const subject = subjects.length === 1 ? subjects[0] : "Mixed Subjects";
-    const topic = selectedPairs.length ? `${selectedPairs.length} revision pairs` : "Revision pairs";
+    const resolvedSubject = subject ?? (subjects.length === 1 ? subjects[0] : "Mixed Subjects");
+    const resolvedTopic = topic ?? (selectedPairs.length ? `${selectedPairs.length} revision pairs` : "Revision pairs");
 
     return {
       type: "match-pairs",
+      stage: questId ? "quest-test" : "resource-test",
+      questId,
       miniGame,
-      subject,
-      topic,
+      subject: resolvedSubject,
+      topic: resolvedTopic,
       deck: buildMatchCards(selectedPairs),
       attempts: 0,
       locked: false
     };
+  }
+
+  private nextTargetedMcqQuestion(subject: string, topic: string, finalTest = true): McqQuestion {
+    if (!this.game) {
+      return fallbackMcqQuestion(this.content);
+    }
+
+    const sourceRecentIds = finalTest ? this.game.recentFinalQuestionIds : this.game.recentMcqIds;
+    const { item, recentIds: nextRecentIds } = selectTargetedMcqQuestion({
+      content: this.content,
+      recentIds: sourceRecentIds,
+      subject,
+      topic
+    });
+
+    if (finalTest) {
+      this.game.recentFinalQuestionIds = nextRecentIds;
+    } else {
+      this.game.recentMcqIds = nextRecentIds;
+    }
+    return item;
+  }
+
+  private nextTargetedFreeTextQuestion(subject: string, topic: string, finalTest = true): FreeTextQuestion {
+    if (!this.game) {
+      return fallbackFreeTextQuestion(this.content);
+    }
+
+    const sourceRecentIds = finalTest ? this.game.recentFinalQuestionIds : this.game.recentFreeTextIds;
+    const { item, recentIds: nextRecentIds } = selectTargetedFreeTextQuestion({
+      content: this.content,
+      recentIds: sourceRecentIds,
+      subject,
+      topic
+    });
+
+    if (finalTest) {
+      this.game.recentFinalQuestionIds = nextRecentIds;
+    } else {
+      this.game.recentFreeTextIds = nextRecentIds;
+    }
+    return item;
+  }
+
+  private nextTargetedQuizQuestion(subject: string, topic: string, finalTest = true): QuizQuestion {
+    if (!this.game) {
+      return fallbackQuizQuestion(this.content);
+    }
+
+    const sourceRecentIds = finalTest ? this.game.recentFinalQuestionIds : this.game.recentQuizIds;
+    const { item, recentIds: nextRecentIds } = selectTargetedQuizQuestion({
+      content: this.content,
+      recentIds: sourceRecentIds,
+      subject,
+      topic
+    });
+
+    if (finalTest) {
+      this.game.recentFinalQuestionIds = nextRecentIds;
+    } else {
+      this.game.recentQuizIds = nextRecentIds;
+    }
+    return item;
+  }
+
+  private updatePerformance(mode: StudyMode, question: StudyQuestionLike, success: boolean): PerformanceRecord | null {
+    if (!this.game) {
+      return null;
+    }
+
+    this.game.performanceRecords = updatePerformanceRecords(this.game.performanceRecords, {
+      mode,
+      question,
+      success
+    });
+
+    return this.game.performanceRecords.find((entry) => entry.subject === question.subject && entry.topic === question.topic) ?? null;
+  }
+
+  private activeQuestForFocus(subject: string, topic: string): QuestState | null {
+    return this.game?.activeQuests.find((quest) => quest.subject === subject && quest.topic === topic) ?? null;
+  }
+
+  private assignAdaptiveQuest(mode: StudyMode, question: StudyQuestionLike, record: PerformanceRecord, mastery: boolean): void {
+    if (!this.game) {
+      return;
+    }
+
+    const existingQuest = this.activeQuestForFocus(question.subject, question.topic);
+
+    if (existingQuest) {
+      existingQuest.performanceSummary = summarizePerformance(record);
+      return;
+    }
+
+    const trigger = mastery ? QUEST_MASTERY_TRIGGER_BY_MODE[mode] : QUEST_TRIGGER_BY_MODE[mode];
+    const selection = selectQuest({
+      content: this.content,
+      recentIds: this.game.recentQuestIds,
+      trigger
+    });
+
+    if (!selection) {
+      return;
+    }
+
+    this.game.recentQuestIds = selection.recentIds;
+    const quest = buildAdaptiveQuestState({
+      template: selection.item,
+      record,
+      mode,
+      question,
+      day: this.game.day,
+      mastery,
+      saveSlotId: this.saveSlotId
+    });
+
+    this.game.activeQuests = [...this.game.activeQuests, quest].slice(-ACTIVE_QUEST_LIMIT);
+    this.logEvent(`Quest added: ${quest.title}. ${quest.performanceSummary}.`);
+  }
+
+  private unlockQuestFinalTest(quest: QuestState): void {
+    if (!this.game) {
+      return;
+    }
+
+    quest.stage = "final-ready";
+    quest.currentSuccesses = quest.requiredSuccesses;
+    quest.detail = `Focused practice complete for ${quest.topic}. Take the final ${finalTestModeForQuest(quest.sourceMode).replace("-", " ")} to earn the diploma.`;
+
+    if (!this.game.activeFinalTests.some((entry) => entry.questId === quest.id)) {
+      this.game.activeFinalTests = [...this.game.activeFinalTests, buildFinalTestState(quest)];
+    }
+
+    this.logEvent(`${quest.title} is ready for its final test.`);
+  }
+
+  private updateQuestProgress(question: StudyQuestionLike, record: PerformanceRecord | null, success: boolean, questId: string | null = null): void {
+    if (!this.game) {
+      return;
+    }
+
+    const quest = questId
+      ? this.game.activeQuests.find((entry) => entry.id === questId) ?? null
+      : this.activeQuestForFocus(question.subject, question.topic);
+
+    if (!quest || quest.stage !== "improvement") {
+      return;
+    }
+
+    quest.performanceSummary = record ? summarizePerformance(record) : quest.performanceSummary;
+
+    if (!success) {
+      quest.currentSuccesses = Math.max(0, quest.currentSuccesses - 1);
+      quest.detail = `Refine ${quest.topic} with ${quest.currentSuccesses}/${quest.requiredSuccesses} secure improvement win${quest.requiredSuccesses === 1 ? "" : "s"} before the final test.`;
+      return;
+    }
+
+    quest.currentSuccesses = Math.min(quest.requiredSuccesses, quest.currentSuccesses + 1);
+
+    if (quest.currentSuccesses >= quest.requiredSuccesses) {
+      this.unlockQuestFinalTest(quest);
+      return;
+    }
+
+    quest.detail = `Refine ${quest.topic} with ${quest.currentSuccesses}/${quest.requiredSuccesses} secure improvement win${quest.requiredSuccesses === 1 ? "" : "s"} before the final test.`;
+  }
+
+  private completeResourceTest(mode: StudyMode, question: StudyQuestionLike, rewards: RewardBundle, message: string): void {
+    const record = this.updatePerformance(mode, question, true);
+    this.completeProgram(mode, rewards, message);
+
+    if (record && shouldOfferMasteryQuest(record) && !this.activeQuestForFocus(question.subject, question.topic)) {
+      this.assignAdaptiveQuest(mode, question, record, true);
+    }
+  }
+
+  private recordResourceTestFailure(mode: StudyMode, question: StudyQuestionLike, rewards: RewardBundle, message: string): void {
+    const record = this.updatePerformance(mode, question, false);
+    this.recordStudyFailure(mode, rewards, message);
+
+    if (record) {
+      this.assignAdaptiveQuest(mode, question, record, false);
+    }
+  }
+
+  private completeQuestTest(
+    mode: StudyMode,
+    question: StudyQuestionLike,
+    questId: string | null,
+    rewards: RewardBundle,
+    message: string
+  ): void {
+    const record = this.updatePerformance(mode, question, true);
+    this.recordStudyCompletion(mode);
+    this.award(rewards, message);
+
+    if (!this.game || !questId) {
+      return;
+    }
+
+    if (!this.game.activeQuests.some((entry) => entry.id === questId)) {
+      return;
+    }
+
+    this.updateQuestProgress(question, record, true, questId);
+  }
+
+  private recordQuestTestFailure(
+    mode: StudyMode,
+    question: StudyQuestionLike,
+    questId: string | null,
+    rewards: RewardBundle,
+    message: string
+  ): void {
+    const record = this.updatePerformance(mode, question, false);
+    this.recordStudyCompletion(mode);
+    this.award(rewards, message);
+
+    if (!this.game || !questId) {
+      return;
+    }
+
+    if (!this.game.activeQuests.some((entry) => entry.id === questId)) {
+      return;
+    }
+
+    this.updateQuestProgress(question, record, false, questId);
+  }
+
+  private completeFinalTest(
+    mode: StudyMode,
+    question: StudyQuestionLike,
+    questId: string | null,
+    rewards: RewardBundle,
+    message: string
+  ): void {
+    if (!this.game || !questId) {
+      this.completeProgram(mode, rewards, message);
+      return;
+    }
+
+    this.updatePerformance(mode, question, true);
+    this.game.activeQuests = this.game.activeQuests.filter((quest) => quest.id !== questId);
+    this.game.activeFinalTests = this.game.activeFinalTests.filter((entry) => entry.questId !== questId);
+    this.game.questsCompleted += 1;
+    this.completeProgram(mode, rewards, message);
+  }
+
+  private recordFinalTestFailure(
+    mode: StudyMode,
+    question: StudyQuestionLike,
+    questId: string | null,
+    rewards: RewardBundle,
+    message: string
+  ): void {
+    if (!this.game || !questId) {
+      this.recordStudyFailure(mode, rewards, message);
+      return;
+    }
+
+    const quest = this.game.activeQuests.find((entry) => entry.id === questId);
+    const finalTest = this.game.activeFinalTests.find((entry) => entry.questId === questId);
+    const nextAttempts = (finalTest?.attempts ?? 0) + 1;
+    this.game.activeFinalTests = this.game.activeFinalTests.filter((entry) => entry.questId !== questId);
+    const record = this.updatePerformance(mode, question, false);
+
+    if (quest) {
+      quest.stage = "improvement";
+      quest.currentSuccesses = Math.max(0, quest.requiredSuccesses - 1);
+      quest.detail = `The final test in ${quest.topic} did not pass yet. Build back to ${quest.requiredSuccesses} secure improvement win${quest.requiredSuccesses === 1 ? "" : "s"}, then reopen the final test.`;
+      quest.performanceSummary = `${record ? summarizePerformance(record) : quest.performanceSummary} · final attempts ${nextAttempts}`;
+    }
+
+    this.recordStudyCompletion(mode);
+    this.award(rewards, message);
   }
 
   setFreeTextAnswer(value: string): void {
@@ -1216,14 +1756,37 @@ export class MuseumGameController {
       return;
     }
 
-    const { question, answer } = this.game.activeModal;
+    const { question, answer, stage, questId } = this.game.activeModal;
     this.concludeStudyRound({
       mode: "free-text",
+      stage,
+      question,
+      questId,
       success: evaluateFreeTextAnswer(answer, question),
-      successRewards: this.studySuccessReward("free-text", question.difficulty),
-      failureRewards: this.studyFailureReward("free-text", question.difficulty),
-      successMessage: `${question.success} Diploma progress climbs in ${question.subject}.`,
-      failureMessage: `${question.failure} A rewrite quest has been added to the board.`
+      successRewards:
+        stage === "final-test"
+          ? this.finalTestSuccessReward("free-text", question.difficulty)
+          : stage === "quest-test"
+            ? this.questTestSuccessReward("free-text")
+          : this.resourceTestSuccessReward("free-text", question.difficulty),
+      failureRewards:
+        stage === "final-test"
+          ? this.finalTestFailureReward("free-text", question.difficulty)
+          : stage === "quest-test"
+            ? this.questTestFailureReward("free-text")
+          : this.resourceTestFailureReward("free-text", question.difficulty),
+      successMessage:
+        stage === "final-test"
+          ? `${question.subject} diploma secured through the final written response.`
+          : stage === "quest-test"
+            ? `${question.subject} improvement win logged.`
+          : `${question.success} Resources earned for ${question.subject}.`,
+      failureMessage:
+        stage === "final-test"
+          ? `${question.subject} final test missed. The perfection quest has been reopened.`
+          : stage === "quest-test"
+            ? `${question.subject} still needs more polishing before the final test.`
+          : `${question.failure} A personalised perfection quest has been added to the board.`
     });
   }
 
@@ -1232,14 +1795,37 @@ export class MuseumGameController {
       return;
     }
 
-    const { question } = this.game.activeModal;
+    const { question, stage, questId } = this.game.activeModal;
     this.concludeStudyRound({
       mode: "mcq",
+      stage,
+      question,
+      questId,
       success: choiceIndex === question.correctIndex,
-      successRewards: this.studySuccessReward("mcq", question.difficulty),
-      failureRewards: this.studyFailureReward("mcq", question.difficulty),
-      successMessage: `${question.success} ${question.subject} diploma progress improves.`,
-      failureMessage: `${question.failure} Coin losses stop at the final safety coin.`
+      successRewards:
+        stage === "final-test"
+          ? this.finalTestSuccessReward("mcq", question.difficulty)
+          : stage === "quest-test"
+            ? this.questTestSuccessReward("mcq")
+          : this.resourceTestSuccessReward("mcq", question.difficulty),
+      failureRewards:
+        stage === "final-test"
+          ? this.finalTestFailureReward("mcq", question.difficulty)
+          : stage === "quest-test"
+            ? this.questTestFailureReward("mcq")
+          : this.resourceTestFailureReward("mcq", question.difficulty),
+      successMessage:
+        stage === "final-test"
+          ? `${question.subject} diploma secured through the final multiple-choice check.`
+          : stage === "quest-test"
+            ? `${question.subject} improvement win logged.`
+          : `${question.success} ${question.subject} resources improved.`,
+      failureMessage:
+        stage === "final-test"
+          ? `${question.subject} final test missed. The perfection quest has been reopened.`
+          : stage === "quest-test"
+            ? `${question.subject} still needs more polishing before the final test.`
+          : `${question.failure} A personalised perfection quest has been added to the board.`
     });
   }
 
@@ -1248,14 +1834,37 @@ export class MuseumGameController {
       return;
     }
 
-    const { question } = this.game.activeModal;
+    const { question, stage, questId } = this.game.activeModal;
     this.concludeStudyRound({
       mode: "quiz",
+      stage,
+      question,
+      questId,
       success: choiceIndex === question.correctIndex,
-      successRewards: this.studySuccessReward("quiz", question.difficulty),
-      failureRewards: this.studyFailureReward("quiz", question.difficulty),
-      successMessage: `${question.style} solved cleanly. ${question.subject} confidence improves.`,
-      failureMessage: `${question.subject} slipped this round. The study streak dips, but the last coin stays safe.`
+      successRewards:
+        stage === "final-test"
+          ? this.finalTestSuccessReward("quiz", question.difficulty)
+          : stage === "quest-test"
+            ? this.questTestSuccessReward("quiz")
+          : this.resourceTestSuccessReward("quiz", question.difficulty),
+      failureRewards:
+        stage === "final-test"
+          ? this.finalTestFailureReward("quiz", question.difficulty)
+          : stage === "quest-test"
+            ? this.questTestFailureReward("quiz")
+          : this.resourceTestFailureReward("quiz", question.difficulty),
+      successMessage:
+        stage === "final-test"
+          ? `${question.subject} diploma secured through the final quiz.`
+          : stage === "quest-test"
+            ? `${question.subject} improvement win logged.`
+          : `${question.style} solved cleanly. Resources improved in ${question.subject}.`,
+      failureMessage:
+        stage === "final-test"
+          ? `${question.subject} final test missed. The perfection quest has been reopened.`
+          : stage === "quest-test"
+            ? `${question.subject} still needs more polishing before the final test.`
+          : `${question.subject} slipped this round. A personalised perfection quest has been added.`
     });
   }
 
@@ -1265,6 +1874,12 @@ export class MuseumGameController {
     }
 
     const modal = this.game.activeModal;
+    const syntheticQuestion: StudyQuestionLike = {
+      id: `match-${modal.subject}-${modal.topic}`.toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
+      subject: modal.subject,
+      topic: modal.topic,
+      prompt: `Complete the ${modal.subject} match-pairs board for ${modal.topic}.`
+    };
 
     if (modal.locked) {
       return;
@@ -1295,16 +1910,32 @@ export class MuseumGameController {
       if (modal.deck.every((entry) => entry.matched)) {
         const reward = Math.max(8, 18 - modal.attempts);
         this.finishStudyRound();
-        this.completeProgram(
-          "match-pairs",
-          {
-            diplomas: modal.attempts <= 4 ? 2 : 1,
-            coins: reward,
-            reputation: 5,
-            curiosity: 7
-          },
-          `Match pairs cleared in ${modal.attempts} tries.`
-        );
+        if (modal.stage === "quest-test") {
+          this.completeQuestTest(
+            "match-pairs",
+            syntheticQuestion,
+            modal.questId,
+            {
+              ...this.questTestSuccessReward("match-pairs"),
+              coins: reward
+            },
+            `Match-pairs improvement cleared in ${modal.attempts} tries.`
+          );
+        } else {
+          this.completeResourceTest(
+            "match-pairs",
+            syntheticQuestion,
+            {
+              paper: modal.attempts <= 4 ? 2 : 1,
+              ink: 1,
+              revisionTokens: modal.attempts <= 5 ? 1 : 0,
+              coins: reward,
+              reputation: 5,
+              curiosity: 7
+            },
+            `Match pairs cleared in ${modal.attempts} tries. Resources banked for a later diploma push.`
+          );
+        }
       }
 
       return;
@@ -1312,11 +1943,22 @@ export class MuseumGameController {
 
     if (modal.attempts >= MATCH_PAIR_ATTEMPT_LIMIT) {
       this.finishStudyRound();
-      this.recordStudyFailure(
-        "match-pairs",
-        { coins: -3, reputation: -2, curiosity: -1 },
-        "The match board timed out. A redraft quest has been added to your board."
-      );
+      if (modal.stage === "quest-test") {
+        this.recordQuestTestFailure(
+          "match-pairs",
+          syntheticQuestion,
+          modal.questId,
+          this.questTestFailureReward("match-pairs"),
+          "The improvement board timed out. The diploma quest still needs more work."
+        );
+      } else {
+        this.recordResourceTestFailure(
+          "match-pairs",
+          syntheticQuestion,
+          { coins: -3, reputation: -2, curiosity: -1 },
+          "The match board timed out. A personalised perfection quest has been added to your board."
+        );
+      }
       return;
     }
 
@@ -1418,6 +2060,8 @@ export class MuseumGameController {
       photospheresVisited: 0,
       resources: createStudyResources(),
       activeQuests: [],
+      activeFinalTests: [],
+      performanceRecords: [],
       questsCompleted: 0,
       completedMcqCount: 0,
       completedQuizCount: 0,
@@ -1429,6 +2073,7 @@ export class MuseumGameController {
       recentMcqIds: [],
       recentFreeTextIds: [],
       recentQuizIds: [],
+      recentFinalQuestionIds: [],
       recentQuestIds: [],
       roomLevels: createRoomNumberMap(this.content.roomBlueprints, 0),
       roomVisitCounts: createRoomNumberMap(this.content.roomBlueprints, 0),
@@ -1737,7 +2382,6 @@ export class MuseumGameController {
 
   private recordStudyFailure(mode: StudyMode, rewards: RewardBundle, message: string): void {
     this.recordStudyCompletion(mode);
-    this.assignQuest(QUEST_TRIGGER_BY_MODE[mode]);
     this.award(rewards, message);
   }
 
@@ -1756,21 +2400,44 @@ export class MuseumGameController {
       return;
     }
 
-    if (this.game.activeQuests.some((quest) => quest.id === selection.item.id)) {
+    const topic = this.selectedRoom?.label ?? "Prerequisite Review";
+    const subject = "Study Skills";
+
+    if (this.activeQuestForFocus(subject, topic)) {
       return;
     }
 
+    const question = {
+      id: createId(),
+      subject,
+      topic,
+      prompt: `Rewrite the blocked work for ${topic} on paper before you try again.`
+    };
+    const record: PerformanceRecord = {
+      id: `${subject.toLowerCase()}::${topic.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      subject,
+      topic,
+      attempts: 1,
+      successes: 0,
+      failures: 1,
+      lastMode: "free-text",
+      lastQuestionId: question.id,
+      lastPrompt: question.prompt
+    };
+
     this.game.recentQuestIds = selection.recentIds;
+    const quest = buildAdaptiveQuestState({
+      template: selection.item,
+      record,
+      mode: "free-text",
+      question,
+      day: this.game.day,
+      mastery: false,
+      saveSlotId: this.saveSlotId
+    });
 
-    this.game.activeQuests = [
-      ...this.game.activeQuests,
-      {
-        ...selection.item,
-        createdAtDay: this.game.day
-      }
-    ].slice(-ACTIVE_QUEST_LIMIT);
-
-    this.logEvent(`Quest added: ${selection.item.title}.`);
+    this.game.activeQuests = [...this.game.activeQuests, quest].slice(-ACTIVE_QUEST_LIMIT);
+    this.logEvent(`Quest added: ${quest.title}. ${quest.performanceSummary}.`);
   }
 
   private spendResources(totalCost: number): boolean {
@@ -2039,6 +2706,8 @@ export class MuseumGameController {
       case "mcq":
         this.setActiveModal({
           type: "mcq",
+          stage: "resource-test",
+          questId: null,
           miniGame,
           question: this.nextMcqQuestion()
         });
@@ -2046,6 +2715,8 @@ export class MuseumGameController {
       case "quiz":
         this.setActiveModal({
           type: "quiz",
+          stage: "resource-test",
+          questId: null,
           miniGame,
           question: this.nextQuizQuestion()
         });
@@ -2053,6 +2724,8 @@ export class MuseumGameController {
       case "free-text":
         this.setActiveModal({
           type: "free-text",
+          stage: "resource-test",
+          questId: null,
           miniGame,
           question: this.nextFreeTextQuestion(),
           answer: ""
@@ -2158,22 +2831,24 @@ export class MuseumGameController {
     }
 
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
+      for (const key of this.fallbackStorageKeys) {
+        const raw = window.localStorage.getItem(key);
 
-      if (!raw) {
-        return null;
+        if (!raw) {
+          continue;
+        }
+
+        const parsed = JSON.parse(raw) as SavedGamePayload;
+
+        if (parsed && typeof parsed === "object" && parsed.game) {
+          return parsed;
+        }
       }
-
-      const parsed = JSON.parse(raw) as SavedGamePayload;
-
-      if (!parsed || typeof parsed !== "object" || !parsed.game) {
-        return null;
-      }
-
-      return parsed;
     } catch {
       return null;
     }
+
+    return null;
   }
 
   private refreshSavedGameAvailability(): void {
@@ -2229,17 +2904,64 @@ export class MuseumGameController {
             return {
               id: typeof quest.id === "string" ? quest.id : createId(),
               title: typeof quest.title === "string" ? quest.title : "Study Quest",
-              detail: typeof quest.detail === "string" ? quest.detail : "Review the last missed topic and redraft it on paper.",
+              detail: typeof quest.detail === "string" ? quest.detail : "Review the last missed topic, improve it, and get it ready for the final test.",
               trigger,
               resourceReward: {
                 paper: Math.max(0, asFiniteNumber(reward.paper, 0)),
                 ink: Math.max(0, asFiniteNumber(reward.ink, 0)),
                 revisionTokens: Math.max(0, asFiniteNumber(reward.revisionTokens, 0))
               },
-              createdAtDay: Math.max(1, asFiniteNumber(quest.createdAtDay, fallback.day))
+              createdAtDay: Math.max(1, asFiniteNumber(quest.createdAtDay, fallback.day)),
+              stage: (quest.stage === "final-ready" ? "final-ready" : "improvement") as "final-ready" | "improvement",
+              subject: typeof quest.subject === "string" ? quest.subject : "Mixed Subject",
+              topic: typeof quest.topic === "string" ? quest.topic : "Revision",
+              sourceMode: isStudyMode(quest.sourceMode) ? quest.sourceMode : "quiz",
+              sourceQuestionId: typeof quest.sourceQuestionId === "string" ? quest.sourceQuestionId : createId(),
+              requiredSuccesses: Math.max(1, asFiniteNumber(quest.requiredSuccesses, 1)),
+              currentSuccesses: Math.max(0, asFiniteNumber(quest.currentSuccesses, 0)),
+              focusPrompt: typeof quest.focusPrompt === "string" ? quest.focusPrompt : "",
+              performanceSummary: typeof quest.performanceSummary === "string" ? quest.performanceSummary : "New quest"
             };
           })
           .slice(-ACTIVE_QUEST_LIMIT)
+      : [];
+    const activeFinalTests = Array.isArray(raw.activeFinalTests)
+      ? raw.activeFinalTests
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => {
+            const finalTest = entry as Record<string, unknown>;
+            return {
+              id: typeof finalTest.id === "string" ? finalTest.id : createId(),
+              questId: typeof finalTest.questId === "string" ? finalTest.questId : "",
+              subject: typeof finalTest.subject === "string" ? finalTest.subject : "Mixed Subject",
+              topic: typeof finalTest.topic === "string" ? finalTest.topic : "Revision",
+              mode:
+                finalTest.mode === "mcq" || finalTest.mode === "quiz" || finalTest.mode === "free-text"
+                  ? finalTest.mode
+                  : "quiz",
+              title: typeof finalTest.title === "string" ? finalTest.title : "Diploma Final",
+              detail: typeof finalTest.detail === "string" ? finalTest.detail : "Pass the final test to earn the diploma.",
+              attempts: Math.max(0, asFiniteNumber(finalTest.attempts, 0))
+            } as FinalTestState;
+          })
+      : [];
+    const performanceRecords = Array.isArray(raw.performanceRecords)
+      ? raw.performanceRecords
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => {
+            const record = entry as Record<string, unknown>;
+            return {
+              id: typeof record.id === "string" ? record.id : createId(),
+              subject: typeof record.subject === "string" ? record.subject : "Mixed Subject",
+              topic: typeof record.topic === "string" ? record.topic : "Revision",
+              attempts: Math.max(0, asFiniteNumber(record.attempts, 0)),
+              successes: Math.max(0, asFiniteNumber(record.successes, 0)),
+              failures: Math.max(0, asFiniteNumber(record.failures, 0)),
+              lastMode: isStudyMode(record.lastMode) ? record.lastMode : "quiz",
+              lastQuestionId: typeof record.lastQuestionId === "string" ? record.lastQuestionId : createId(),
+              lastPrompt: typeof record.lastPrompt === "string" ? record.lastPrompt : ""
+            } as PerformanceRecord;
+          })
       : [];
     const pendingCall = isStudyMode(raw.pendingCall) ? raw.pendingCall : null;
 
@@ -2260,6 +2982,8 @@ export class MuseumGameController {
       photospheresVisited: immersiveVisits,
       resources,
       activeQuests,
+      activeFinalTests,
+      performanceRecords,
       questsCompleted: Math.max(0, asFiniteNumber(raw.questsCompleted, 0)),
       completedMcqCount: Math.max(0, asFiniteNumber(raw.completedMcqCount, 0)),
       completedQuizCount: Math.max(0, asFiniteNumber(raw.completedQuizCount, 0)),
@@ -2271,6 +2995,7 @@ export class MuseumGameController {
       recentMcqIds: asStringArray(raw.recentMcqIds ?? raw.recentQuestionIds).slice(-8),
       recentFreeTextIds: asStringArray(raw.recentFreeTextIds ?? raw.recentEstimationIds).slice(-6),
       recentQuizIds: asStringArray(raw.recentQuizIds ?? raw.recentCuratorCheckIds).slice(-8),
+      recentFinalQuestionIds: asStringArray(raw.recentFinalQuestionIds).slice(-8),
       recentQuestIds: asStringArray(raw.recentQuestIds).slice(-10),
       roomLevels: asNumberRecord(raw.roomLevels, this.content.roomBlueprints),
       roomVisitCounts: asNumberRecord(raw.roomVisitCounts, this.content.roomBlueprints),
@@ -2361,7 +3086,10 @@ export class MuseumGameController {
       game: JSON.parse(JSON.stringify(this.game)) as GameSession
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    window.localStorage.setItem(this.storageKey, JSON.stringify(payload));
+    if (this.saveSlotId === "guest") {
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
     this.savedGameAvailable = true;
     this.lastSavedAt = payload.savedAt;
   }

@@ -440,7 +440,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       description: "Launch a weighted random English-heavy session with MCQ, free-text, quiz, and matching practice.",
       formatNote: "Weighted study mix: quiz 50%, free-text 25%, MCQ 20%, match pairs 5%.",
       difficultyLabel: "Advanced + Expert",
-      reward: { diplomas: 2, paper: 1, ink: 1 },
+      reward: { paper: 1, ink: 1, revisionTokens: 1 },
     },
     {
       id: "estimation",
@@ -451,7 +451,7 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       description: "Practice hard Year 6 maths and reasoning through a weighted random challenge mix.",
       formatNote: "Every launch can become a quiz, free-text explanation, MCQ, or matching round.",
       difficultyLabel: "Advanced Mixed",
-      reward: { diplomas: 2, paper: 2, revisionTokens: 1 },
+      reward: { paper: 2, revisionTokens: 1 },
     },
     {
       id: "curator-check",
@@ -459,10 +459,10 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       roomId: "review-studio",
       subjectFocus: "Science",
       artAsset: "side-games/curator-check-mini-game.png",
-      description: "Push through harder science and reasoning prompts that award diplomas instead of spendable unlock currency.",
-      formatNote: "Failure can create follow-up quests that reward paper, ink, and revision tokens.",
+      description: "Push through harder science and reasoning prompts that bank study resources and expose weak topics for mastery quests.",
+      formatNote: "Performance can unlock personalised improvement quests, and finals award diplomas only when passed.",
       difficultyLabel: "Expert Leaning",
-      reward: { diplomas: 2, ink: 2, revisionTokens: 1 },
+      reward: { ink: 2, revisionTokens: 1 },
     },
     {
       id: "match-pairs",
@@ -471,9 +471,9 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       subjectFocus: "History & Geography",
       artAsset: "side-games/match-pairs-mini-game.png",
       description: "Mix history, geography, and vocabulary practice into the same weighted Year 6 study loop.",
-      formatNote: "Matching rounds are rarer, but they still feed diploma progress and quest generation.",
+      formatNote: "Matching rounds are rarer, but they still feed resources and can trigger follow-up mastery quests.",
       difficultyLabel: "Expanded Deck",
-      reward: { diplomas: 1, paper: 1, ink: 1, revisionTokens: 1 },
+      reward: { paper: 1, ink: 1, revisionTokens: 1 },
     },
   ].map((miniGame) => {
     const concept = conceptArtByAsset.get(miniGame.artAsset);

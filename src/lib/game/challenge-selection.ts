@@ -1,12 +1,13 @@
 import type {
+  FinalTestMode,
   FreeTextQuestion,
   GameContent,
+  MatchPairDefinition,
   McqQuestion,
   QuestDefinition,
   QuestTrigger,
   QuizQuestion,
   StudyMode,
-  MatchPairDefinition,
 } from "./types";
 
 interface DeckSelection<T> {
@@ -82,6 +83,21 @@ function pickFreshDeckItem<T extends { id: string }>(
       weight: getWeight(item),
     })),
   );
+}
+
+function pickTargetedDeckPool<T extends { subject: string; topic: string }>(
+  items: T[],
+  subject: string,
+  topic: string
+): T[] {
+  const topicMatches = items.filter((item) => item.subject === subject && item.topic === topic);
+
+  if (topicMatches.length) {
+    return topicMatches;
+  }
+
+  const subjectMatches = items.filter((item) => item.subject === subject);
+  return subjectMatches.length ? subjectMatches : items;
 }
 
 export function selectStudyMode(content: GameContent): StudyMode {
@@ -168,13 +184,34 @@ export function selectQuest({
   recentIds: string[];
   trigger: QuestTrigger;
 }): DeckSelection<QuestDefinition> | null {
-  const matching = content.questDeck.filter((quest) => quest.trigger === trigger);
+  const triggerSuffix = trigger.endsWith("-mastery") ? "mastery" : trigger.endsWith("-failure") ? "failure" : trigger;
+  const matching =
+    content.questDeck.filter((quest) => quest.trigger === trigger) ||
+    [];
+  const fallbackMatching =
+    matching.length > 0
+      ? matching
+      : content.questDeck.filter((quest) => {
+          if (trigger === "locked-submission") {
+            return quest.trigger === "locked-submission";
+          }
 
-  if (!matching.length) {
+          if (triggerSuffix === "mastery") {
+            return quest.trigger === "mastery-review";
+          }
+
+          if (triggerSuffix === "failure") {
+            return quest.trigger === "mcq-failure" || quest.trigger === "mastery-review";
+          }
+
+          return false;
+        });
+
+  if (!fallbackMatching.length) {
     return null;
   }
 
-  const quest = pickFreshDeckItem(matching, recentIds);
+  const quest = pickFreshDeckItem(fallbackMatching, recentIds);
 
   return {
     item: quest,
@@ -196,4 +233,90 @@ export function fallbackFreeTextQuestion(content: GameContent): FreeTextQuestion
 
 export function fallbackQuizQuestion(content: GameContent): QuizQuestion {
   return shuffleChoiceEntry(randomItem(content.quizDeck));
+}
+
+export function selectTargetedMcqQuestion({
+  content,
+  recentIds,
+  subject,
+  topic
+}: {
+  content: GameContent;
+  recentIds: string[];
+  subject: string;
+  topic: string;
+}): DeckSelection<McqQuestion> {
+  const targetedPool = pickTargetedDeckPool(content.mcqDeck, subject, topic);
+  const expertPool = targetedPool.filter((item) => item.difficulty === "Expert");
+  const question = pickFreshDeckItem(expertPool.length ? expertPool : targetedPool, recentIds, (item) =>
+    item.difficulty === "Expert" ? 2.4 : 1
+  );
+
+  return {
+    item: shuffleChoiceEntry(question),
+    recentIds: pushRecentId(recentIds, question.id, 8)
+  };
+}
+
+export function selectTargetedFreeTextQuestion({
+  content,
+  recentIds,
+  subject,
+  topic
+}: {
+  content: GameContent;
+  recentIds: string[];
+  subject: string;
+  topic: string;
+}): DeckSelection<FreeTextQuestion> {
+  const targetedPool = pickTargetedDeckPool(content.freeTextDeck, subject, topic);
+  const expertPool = targetedPool.filter((item) => item.difficulty === "Expert");
+  const question = pickFreshDeckItem(expertPool.length ? expertPool : targetedPool, recentIds, (item) =>
+    item.difficulty === "Expert" ? 2.2 : 1
+  );
+
+  return {
+    item: question,
+    recentIds: pushRecentId(recentIds, question.id, 6)
+  };
+}
+
+export function selectTargetedQuizQuestion({
+  content,
+  recentIds,
+  subject,
+  topic
+}: {
+  content: GameContent;
+  recentIds: string[];
+  subject: string;
+  topic: string;
+}): DeckSelection<QuizQuestion> {
+  const targetedPool = pickTargetedDeckPool(content.quizDeck, subject, topic);
+  const expertPool = targetedPool.filter((item) => item.difficulty === "Expert");
+  const question = pickFreshDeckItem(expertPool.length ? expertPool : targetedPool, recentIds, (item) =>
+    item.difficulty === "Expert" ? 2.5 : 1
+  );
+
+  return {
+    item: shuffleChoiceEntry(question),
+    recentIds: pushRecentId(recentIds, question.id, 8)
+  };
+}
+
+export function selectTargetedMatchPairs({
+  content,
+  subject,
+  pairCount = 8
+}: {
+  content: GameContent;
+  subject: string;
+  pairCount?: number;
+}): MatchPairDefinition[] {
+  const matching = content.matchPairDeck.filter((pair) => pair.subject === subject);
+  return drawMatchPairsDeck(matching.length ? matching : content.matchPairDeck, pairCount);
+}
+
+export function resolveFinalTestMode(sourceMode: StudyMode): FinalTestMode {
+  return sourceMode === "match-pairs" ? "quiz" : sourceMode;
 }

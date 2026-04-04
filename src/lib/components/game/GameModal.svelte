@@ -43,13 +43,25 @@
   function modalHeadline(): string {
     switch (modal.type) {
       case "mcq":
-        return "Year 6 Multiple Choice";
+        return modal.stage === "final-test"
+          ? "Year 6 Diploma Final"
+          : modal.stage === "quest-test"
+            ? "Year 6 Improvement Quest"
+          : "Year 6 Resource Test";
       case "quiz":
-        return "Year 6 Quiz";
+        return modal.stage === "final-test"
+          ? "Year 6 Diploma Final"
+          : modal.stage === "quest-test"
+            ? "Year 6 Improvement Quest"
+          : "Year 6 Resource Test";
       case "free-text":
-        return "Year 6 Written Response";
+        return modal.stage === "final-test"
+          ? "Year 6 Diploma Final"
+          : modal.stage === "quest-test"
+            ? "Year 6 Improvement Quest"
+          : "Year 6 Resource Test";
       case "match-pairs":
-        return "Year 6 Match Pairs";
+        return modal.stage === "quest-test" ? "Year 6 Improvement Quest" : "Year 6 Match Pairs";
       case "archive":
         return "Repo Archive";
     }
@@ -58,13 +70,13 @@
   function modalEyebrow(): string {
     switch (modal.type) {
       case "mcq":
-        return "Study Mode";
+        return modal.stage === "final-test" ? "Final Test" : modal.stage === "quest-test" ? "Improvement Quest" : "Plain Test";
       case "quiz":
-        return "Hard Quiz";
+        return modal.stage === "final-test" ? "Final Test" : modal.stage === "quest-test" ? "Improvement Quest" : "Plain Test";
       case "free-text":
-        return "Extended Answer";
+        return modal.stage === "final-test" ? "Final Test" : modal.stage === "quest-test" ? "Improvement Quest" : "Plain Test";
       case "match-pairs":
-        return "Revision Game";
+        return modal.stage === "quest-test" ? "Improvement Quest" : "Plain Test";
       case "archive":
         return "Repo Archive";
     }
@@ -79,8 +91,14 @@
         <div class="modal-header">
           <div>
             <p class="eyebrow">{modalEyebrow()}</p>
-            <h2>{miniGame?.label ?? modalHeadline()}</h2>
-            <p class="modal-subtitle">{miniGame?.description ?? "A harder Year 6 study round built from the curriculum deck."}</p>
+            <h2>{modal.stage === "resource-test" ? miniGame?.label ?? modalHeadline() : modalHeadline()}</h2>
+            <p class="modal-subtitle">
+              {modal.stage === "final-test"
+                ? "Pass this final check to earn the diploma for the topic."
+                : modal.stage === "quest-test"
+                  ? "This personalised improvement round sharpens the topic before the diploma final."
+                : miniGame?.description ?? "A harder Year 6 resource test built from the curriculum deck."}
+            </p>
           </div>
           <button class="modal-close" type="button" onclick={close}>Close</button>
         </div>
@@ -120,8 +138,14 @@
         <div class="modal-header">
           <div>
             <p class="eyebrow">{modalEyebrow()}</p>
-            <h2>{miniGame?.label ?? modalHeadline()}</h2>
-            <p class="modal-subtitle">{miniGame?.description ?? "Write the best answer you can from the Year 6 curriculum."}</p>
+            <h2>{modal.stage === "resource-test" ? miniGame?.label ?? modalHeadline() : modalHeadline()}</h2>
+            <p class="modal-subtitle">
+              {modal.stage === "final-test"
+                ? "Pass this final written check to earn the diploma."
+                : modal.stage === "quest-test"
+                  ? "Rewrite and refine the answer until the topic is ready for its diploma final."
+                : miniGame?.description ?? "Write the best answer you can from the Year 6 curriculum."}
+            </p>
           </div>
           <button class="modal-close" type="button" onclick={close}>Close</button>
         </div>
@@ -163,8 +187,12 @@
         <div class="modal-header">
           <div>
             <p class="eyebrow">{modalEyebrow()}</p>
-            <h2>{modal.miniGame?.label ?? modalHeadline()}</h2>
-            <p class="modal-subtitle">{modal.miniGame?.description ?? "Match the Year 6 pairs before the deck runs out."}</p>
+            <h2>{modal.stage === "resource-test" ? modal.miniGame?.label ?? modalHeadline() : modalHeadline()}</h2>
+            <p class="modal-subtitle">
+              {modal.stage === "quest-test"
+                ? "Clear this targeted pair board to move the diploma quest toward its final test."
+                : modal.miniGame?.description ?? "Match the Year 6 pairs before the deck runs out."}
+            </p>
           </div>
           <button class="modal-close" type="button" onclick={close}>Close</button>
         </div>

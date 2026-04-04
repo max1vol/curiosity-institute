@@ -262,10 +262,16 @@ export interface MatchPairDefinition {
 
 export type QuestTrigger =
   | "mcq-failure"
+  | "mcq-mastery"
   | "quiz-failure"
+  | "quiz-mastery"
   | "free-text-failure"
+  | "free-text-mastery"
   | "locked-submission"
-  | "match-pairs-failure";
+  | "match-pairs-failure"
+  | "match-pairs-mastery"
+  | "mastery-review"
+  | "final-diploma-test";
 
 export interface QuestResourceReward {
   paper: number;
@@ -283,11 +289,23 @@ export interface QuestDefinition {
   resourceReward: QuestResourceReward;
 }
 
+export type QuestStage = "improvement" | "final-ready";
+
 export interface QuestState extends QuestDefinition {
   createdAtDay: number;
+  stage: QuestStage;
+  subject: string;
+  topic: string;
+  sourceMode: StudyMode;
+  sourceQuestionId: string;
+  requiredSuccesses: number;
+  currentSuccesses: number;
+  focusPrompt: string;
+  performanceSummary: string;
 }
 
 export type StudyMode = "quiz" | "free-text" | "mcq" | "match-pairs";
+export type FinalTestMode = Exclude<StudyMode, "match-pairs">;
 
 export type DailyGoalKind =
   | "rooms-opened"
@@ -393,25 +411,56 @@ export interface MatchCard {
   revealed: boolean;
 }
 
+export interface PerformanceRecord {
+  id: string;
+  subject: string;
+  topic: string;
+  attempts: number;
+  successes: number;
+  failures: number;
+  lastMode: StudyMode;
+  lastQuestionId: string;
+  lastPrompt: string;
+}
+
+export interface FinalTestState {
+  id: string;
+  questId: string;
+  subject: string;
+  topic: string;
+  mode: FinalTestMode;
+  title: string;
+  detail: string;
+  attempts: number;
+}
+
 export type ModalState =
   | {
       type: "mcq";
+      stage: "resource-test" | "quest-test" | "final-test";
+      questId: string | null;
       miniGame: MiniGameDefinition | null;
       question: McqQuestion;
     }
   | {
       type: "free-text";
+      stage: "resource-test" | "quest-test" | "final-test";
+      questId: string | null;
       miniGame: MiniGameDefinition | null;
       question: FreeTextQuestion;
       answer: string;
     }
   | {
       type: "quiz";
+      stage: "resource-test" | "quest-test" | "final-test";
+      questId: string | null;
       miniGame: MiniGameDefinition | null;
       question: QuizQuestion;
     }
   | {
       type: "match-pairs";
+      stage: "resource-test" | "quest-test";
+      questId: string | null;
       miniGame: MiniGameDefinition | null;
       subject: string;
       topic: string;
@@ -440,6 +489,8 @@ export interface GameSession {
   photospheresVisited: number;
   resources: StudyResources;
   activeQuests: QuestState[];
+  activeFinalTests: FinalTestState[];
+  performanceRecords: PerformanceRecord[];
   questsCompleted: number;
   completedMcqCount: number;
   completedQuizCount: number;
@@ -451,6 +502,7 @@ export interface GameSession {
   recentMcqIds: string[];
   recentFreeTextIds: string[];
   recentQuizIds: string[];
+  recentFinalQuestionIds: string[];
   recentQuestIds: string[];
   roomLevels: Record<string, number>;
   roomVisitCounts: Record<string, number>;

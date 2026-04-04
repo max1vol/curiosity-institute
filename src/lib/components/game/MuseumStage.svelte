@@ -51,7 +51,7 @@
 
   function roomReward(room: RoomBlueprint): string {
     if (room.miniGameId) {
-      return "Diplomas + quest hooks";
+      return "Resource tests + diploma quests";
     }
 
     return `~${Math.round(6 + room.rewardRate * 2)} coin drops`;
@@ -153,7 +153,7 @@
     <div class="stage-topline-copy">
       <p class="eyebrow">Live Floor</p>
       <h2>{theme ? `${theme.label} Year 6 Floor` : "Year 6 Floor"}</h2>
-      <p class="stage-caption">Every study hub launches a weighted random hard round: quiz 50%, free text 25%, MCQ 20%, match pairs 5%.</p>
+      <p class="stage-caption">Every study hub launches a weighted plain test for resources: quiz 50%, free text 25%, MCQ 20%, match pairs 5%.</p>
     </div>
     <div class="topline-actions">
       <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("study-quiz")}>English Hub</button>

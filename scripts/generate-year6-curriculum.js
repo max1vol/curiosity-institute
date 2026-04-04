@@ -7,13 +7,10 @@ import { loadConfiguredEnv } from "../core/load-env.js";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputFile = path.join(repoRoot, "core", "game-content", "year6-curriculum.generated.js");
-const candidateModels = [
-  process.env.GEMINI_TEXT_MODEL,
-  process.env.GEMINI_MODEL,
-  "gemini-2.5-flash",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-].filter(Boolean);
+const explicitModels = [process.env.GEMINI_TEXT_MODEL, process.env.GEMINI_MODEL].filter(Boolean);
+const candidateModels = explicitModels.length
+  ? Array.from(new Set(explicitModels))
+  : ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
 const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.GOOGLE_REQUEST_TIMEOUT_MS ?? "60000", 10);
 
 const prompt = `
@@ -61,18 +58,16 @@ matchPairDeck:
 - left and right must be different but form a valid curriculum pair.
 
 questDeck:
-- Exactly 12 items.
-- Each item keys: id, title, detail, trigger, trackType, resourceReward, diplomaReward.
-- trackType must be one of:
-  "resource-test", "mastery-quest", "final-test"
+- Exactly 18 items.
+- Each item keys: id, title, detail, trigger, resourceReward.
 - trigger must be one of:
-  "mcq-failure", "quiz-failure", "free-text-failure", "locked-submission", "match-pairs-failure", "mastery-review", "final-diploma-test"
+  "mcq-failure", "mcq-mastery", "quiz-failure", "quiz-mastery",
+  "free-text-failure", "free-text-mastery", "locked-submission",
+  "match-pairs-failure", "match-pairs-mastery"
 - resourceReward keys: paper, ink, revisionTokens
-- resourceReward values must be integers from 0 to 3
-- diplomaReward must be 0 or 1.
-- At least 4 quests must be resource-test plain tests that mainly award resources.
-- At least 4 quests must be mastery-quest quests that are adapted to the learner's performance and feel unique to that learner.
-- At least 1 quest must be a final-test quest that awards the diploma if passed.
+- resourceReward values must be integers from 0 to 1 because plain tests, not quests, now award the main resource flow.
+- Every quest detail should describe a personalised improvement or perfection task that prepares the learner for a final diploma test.
+- At least 4 quests must be mastery/perfection quests for strong performance, not recovery quests.
 - At least 2 quests must explicitly mention rewriting or reworking an answer on paper.
 - At least 1 quest must explicitly mention not being able to edit the work anymore.
 
@@ -104,7 +99,7 @@ function validatePayload(payload) {
   validateDeck("quizDeck", payload.quizDeck, 16);
   validateDeck("freeTextDeck", payload.freeTextDeck, 12);
   validateDeck("matchPairDeck", payload.matchPairDeck, 16);
-  validateDeck("questDeck", payload.questDeck, 12);
+  validateDeck("questDeck", payload.questDeck, 18);
 
   const questTrackTypes = new Set(["resource-test", "mastery-quest", "final-test"]);
   const questTriggers = new Set([
