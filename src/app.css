@@ -213,6 +213,7 @@ img {
   border-radius: 999px;
   border: 1px solid transparent;
   cursor: pointer;
+  touch-action: manipulation;
   transition:
     transform 180ms ease,
     background-color 180ms ease,
@@ -1707,6 +1708,11 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .hero-preview-trio,
+  .room-render-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .program-card {
     grid-template-columns: 1fr;
   }
@@ -1723,6 +1729,10 @@ img {
     padding-top: 14px;
   }
 
+  .hero {
+    gap: 18px;
+  }
+
   .hero,
   .stage-card,
   .panel {
@@ -1730,15 +1740,59 @@ img {
     border-radius: 24px;
   }
 
+  .hero-copy h1 {
+    max-width: none;
+    font-size: clamp(2.2rem, 11vw, 3.4rem);
+  }
+
+  .hero-lede,
+  .hero-note,
+  .stage-caption,
+  .objective-text {
+    max-width: none;
+  }
+
+  .hero-preview-trio,
+  .room-render-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-actions,
   .topline-actions,
   .hero-actions,
-  .room-actions,
+  .room-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .account-actions {
+    gap: 12px;
+  }
+
+  .account-actions > *,
+  .topline-actions > *,
+  .hero-actions > *,
+  .room-actions > *,
+  .google-button-slot {
+    width: 100%;
+  }
+
+  .stage-topline,
+  .section-heading.compact,
   .viewer-tier-topline {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .objective-bar {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .objective-pills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stats-grid,
@@ -1746,6 +1800,16 @@ img {
   .room-detail-grid,
   .viewer-tier-meta {
     grid-template-columns: 1fr;
+  }
+
+  .program-card,
+  .call-shell,
+  .modal-feature {
+    grid-template-columns: 1fr;
+  }
+
+  .program-card-topline {
+    gap: 12px;
   }
 
   .program-card-topline {
@@ -1777,11 +1841,6 @@ img {
     padding: 16px;
   }
 
-  .viewer-tier-topline {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .viewer-tier-track,
   .viewer-tier-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1789,6 +1848,60 @@ img {
 
   .viewer-stage {
     min-height: 62vh;
+  }
+
+  .museum-stage {
+    padding: 12px;
+  }
+
+  .museum-world {
+    min-height: 340px;
+  }
+
+  .stage-empty {
+    inset: 14px;
+    padding: 18px;
+  }
+
+  .room-node {
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .room-node-title {
+    font-size: 0.96rem;
+  }
+
+  .room-node-badge {
+    padding: 4px 8px;
+    font-size: 0.68rem;
+  }
+
+  .room-node-meta {
+    max-width: 14ch;
+    font-size: 0.7rem;
+  }
+
+  .entity {
+    width: 22px;
+    height: 22px;
+  }
+
+  .entity.visitor {
+    width: 16px;
+    height: 16px;
+  }
+
+  .coin-node {
+    width: 14px;
+    height: 14px;
+  }
+
+  .phone-indicator {
+    position: static;
+    margin: 12px 0 0;
+    width: 100%;
+    animation: none;
   }
 
   .viewer-travel {
@@ -1803,5 +1916,73 @@ img {
 
   .viewer-upgrade-button {
     width: 100%;
+  }
+}
+
+@media (max-width: 540px) {
+  .app-shell {
+    width: min(100vw - 14px, 1400px);
+    padding-top: 10px;
+  }
+
+  .hero,
+  .stage-card,
+  .panel {
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .hero-preview-trio,
+  .room-render-strip,
+  .objective-pills {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-actions > *,
+  .topline-actions > *,
+  .room-actions > *,
+  .account-actions > *,
+  .google-button-slot {
+    min-height: 48px;
+  }
+
+  .objective-bar {
+    padding: 12px;
+  }
+
+  .archive-strip {
+    grid-auto-columns: minmax(170px, 78vw);
+  }
+
+  .museum-world {
+    min-height: 300px;
+  }
+
+  .viewer-root {
+    padding: 10px;
+  }
+
+  .viewer-close {
+    top: 10px;
+    right: 10px;
+  }
+
+  .viewer-tier-panel {
+    top: 10px;
+    left: 10px;
+    width: calc(100% - 74px);
+    padding: 14px;
+  }
+
+  .viewer-hint {
+    left: 10px;
+    bottom: 10px;
+    max-width: calc(100% - 20px);
+  }
+
+  .viewer-travel {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
   }
 }

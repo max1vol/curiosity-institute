@@ -46,7 +46,7 @@
   }
 
   function roomHasImmersiveScene(room: RoomBlueprint): boolean {
-    return Boolean(room.immersiveMap?.nodes.length || room.splatPath || room.panoramaPath);
+    return Boolean(room.immersiveMap?.nodes.length || room.panoramaPath);
   }
 
   function roomReward(room: RoomBlueprint): string {
@@ -72,7 +72,7 @@
       return `Tier ${level}`;
     }
 
-    return room.miniGameId ? "Hub" : roomHasImmersiveScene(room) ? "Splat" : "Open";
+    return room.miniGameId ? "Hub" : roomHasImmersiveScene(room) ? "Scene" : "Open";
   }
 
   function roomMeta(room: RoomBlueprint): string {
@@ -93,7 +93,7 @@
     }
 
     const visits = game.roomVisitCounts[room.id] ?? 0;
-    const typeLabel = room.miniGameId ? "Study hub" : roomHasImmersiveScene(room) ? "Splat zone" : "Sea route";
+    const typeLabel = room.miniGameId ? "Study hub" : roomHasImmersiveScene(room) ? "Scene zone" : "Route";
 
     return `${visits} visits · ${typeLabel}`;
   }
@@ -151,15 +151,15 @@
 <section class="stage-card">
   <div class="stage-topline">
     <div class="stage-topline-copy">
-      <p class="eyebrow">Live Sea Chart</p>
-      <h2>{theme ? `${theme.label} Year 6 Splat Route` : "Year 6 Splat Route"}</h2>
+      <p class="eyebrow">Live World Map</p>
+      <h2>{theme ? `${theme.label} Year 6 Route Map` : "Year 6 Route Map"}</h2>
       <p class="stage-caption">Every current launches a weighted plain test for resources: quiz 50%, free text 25%, MCQ 20%, match pairs 5%.</p>
     </div>
     <div class="topline-actions">
       <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("study-quiz")}>Signal Deck</button>
       <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("estimation")}>Tide Lab</button>
       <button class="ghost-button" type="button" disabled={!game} onclick={() => openMiniGame("curator-check")}>Reef Lab</button>
-      <button class="ghost-button" type="button" disabled={!game} onclick={openHotline}>Start Gocean Mix</button>
+      <button class="ghost-button" type="button" disabled={!game} onclick={openHotline}>Start Route Mix</button>
     </div>
   </div>
 
@@ -167,7 +167,7 @@
     <div
       bind:this={worldElement}
       class="museum-world"
-      aria-label="Playable Year 6 Gocean chart"
+      aria-label="Playable Year 6 route map"
       role="button"
       tabindex="0"
       style={theme ? `--world-image:url(${theme.heroImage})` : ""}
@@ -222,8 +222,8 @@
       {:else}
         <div class="stage-empty">
           <p class="eyebrow">Ready To Play</p>
-          <h3>Start a Year 6 voyage to activate the chart.</h3>
-          <p>The SvelteKit app turns the repo art into diploma-gated Gocean routes with splat zones, quests, and harder curriculum rounds.</p>
+          <h3>Start a Year 6 session to activate the map.</h3>
+          <p>The SvelteKit app turns the repo art into diploma-gated routes with immersive scenes, quests, and harder curriculum rounds.</p>
         </div>
       {/if}
     </div>

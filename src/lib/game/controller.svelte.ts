@@ -468,7 +468,7 @@ export class MuseumGameController {
 
   get gradeSummary(): string {
     if (!this.game) {
-      return "Choose a Gocean route, then start or resume a Year 6 voyage.";
+      return "Choose a route, then start or resume a Year 6 voyage.";
     }
 
     if (this.completedGoalsCount === this.dailyGoals.length) {
@@ -542,7 +542,7 @@ export class MuseumGameController {
         value: `${visitCount} routed`
       },
       {
-        label: "Splat Scene",
+        label: "Immersive Scene",
         value: room.immersiveMap?.nodes[0]?.edges.length
           ? `${room.immersiveMap.nodes[0].edges.length} connected routes`
           : this.hasImmersiveScene(room)
@@ -673,7 +673,7 @@ export class MuseumGameController {
         actions.push({
           id: `${room.id}-viewer`,
           action: "viewer",
-          label: "Enter Splat Scene",
+          label: "Enter Immersive Scene",
           primary: true,
           tone: "glow"
         });
@@ -2238,7 +2238,7 @@ export class MuseumGameController {
   }
 
   private hasImmersiveScene(room: RoomBlueprint): boolean {
-    return Boolean(room.immersiveMap?.nodes.length || room.splatPath || room.panoramaPath);
+    return Boolean(room.immersiveMap?.nodes.length || room.panoramaPath);
   }
 
   private roomUpgradeCost(room: RoomBlueprint): number {
@@ -2724,7 +2724,7 @@ export class MuseumGameController {
     }
 
     this.game.pendingCall = this.nextStudyMode();
-    this.logEvent(`${formatStudyModeLabel(this.game.pendingCall)} round queued on the Gocean board.`);
+    this.logEvent(`${formatStudyModeLabel(this.game.pendingCall)} round queued on the route board.`);
   }
 
   private markImmersiveVisit(room: RoomBlueprint): void {
@@ -2736,7 +2736,7 @@ export class MuseumGameController {
     this.game.immersiveVisits += 1;
     this.game.photospheresVisited = this.game.immersiveVisits;
     this.game.programsHosted += 1;
-    this.logEvent(`Immersive splat scene opened for ${room.label}.`);
+    this.logEvent(`Immersive scene opened for ${room.label}.`);
     this.checkGoals();
   }
 

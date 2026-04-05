@@ -1,6 +1,6 @@
-# Gocean Splats
+# Curiosity Institute
 
-Gocean Splats is now a Year 6 learning game built on top of the same direct-avatar splat map.
+Curiosity Institute is a Year 6 learning game built around a direct-avatar 3D museum world.
 
 The player pilots a navigator in real time through the route map, but the progression loop is still curriculum-led: plain study tests award paper, ink, and revision tokens, adaptive perfection quests react to each learner's performance, and final tests award diplomas that unlock new zones without being spent.
 
@@ -8,11 +8,11 @@ The player pilots a navigator in real time through the route map, but the progre
 
 The game should feel like:
 
-- walking through a tactile 3D Gocean splat map instead of navigating flat menus
+- walking through a tactile 3D museum route map instead of navigating flat menus
 - earning progress through hard Year 6 work rather than buying everything with currency
 - unlocking study zones through diploma milestones while keeping coin pickups for ambient route energy
 - turning mistakes into concrete follow-up quests such as rewriting on paper or reworking an answer you cannot edit again
-- using immersive splat zones and generated art to make the curriculum world feel alive
+- using immersive scenes and generated art to make the curriculum world feel alive
 
 ## Main Gameplay Loop
 
@@ -43,7 +43,7 @@ These three concept images show the same gameplay idea with clearly different vi
 - portrait mobile framing
 - direct control of the navigator
 - floating coin pickups
-- active splat zone or public route space
+- active immersive zone or public route space
 - visible locked future expansion
 - incoming public-question call event
 
@@ -154,7 +154,7 @@ Pipeline entrypoint:
 
 ## Playable App
 
-This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a Year 6 Gocean splats game.
+This repo now contains a root-level SvelteKit app that turns the concept art, generated render libraries, and side-game ideas into a Year 6 Curiosity Institute game.
 
 What it includes:
 
@@ -163,7 +163,7 @@ What it includes:
 - diploma-gated zone unlocks and quest-resource-based upgrades
 - optional Google account sign-in for per-account autosave slots on the same browser
 - an in-game archive that exposes all tracked concept art plus every intersecting render library in `output/renders/`
-- immersive zone scenes that prefer Gaussian splats and fall back to panorama textures in the 3D viewer
+- immersive zone scenes rendered from generated panorama textures in the 3D viewer
 - an opaque, non-blurred interface so the deployed app stays readable instead of smearing the whole screen
 
 ## App Structure
@@ -176,34 +176,33 @@ What it includes:
 
 ## Immersive Scene Pipeline
 
-This repo also contains an immersive-scene pipeline for the playable zones. The app now prefers Gaussian splat assets from `output/splats/` whenever they exist, and falls back to generated panorama textures from `output/photospheres/` when a zone does not have a splat scene yet.
+This repo also contains an immersive-scene pipeline for the playable zones. The app now relies on generated panorama textures from `output/photospheres/` for the in-game viewer.
 
 What it does:
 
 - reads the zone-driving concept art from `docs/concept-art/`
-- discovers splat assets under `output/splats/` and wires them into the game automatically
-- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic zone view for fallback coverage
+- asks Google's Nano Banana image model path to produce a seamless 4:1 panoramic zone view for immersive coverage
 - converts that panorama into a 2:1 viewer texture with `ffmpeg`
 - retries Google failures up to five times per zone by default
 - treats transient server-side model failures, including worker-branch fanout failures, with backoff and retry
 - records attempt failures and deduplicated final failures in `output/photospheres/reports/`
-- exposes splats through `static/output/splats/` and fallback panoramas through `static/output/photospheres/` so opening an unlocked zone loads the immersive viewer
+- exposes panoramas through `static/output/photospheres/` so opening an unlocked zone loads the immersive viewer
 
 Run it with:
 
 ```bash
-KEYS_FILE=/absolute/path/to/keys.txt GOOGLE_AUTH_MODE=service-account npm run splats
+KEYS_FILE=/absolute/path/to/keys.txt GOOGLE_AUTH_MODE=service-account npm run photospheres
 ```
 
 For a no-network pass that keeps the same file layout:
 
 ```bash
-npm run splats:dry
+npm run photospheres:dry
 ```
 
-Override the retry budget with `--retries`, `SPLAT_RETRY_LIMIT`, `PHOTOSPHERE_RETRY_LIMIT`, or the shared `RETRY_LIMIT` env var.
+Override the retry budget with `--retries`, `PHOTOSPHERE_RETRY_LIMIT`, or the shared `RETRY_LIMIT` env var.
 
-Legacy compatibility wrappers remain available through `npm run photospheres` and `npm run photospheres:dry`.
+Legacy `npm run splats` wrappers remain in the repo for archived experiments, but the current app no longer depends on them.
 
 ## Local Development
 

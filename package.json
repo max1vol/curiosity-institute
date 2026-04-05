@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "version": "0.1.0",
-  "description": "Playable SvelteKit museum game built from concept art, splat rooms, and Google-generated 3D-style map renders.",
+  "description": "Playable SvelteKit museum game built from concept art, immersive room scenes, and generated 3D-style map renders.",
   "scripts": {
     "app:sync": "node scripts/sync-game-assets.js",
     "predev": "npm run app:sync",
@@ -31,7 +31,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@mkkellogg/gaussian-splats-3d": "^0.4.7",
     "three": "^0.180.0"
   },
   "devDependencies": {
