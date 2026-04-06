@@ -130,6 +130,7 @@ export function gaussianSplatObject(
     scale?: number;
     opacity?: number;
     sizeMultiplier?: number;
+    pointScale?: number;
   } = {},
 ): { object: THREE.Points; dispose: () => void } {
   const geometry = new THREE.BufferGeometry();
@@ -141,6 +142,7 @@ export function gaussianSplatObject(
   const scale = options.scale ?? 1;
   const opacity = options.opacity ?? 1;
   const sizeMultiplier = options.sizeMultiplier ?? 1;
+  const pointScale = options.pointScale ?? 210;
 
   for (let index = 0; index < count; index += 1) {
     const [x, y, z, red, green, blue, size, alpha] = data.points[index];
@@ -167,7 +169,7 @@ export function gaussianSplatObject(
     depthWrite: false,
     vertexColors: true,
     uniforms: {
-      uPointScale: { value: 210 },
+      uPointScale: { value: pointScale },
     },
     vertexShader: `
       attribute float size;
@@ -197,13 +199,18 @@ export function gaussianSplatObject(
         }
 
         float gaussian = exp(-radiusSquared * 3.75);
-        gl_FragColor = vec4(vColor, gaussian * vAlpha);
+        float core = exp(-radiusSquared * 11.0);
+        float halo = exp(-radiusSquared * 1.8) * 0.1;
+        vec3 color = min(vec3(1.0), vColor * (1.02 + core * 0.12) + halo * 0.06);
+        gl_FragColor = vec4(color, min(1.0, (gaussian + halo) * vAlpha));
       }
     `,
   });
+  material.toneMapped = true;
 
   const points = new THREE.Points(geometry, material);
   points.frustumCulled = true;
+  points.renderOrder = 2;
 
   return {
     object: points,

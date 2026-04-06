@@ -107,8 +107,8 @@ async function generateViewWithRetries({
   assetLabel,
   config,
   failureCollector,
-  referenceBuffer,
-  referenceMimeType,
+  referenceImages,
+  consistencyAnchorLabel,
   outputDirectory,
   viewIndex,
 }) {
@@ -120,6 +120,8 @@ async function generateViewWithRetries({
     viewCount: config.viewCount,
     referenceKind: "tracked source concept art",
     referenceLabel: assetLabel,
+    consistencyAnchorLabel,
+    supportingReferenceLabels: referenceImages.slice(1).map((reference) => reference.label),
   });
 
   let lastError = null;
@@ -132,9 +134,10 @@ async function generateViewWithRetries({
         projectId: config.projectId,
         location: config.location,
         prompt,
-        imageBuffer: referenceBuffer,
-        mimeType: referenceMimeType,
-        dryRun: false,
+        imageBuffer: referenceImages[0]?.imageBuffer,
+        mimeType: referenceImages[0]?.mimeType,
+        referenceImages,
+        dryRun: config.dryRun,
         generationConfig: {
           responseModalities: ["TEXT", "IMAGE"],
           candidateCount: 1,
@@ -158,6 +161,8 @@ async function generateViewWithRetries({
           attempt,
           generatedAt: new Date().toISOString(),
           model: config.model,
+          referenceImageCount: referenceImages.length,
+          referenceImageLabels: referenceImages.map((reference) => reference.label),
           modelText: result.modelText,
           modelResponse: result.responseMeta,
         },
@@ -191,7 +196,54 @@ async function generateViewWithRetries({
   throw lastError ?? new Error(`Unable to generate ${view.id} for ${asset}`);
 }
 
+async function buildFreshReferenceImages({ manifest, conceptFilePath, config }) {
+  const references = [];
+  const conceptBuffer = await readFileBuffer(conceptFilePath);
+  references.push({
+    label: "concept-art",
+    mimeType: imageMimeTypeForPath(conceptFilePath),
+    imageBuffer: conceptBuffer,
+  });
+
+  for (const view of manifest.views) {
+    if (references.length >= config.maxReferenceImages) {
+      break;
+    }
+
+    const sourcePath = path.join(config.renderRoot, manifest.outputDirectory, view.imageFile);
+
+    try {
+      references.push({
+        label: view.label ?? view.id,
+        mimeType: imageMimeTypeForPath(sourcePath),
+        imageBuffer: await readFileBuffer(sourcePath),
+      });
+    } catch {
+      // Skip missing render-library references and continue with the references we do have.
+    }
+  }
+
+  return references;
+}
+
+async function promoteGeneratedConsistencyAnchor({ referenceImages, generatedView, config }) {
+  const conceptReference = referenceImages[0];
+  if (!conceptReference) {
+    return referenceImages;
+  }
+
+  const anchorReference = {
+    label: `${generatedView.label} anchor`,
+    mimeType: imageMimeTypeForPath(generatedView.imagePath),
+    imageBuffer: await readFileBuffer(generatedView.imagePath),
+  };
+  const remainingReferences = referenceImages.slice(1).filter((reference) => reference.label !== anchorReference.label);
+
+  return [conceptReference, anchorReference, ...remainingReferences].slice(0, config.maxReferenceImages);
+}
+
 async function generateFreshViews({
+  manifest,
   asset,
   assetLabel,
   conceptFilePath,
@@ -199,23 +251,36 @@ async function generateFreshViews({
   failureCollector,
   outputDirectory,
 }) {
-  const referenceBuffer = await readFileBuffer(conceptFilePath);
-  const referenceMimeType = imageMimeTypeForPath(conceptFilePath);
+  let referenceImages = await buildFreshReferenceImages({
+    manifest,
+    conceptFilePath,
+    config,
+  });
   const views = [];
+  let consistencyAnchorLabel = null;
 
   for (let viewIndex = 0; viewIndex < config.viewCount; viewIndex += 1) {
-    views.push(
+    const generatedView =
       await generateViewWithRetries({
         asset,
         assetLabel,
         config,
         failureCollector,
-        referenceBuffer,
-        referenceMimeType,
+        referenceImages,
+        consistencyAnchorLabel,
         outputDirectory,
         viewIndex,
-      }),
-    );
+      });
+    views.push(generatedView);
+
+    if (!consistencyAnchorLabel) {
+      referenceImages = await promoteGeneratedConsistencyAnchor({
+        referenceImages,
+        generatedView,
+        config,
+      });
+      consistencyAnchorLabel = referenceImages.find((reference) => reference.label.endsWith(" anchor"))?.label ?? null;
+    }
   }
 
   return views;
@@ -259,6 +324,7 @@ async function buildSourceViews({ manifest, config, failureCollector, outputDire
   if (config.refreshViews) {
     try {
       return await generateFreshViews({
+        manifest,
         asset,
         assetLabel,
         conceptFilePath,

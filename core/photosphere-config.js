@@ -79,7 +79,7 @@ export function buildPhotosphereConfig({ argv = process.argv.slice(2), env = pro
     reportsDir: path.resolve(values["reports-dir"] ?? env.PHOTOSPHERE_REPORTS_DIR ?? "output/photospheres/reports"),
     retryLimit,
     model: values.model ?? env.PHOTOSPHERE_MODEL ?? "gemini-3.1-flash-image-preview",
-    imageSize: values["image-size"] ?? env.PHOTOSPHERE_IMAGE_SIZE ?? "1K",
+    imageSize: values["image-size"] ?? env.PHOTOSPHERE_IMAGE_SIZE ?? "2K",
     aspectRatio: values["aspect-ratio"] ?? env.PHOTOSPHERE_ASPECT_RATIO ?? "4:1",
     authMode,
     auth,

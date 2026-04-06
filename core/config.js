@@ -93,6 +93,9 @@ export function buildConfig({ argv = process.argv.slice(2), env = process.env } 
       "reports-dir": {
         type: "string",
       },
+      "image-size": {
+        type: "string",
+      },
       "auth-mode": {
         type: "string",
       },
@@ -131,8 +134,9 @@ export function buildConfig({ argv = process.argv.slice(2), env = process.env } 
     inputDir: path.resolve(values["input-dir"] ?? env.INPUT_DIR ?? "docs/concept-art"),
     outputDir: path.resolve(values["output-dir"] ?? env.OUTPUT_DIR ?? "output/renders"),
     reportsDir: path.resolve(values["reports-dir"] ?? env.REPORTS_DIR ?? "output/reports"),
+    imageSize: values["image-size"] ?? env.IMAGE_SIZE ?? env.GOOGLE_IMAGE_SIZE ?? "2K",
     retryLimit,
-    model: values.model ?? env.GEMINI_MODEL ?? env.GOOGLE_IMAGE_MODEL ?? "gemini-3-pro-image-preview",
+    model: values.model ?? env.GEMINI_MODEL ?? env.GOOGLE_IMAGE_MODEL ?? "gemini-3.1-flash-image-preview",
     authMode,
     auth,
     projectId: env.GOOGLE_CLOUD_PROJECT ?? auth.serviceAccount?.project_id ?? "",

@@ -5,7 +5,22 @@ const CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
 const DEFAULT_REQUEST_TIMEOUT_MS = 60000;
 const serviceAccountTokenCache = new Map();
 
-function buildDeveloperApiRequest({ model, apiKey, prompt, imageBuffer, mimeType, generationConfig }) {
+function buildImageParts({ imageBuffer, mimeType, referenceImages = [] }) {
+  const references = referenceImages.length
+    ? referenceImages
+    : imageBuffer
+      ? [{ imageBuffer, mimeType }]
+      : [];
+
+  return references.map((referenceImage) => ({
+    inlineData: {
+      mimeType: referenceImage.mimeType,
+      data: referenceImage.imageBuffer.toString("base64"),
+    },
+  }));
+}
+
+function buildDeveloperApiRequest({ model, apiKey, prompt, imageBuffer, mimeType, referenceImages, generationConfig }) {
   const url = new URL(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
   );
@@ -22,12 +37,7 @@ function buildDeveloperApiRequest({ model, apiKey, prompt, imageBuffer, mimeType
           role: "user",
           parts: [
             { text: prompt },
-            {
-              inlineData: {
-                mimeType,
-                data: imageBuffer.toString("base64"),
-              },
-            },
+            ...buildImageParts({ imageBuffer, mimeType, referenceImages }),
           ],
         },
       ],
@@ -44,6 +54,7 @@ function buildVertexApiRequest({
   prompt,
   imageBuffer,
   mimeType,
+  referenceImages,
   generationConfig,
 }) {
   const url = `https://aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${model}:generateContent`;
@@ -60,12 +71,7 @@ function buildVertexApiRequest({
           role: "user",
           parts: [
             { text: prompt },
-            {
-              inlineData: {
-                mimeType,
-                data: imageBuffer.toString("base64"),
-              },
-            },
+            ...buildImageParts({ imageBuffer, mimeType, referenceImages }),
           ],
         },
       ],
@@ -227,6 +233,7 @@ export async function generateEditedImage({
   prompt,
   imageBuffer,
   mimeType,
+  referenceImages = [],
   dryRun,
   generationConfig = {
     responseModalities: ["TEXT", "IMAGE"],
@@ -253,6 +260,7 @@ export async function generateEditedImage({
       prompt,
       imageBuffer,
       mimeType,
+      referenceImages,
       generationConfig,
     });
   } else if (auth.kind === "vertex-access-token") {
@@ -264,6 +272,7 @@ export async function generateEditedImage({
       prompt,
       imageBuffer,
       mimeType,
+      referenceImages,
       generationConfig,
     });
   } else {
@@ -275,6 +284,7 @@ export async function generateEditedImage({
       prompt,
       imageBuffer,
       mimeType,
+      referenceImages,
       generationConfig,
     });
   }

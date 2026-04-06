@@ -50,7 +50,8 @@ The repo now has a real room-splat pipeline under `npm run splats`.
 What it does:
 
 - reads the room-driving render libraries in `output/renders/`
-- refreshes source angles with the Nano Banana-style Gemini image model when Google credentials are available
+- refreshes source angles with Google's current Gemini image models when Google credentials are available
+- feeds the image model multiple references for the same zone: the authoritative concept art, tracked overlap views, and a generated consistency anchor when available
 - otherwise falls back to the tracked multi-angle render-library images already in the repo
 - reconstructs a point-based gaussian splat cloud from multiple views
 - writes ASCII `.ply` splat assets plus `splat.json` metadata under `output/splats/`
@@ -58,7 +59,14 @@ What it does:
 
 Default image model for fresh splat-source angles:
 
-- `gemini-2.5-flash-image`
+- `gemini-3.1-flash-image-preview`
+
+Quality defaults for fresh splat-source angles:
+
+- 6 orbit views
+- 2K image size
+- 4 reference images max per generation request
+- higher point budgets for more detailed reconstructed scenery
 
 Run it with:
 

@@ -58,6 +58,9 @@ export function buildSplatConfig({ argv = process.argv.slice(2), env = process.e
       "image-size": {
         type: "string",
       },
+      "max-reference-images": {
+        type: "string",
+      },
       limit: {
         type: "string",
       },
@@ -97,21 +100,29 @@ export function buildSplatConfig({ argv = process.argv.slice(2), env = process.e
       min: 1,
       max: 6,
     }),
-    pointsPerView: parsePositiveInteger(values["points-per-view"] ?? env.SPLAT_POINTS_PER_VIEW ?? "900", "SPLAT_POINTS_PER_VIEW", {
+    pointsPerView: parsePositiveInteger(values["points-per-view"] ?? env.SPLAT_POINTS_PER_VIEW ?? "1400", "SPLAT_POINTS_PER_VIEW", {
       min: 64,
       max: 24000,
     }),
-    pointsPerAsset: parsePositiveInteger(values["points-per-asset"] ?? env.SPLAT_POINTS_PER_ASSET ?? "1800", "SPLAT_POINTS_PER_ASSET", {
+    pointsPerAsset: parsePositiveInteger(values["points-per-asset"] ?? env.SPLAT_POINTS_PER_ASSET ?? "3600", "SPLAT_POINTS_PER_ASSET", {
       min: 128,
       max: 48000,
     }),
-    viewCount: parsePositiveInteger(values["view-count"] ?? env.SPLAT_VIEW_COUNT ?? "4", "SPLAT_VIEW_COUNT", {
+    viewCount: parsePositiveInteger(values["view-count"] ?? env.SPLAT_VIEW_COUNT ?? "6", "SPLAT_VIEW_COUNT", {
       min: 3,
       max: 8,
     }),
-    imageSize: values["image-size"] ?? env.SPLAT_IMAGE_SIZE ?? "1K",
+    imageSize: values["image-size"] ?? env.SPLAT_IMAGE_SIZE ?? "2K",
+    maxReferenceImages: parsePositiveInteger(
+      values["max-reference-images"] ?? env.SPLAT_MAX_REFERENCE_IMAGES ?? "4",
+      "SPLAT_MAX_REFERENCE_IMAGES",
+      {
+        min: 1,
+        max: 14,
+      }
+    ),
     assetLimit: values.limit ? parsePositiveInteger(values.limit, "limit", { min: 1, max: 999 }) : null,
-    model: values.model ?? env.SPLAT_MODEL ?? env.GEMINI_MODEL ?? env.GOOGLE_IMAGE_MODEL ?? "gemini-3-pro-image-preview",
+    model: values.model ?? env.SPLAT_MODEL ?? env.GEMINI_MODEL ?? env.GOOGLE_IMAGE_MODEL ?? "gemini-3.1-flash-image-preview",
     authMode,
     auth,
     projectId: env.GOOGLE_CLOUD_PROJECT ?? auth.serviceAccount?.project_id ?? "",

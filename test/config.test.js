@@ -14,7 +14,7 @@ test("buildConfig uses dry-run without credentials", () => {
 
   assert.equal(config.dryRun, true);
   assert.equal(config.allowEmpty, true);
-  assert.equal(config.model, "gemini-3-pro-image-preview");
+  assert.equal(config.model, "gemini-3.1-flash-image-preview");
   assert.equal(config.retryLimit, 3);
   assert.equal(config.auth.kind, "none");
   assert.equal(config.inputDir, path.resolve("docs/concept-art"));
@@ -64,6 +64,7 @@ test("buildPhotosphereConfig defaults to five retries", () => {
 
   assert.equal(config.retryLimit, 5);
   assert.equal(config.model, "gemini-3.1-flash-image-preview");
+  assert.equal(config.imageSize, "2K");
 });
 
 test("buildSplatConfig defaults to the local multi-view splat pipeline", () => {
@@ -73,7 +74,12 @@ test("buildSplatConfig defaults to the local multi-view splat pipeline", () => {
   });
 
   assert.equal(config.retryLimit, 5);
-  assert.equal(config.model, "gemini-3-pro-image-preview");
+  assert.equal(config.model, "gemini-3.1-flash-image-preview");
+  assert.equal(config.pointsPerView, 1400);
+  assert.equal(config.pointsPerAsset, 3600);
+  assert.equal(config.imageSize, "2K");
+  assert.equal(config.viewCount, 6);
+  assert.equal(config.maxReferenceImages, 4);
   assert.equal(config.refreshViews, false);
 });
 

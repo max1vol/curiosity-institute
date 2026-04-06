@@ -57,6 +57,13 @@ async function renderDirection({ asset, direction, config, failureCollector }) {
         imageBuffer,
         mimeType,
         dryRun: config.dryRun,
+        generationConfig: {
+          responseModalities: ["TEXT", "IMAGE"],
+          candidateCount: 1,
+          imageConfig: {
+            imageSize: config.imageSize,
+          },
+        },
       });
 
       return {
