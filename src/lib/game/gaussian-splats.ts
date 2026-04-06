@@ -3,12 +3,12 @@ import * as THREE from "three";
 import type { Vector3Tuple } from "./types";
 
 export const WORLD_LAYOUT = {
-  width: 164,
-  depth: 108,
+  width: 236,
+  depth: 140,
 } as const;
 
-const MAP_WIDTH = 1100;
-const MAP_HEIGHT = 640;
+const MAP_WIDTH = 1380;
+const MAP_HEIGHT = 820;
 
 export interface GaussianSplatData {
   format: string;
@@ -20,6 +20,8 @@ export interface GaussianSplatData {
   };
   points: Array<[number, number, number, number, number, number, number, number]>;
 }
+
+export type GaussianSplatPoint = [number, number, number, number, number, number, number, number];
 
 const payloadCache = new Map<string, Promise<GaussianSplatData>>();
 
@@ -122,6 +124,39 @@ export async function loadGaussianSplat(url: string): Promise<GaussianSplatData>
 
   payloadCache.set(url, promise);
   return promise;
+}
+
+export function buildGaussianSplatData(
+  asset: string,
+  points: GaussianSplatPoint[],
+  format = "procedural",
+): GaussianSplatData {
+  const bounds = {
+    min: [Infinity, Infinity, Infinity] as Vector3Tuple,
+    max: [-Infinity, -Infinity, -Infinity] as Vector3Tuple,
+  };
+
+  for (const [x, y, z] of points) {
+    bounds.min[0] = Math.min(bounds.min[0], x);
+    bounds.min[1] = Math.min(bounds.min[1], y);
+    bounds.min[2] = Math.min(bounds.min[2], z);
+    bounds.max[0] = Math.max(bounds.max[0], x);
+    bounds.max[1] = Math.max(bounds.max[1], y);
+    bounds.max[2] = Math.max(bounds.max[2], z);
+  }
+
+  if (!points.length) {
+    bounds.min = [0, 0, 0];
+    bounds.max = [0, 0, 0];
+  }
+
+  return {
+    format,
+    asset,
+    pointCount: points.length,
+    bounds,
+    points,
+  };
 }
 
 export function gaussianSplatObject(

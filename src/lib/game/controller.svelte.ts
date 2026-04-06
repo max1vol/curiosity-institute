@@ -68,9 +68,11 @@ import { pickWeightedItem } from "./random";
 import { buildStudyRoundFeedback } from "./study-flow";
 
 export const WORLD = {
-  width: 1100,
-  height: 640
+  width: 1380,
+  height: 820
 } as const;
+
+const ROOM_TARGET_SNAP_DISTANCE = 104;
 
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
 const SPRINT_KEY = "Shift";
@@ -2167,7 +2169,7 @@ export class MuseumGameController {
         x: startingPosition.x,
         y: startingPosition.y,
         target: { ...startingPosition },
-        speed: 240,
+        speed: 268,
         radius: 18
       },
       activity: [],
@@ -2662,7 +2664,7 @@ export class MuseumGameController {
       }
     }
 
-    return closestDistance <= 80 ? closestRoom : undefined;
+    return closestDistance <= ROOM_TARGET_SNAP_DISTANCE ? closestRoom : undefined;
   }
 
   private stopCuratorMotion(): void {

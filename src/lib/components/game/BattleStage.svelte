@@ -3,7 +3,15 @@
   import * as THREE from "three";
 
   import { WORLD } from "$lib/game/controller.svelte";
-  import { gaussianSplatObject, loadGaussianSplat, mapPointToWorld, worldPointToMap, WORLD_LAYOUT } from "$lib/game/gaussian-splats";
+  import {
+    buildGaussianSplatData,
+    gaussianSplatObject,
+    loadGaussianSplat,
+    mapPointToWorld,
+    worldPointToMap,
+    WORLD_LAYOUT
+  } from "$lib/game/gaussian-splats";
+  import type { GaussianSplatPoint } from "$lib/game/gaussian-splats";
   import type { GameSession, ObjectivePill, RoomBlueprint, ThemeDefinition } from "$lib/game/types";
 
   interface Props {
@@ -18,9 +26,10 @@
 
   type RoomVisual = {
     id: string;
-    material: THREE.MeshStandardMaterial;
-    roofMaterial: THREE.MeshStandardMaterial;
+    baseAnchorY: number;
+    beaconBaseY: number;
     beaconMaterial: THREE.MeshStandardMaterial;
+    rimMaterial: THREE.MeshBasicMaterial;
     rim: THREE.Mesh;
     beacon: THREE.Mesh;
     marker: THREE.Mesh;
@@ -33,6 +42,13 @@
     splatLoading: boolean;
   };
 
+  type SplatRenderOptions = {
+    scale?: number;
+    opacity?: number;
+    sizeMultiplier?: number;
+    pointScale?: number;
+  };
+
   type TerrainInfluence = {
     centerX: number;
     centerY: number;
@@ -41,19 +57,19 @@
     boost: number;
   };
 
-  const TERRAIN_COLUMNS = 22;
-  const TERRAIN_ROWS = 15;
-  const TERRAIN_FIELD_COLUMNS = 33;
-  const TERRAIN_FIELD_ROWS = 23;
-  const TERRAIN_DECOR_ATTEMPTS = 180;
-  const ROOM_SPLAT_RANGE = 240;
-  const ROOM_SPLAT_PREFETCH_RANGE = 320;
-  const CAMERA_DISTANCE_MIN = 30;
-  const CAMERA_DISTANCE_MAX = 70;
+  const TERRAIN_COLUMNS = 30;
+  const TERRAIN_ROWS = 20;
+  const TERRAIN_FIELD_COLUMNS = 41;
+  const TERRAIN_FIELD_ROWS = 29;
+  const TERRAIN_DECOR_ATTEMPTS = 240;
+  const ROOM_SPLAT_RANGE = 320;
+  const ROOM_SPLAT_PREFETCH_RANGE = 440;
+  const CAMERA_DISTANCE_MIN = 44;
+  const CAMERA_DISTANCE_MAX = 104;
   const CAMERA_DRAG_THRESHOLD = 8;
   const CAMERA_PITCH_MIN = 0.48;
   const CAMERA_PITCH_MAX = 1.16;
-  const CAMERA_OFFSET = new THREE.Vector3(31, 31, 27);
+  const CAMERA_OFFSET = new THREE.Vector3(48, 46, 42);
   const CAMERA_DISTANCE_DEFAULT = CAMERA_OFFSET.length();
   const CAMERA_YAW_DEFAULT = Math.atan2(CAMERA_OFFSET.x, CAMERA_OFFSET.z);
   const CAMERA_PITCH_DEFAULT = Math.asin(CAMERA_OFFSET.y / CAMERA_DISTANCE_DEFAULT);
@@ -89,6 +105,36 @@
     return value - Math.floor(value);
   }
 
+  function addSplatPoint(
+    points: GaussianSplatPoint[],
+    x: number,
+    y: number,
+    z: number,
+    color: THREE.Color,
+    size: number,
+    alpha: number
+  ): void {
+    points.push([x, y, z, color.r, color.g, color.b, size, alpha]);
+  }
+
+  function mountProceduralSplat(
+    target: THREE.Object3D,
+    asset: string,
+    points: GaussianSplatPoint[],
+    options: SplatRenderOptions,
+    configure?: (object: THREE.Points) => void
+  ): THREE.Points | null {
+    if (!points.length) {
+      return null;
+    }
+
+    const { object, dispose } = gaussianSplatObject(buildGaussianSplatData(asset, points), options);
+    configure?.(object);
+    target.add(object);
+    stageSplatDisposers.push(dispose);
+    return object;
+  }
+
   let {
     theme,
     game,
@@ -106,6 +152,7 @@
 
   const roomVisuals = new Map<string, RoomVisual>();
   const splatDisposers = new Map<string, () => void>();
+  const stageSplatDisposers: Array<() => void> = [];
   const visitorPool: THREE.Group[] = [];
   const coinPool: THREE.Mesh[] = [];
   const roomMarkers: THREE.Object3D[] = [];
@@ -367,43 +414,14 @@
   }
 
   function buildTerrainDecor(targetGroup: THREE.Group): void {
-    const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.78, 3.8, 6);
-    const canopyGeometry = new THREE.ConeGeometry(2.5, 5.6, 7);
-    const crystalGeometry = new THREE.OctahedronGeometry(1.15, 0);
-
-    foliageTrunkMaterial = new THREE.MeshStandardMaterial({
-      color: blendHex(themeDeepHex, 0x2a1b14, 0.4),
-      roughness: 0.96,
-      metalness: 0.02,
-      flatShading: true
-    });
-    foliageCanopyMaterial = new THREE.MeshStandardMaterial({
-      color: blendHex(themeAccentHex, themeHighlightHex, 0.16),
-      emissive: blendHex(themeAccentHex, themeHighlightHex, 0.12),
-      emissiveIntensity: 0.12,
-      roughness: 0.9,
-      metalness: 0.02,
-      flatShading: true,
-      vertexColors: true
-    });
-    crystalMaterial = new THREE.MeshStandardMaterial({
-      color: blendHex(themeHighlightHex, 0xffffff, 0.22),
-      emissive: blendHex(themeAccentHex, themeHighlightHex, 0.26),
-      emissiveIntensity: 0.28,
-      roughness: 0.24,
-      metalness: 0.34,
-      flatShading: true,
-      vertexColors: true
-    });
-
-    const trunkMesh = new THREE.InstancedMesh(trunkGeometry, foliageTrunkMaterial, TERRAIN_DECOR_ATTEMPTS);
-    const canopyMesh = new THREE.InstancedMesh(canopyGeometry, foliageCanopyMaterial, TERRAIN_DECOR_ATTEMPTS);
-    const crystalMesh = new THREE.InstancedMesh(crystalGeometry, crystalMaterial, TERRAIN_DECOR_ATTEMPTS);
-    const placement = new THREE.Object3D();
+    const trunkPoints: GaussianSplatPoint[] = [];
+    const canopyPoints: GaussianSplatPoint[] = [];
+    const crystalPoints: GaussianSplatPoint[] = [];
+    const world = new THREE.Vector3();
+    const trunkColor = new THREE.Color(blendHex(themeDeepHex, 0x2a1b14, 0.4));
+    const canopyColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.16));
+    const crystalColor = new THREE.Color(blendHex(themeHighlightHex, 0xffffff, 0.22));
     const tint = new THREE.Color();
-    let trunkIndex = 0;
-    let canopyIndex = 0;
-    let crystalIndex = 0;
 
     for (let attempt = 0; attempt < TERRAIN_DECOR_ATTEMPTS; attempt += 1) {
       const baseSeed = attempt + 1;
@@ -413,77 +431,101 @@
       const edgeDistance = Math.min(mapX, WORLD.width - mapX, mapY, WORLD.height - mapY);
       const height = terrainHeight(mapX, mapY);
 
-      if (roomDistance < 58 || edgeDistance < 48 || height < 2.2 || height > 8.4) {
+      if (roomDistance < 72 || edgeDistance < 62 || height < 2.2 || height > 8.8) {
         continue;
       }
 
-      const world = worldPositionForMapPoint(mapX, mapY, 0, new THREE.Vector3());
+      worldPositionForMapPoint(mapX, mapY, 0, world);
       const style = hash01(baseSeed * 3.71);
 
       if (style < 0.72) {
         const trunkHeight = 2 + hash01(baseSeed * 4.13) * 2.4;
-        const trunkWidth = 0.72 + hash01(baseSeed * 4.97) * 0.46;
-        placement.position.set(world.x, world.y + trunkHeight * 0.5, world.z);
-        placement.rotation.set(0, hash01(baseSeed * 5.39) * Math.PI * 2, 0);
-        placement.scale.set(trunkWidth, trunkHeight / 3.8, trunkWidth);
-        placement.updateMatrix();
-        trunkMesh.setMatrixAt(trunkIndex, placement.matrix);
+        const trunkWidth = 0.48 + hash01(baseSeed * 4.97) * 0.22;
+        const trunkCount = 8 + Math.floor(hash01(baseSeed * 5.39) * 6);
+        const canopyCount = 20 + Math.floor(hash01(baseSeed * 5.91) * 10);
+        const canopyScale = 2.1 + hash01(baseSeed * 6.13) * 1.7;
 
-        const canopyScale = 0.74 + hash01(baseSeed * 6.13) * 0.62;
-        placement.position.set(world.x, world.y + trunkHeight + canopyScale * 2.3, world.z);
-        placement.rotation.set(0, hash01(baseSeed * 6.71) * Math.PI * 2, 0);
-        placement.scale.set(canopyScale * 1.05, canopyScale * 1.12, canopyScale * 1.05);
-        placement.updateMatrix();
-        canopyMesh.setMatrixAt(canopyIndex, placement.matrix);
+        for (let index = 0; index < trunkCount; index += 1) {
+          const t = index / Math.max(1, trunkCount - 1);
+          const angle = hash01(baseSeed * 6.71 + index * 0.27) * Math.PI * 2;
+          const radius = trunkWidth * (0.18 + hash01(baseSeed * 7.13 + index * 0.17) * 0.42);
+          tint.copy(trunkColor);
+          tint.offsetHSL(0, 0, hash01(baseSeed * 7.39 + index * 0.11) * 0.05 - 0.03);
+          addSplatPoint(
+            trunkPoints,
+            world.x + Math.cos(angle) * radius,
+            world.y + t * trunkHeight,
+            world.z + Math.sin(angle) * radius,
+            tint,
+            7.2 + hash01(baseSeed * 7.83 + index * 0.09) * 2.8,
+            0.86
+          );
+        }
 
-        tint.setHex(blendHex(themeAccentHex, themeHighlightHex, 0.12));
-        tint.offsetHSL(hash01(baseSeed * 7.17) * 0.04 - 0.02, 0.05, hash01(baseSeed * 7.83) * 0.1 - 0.05);
-        canopyMesh.setColorAt(canopyIndex, tint);
-
-        trunkIndex += 1;
-        canopyIndex += 1;
+        for (let index = 0; index < canopyCount; index += 1) {
+          const orbit = hash01(baseSeed * 8.17 + index * 0.13) * Math.PI * 2;
+          const shell = Math.pow(hash01(baseSeed * 8.53 + index * 0.19), 0.7);
+          const radiusX = canopyScale * (0.42 + shell * 0.78);
+          const radiusZ = canopyScale * (0.34 + shell * 0.68);
+          const lift = trunkHeight + 0.7 + hash01(baseSeed * 8.91 + index * 0.23) * canopyScale * 1.2;
+          tint.copy(canopyColor);
+          tint.offsetHSL(
+            hash01(baseSeed * 9.37 + index * 0.07) * 0.05 - 0.025,
+            0.05,
+            hash01(baseSeed * 9.83 + index * 0.11) * 0.12 - 0.04
+          );
+          addSplatPoint(
+            canopyPoints,
+            world.x + Math.cos(orbit) * radiusX,
+            world.y + lift,
+            world.z + Math.sin(orbit) * radiusZ,
+            tint,
+            9.5 + hash01(baseSeed * 10.19 + index * 0.17) * 4.6,
+            0.8
+          );
+        }
       } else {
-        const crystalHeight = 0.8 + hash01(baseSeed * 5.03) * 1.7;
-        placement.position.set(world.x, world.y + crystalHeight, world.z);
-        placement.rotation.set(
-          hash01(baseSeed * 5.57) * 0.28,
-          hash01(baseSeed * 6.03) * Math.PI * 2,
-          hash01(baseSeed * 6.61) * 0.24
-        );
-        placement.scale.set(
-          0.76 + hash01(baseSeed * 7.19) * 0.34,
-          crystalHeight * 1.8,
-          0.76 + hash01(baseSeed * 7.91) * 0.34
-        );
-        placement.updateMatrix();
-        crystalMesh.setMatrixAt(crystalIndex, placement.matrix);
+        const crystalHeight = 2 + hash01(baseSeed * 5.03) * 3.2;
+        const crystalCount = 18 + Math.floor(hash01(baseSeed * 5.57) * 10);
 
-        tint.setHex(blendHex(themeHighlightHex, 0xffffff, 0.22));
-        tint.offsetHSL(hash01(baseSeed * 8.29) * 0.05 - 0.025, 0.08, hash01(baseSeed * 8.87) * 0.1 - 0.04);
-        crystalMesh.setColorAt(crystalIndex, tint);
-        crystalIndex += 1;
+        for (let index = 0; index < crystalCount; index += 1) {
+          const heightT = Math.pow(index / Math.max(1, crystalCount - 1), 0.82);
+          const angle = hash01(baseSeed * 6.03 + index * 0.21) * Math.PI * 2;
+          const radius = (1 - heightT) * (0.48 + hash01(baseSeed * 6.61 + index * 0.11) * 0.52);
+          tint.copy(crystalColor);
+          tint.offsetHSL(
+            hash01(baseSeed * 7.19 + index * 0.07) * 0.06 - 0.03,
+            0.08,
+            hash01(baseSeed * 7.91 + index * 0.13) * 0.14 - 0.04
+          );
+          addSplatPoint(
+            crystalPoints,
+            world.x + Math.cos(angle) * radius,
+            world.y + 0.5 + heightT * crystalHeight,
+            world.z + Math.sin(angle) * radius,
+            tint,
+            8.6 + hash01(baseSeed * 8.29 + index * 0.17) * 4.4,
+            0.82
+          );
+        }
       }
     }
 
-    trunkMesh.count = trunkIndex;
-    canopyMesh.count = canopyIndex;
-    crystalMesh.count = crystalIndex;
-    trunkMesh.castShadow = true;
-    canopyMesh.castShadow = true;
-    canopyMesh.receiveShadow = true;
-    crystalMesh.castShadow = true;
-    crystalMesh.receiveShadow = true;
-    trunkMesh.instanceMatrix.needsUpdate = true;
-    canopyMesh.instanceMatrix.needsUpdate = true;
-    crystalMesh.instanceMatrix.needsUpdate = true;
-    if (canopyMesh.instanceColor) {
-      canopyMesh.instanceColor.needsUpdate = true;
-    }
-    if (crystalMesh.instanceColor) {
-      crystalMesh.instanceColor.needsUpdate = true;
-    }
-
-    targetGroup.add(trunkMesh, canopyMesh, crystalMesh);
+    mountProceduralSplat(targetGroup, "terrain-trunks", trunkPoints, {
+      opacity: 0.94,
+      sizeMultiplier: 1.1,
+      pointScale: 246
+    });
+    mountProceduralSplat(targetGroup, "terrain-canopies", canopyPoints, {
+      opacity: 0.86,
+      sizeMultiplier: 1.22,
+      pointScale: 258
+    });
+    mountProceduralSplat(targetGroup, "terrain-crystals", crystalPoints, {
+      opacity: 0.92,
+      sizeMultiplier: 1.28,
+      pointScale: 266
+    });
   }
 
   function buildTerrain(targetScene: THREE.Scene): void {
@@ -519,228 +561,307 @@
     capMesh.visible = false;
     terrainPickTargets.push(capMesh);
 
-    const surfaceGeometry = new THREE.PlaneGeometry(
-      WORLD_LAYOUT.width * 1.08,
-      WORLD_LAYOUT.depth * 1.08,
-      TERRAIN_FIELD_COLUMNS * 2 - 2,
-      TERRAIN_FIELD_ROWS * 2 - 2
-    );
-    surfaceGeometry.rotateX(-Math.PI / 2);
-    const positions = surfaceGeometry.getAttribute("position");
-    const colors = new Float32Array(positions.count * 3);
+    const surfacePoints: GaussianSplatPoint[] = [];
+    const ridgePoints: GaussianSplatPoint[] = [];
+    const coastPoints: GaussianSplatPoint[] = [];
+    const cliffPoints: GaussianSplatPoint[] = [];
+    const waterPoints: GaussianSplatPoint[] = [];
+    const foamPoints: GaussianSplatPoint[] = [];
+    const world = new THREE.Vector3();
     const terrainColor = new THREE.Color();
-    const plateauColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.1));
+    const plateauColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.14));
     const coastalColor = new THREE.Color(blendHex(themeHighlightHex, themeDeepHex, 0.18));
     const deepColor = new THREE.Color(themeDeepHex);
+    const waterColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.34));
+    const foamColor = new THREE.Color(blendHex(themeHighlightHex, 0xffffff, 0.34));
+    const cliffColor = new THREE.Color(blendHex(themeDeepHex, 0x050708, 0.34));
+    const landRadiusX = WORLD_LAYOUT.width * 0.53;
+    const landRadiusZ = WORLD_LAYOUT.depth * 0.53;
 
-    for (let vertex = 0; vertex < positions.count; vertex += 1) {
-      const worldX = positions.getX(vertex);
-      const worldZ = positions.getZ(vertex);
-      const mapX = THREE.MathUtils.clamp(((worldX / WORLD_LAYOUT.width) + 0.5) * WORLD.width, 0, WORLD.width);
-      const mapY = THREE.MathUtils.clamp(((worldZ / WORLD_LAYOUT.depth) + 0.5) * WORLD.height, 0, WORLD.height);
-      const height = terrainHeight(mapX, mapY);
-      const slopeX = terrainHeight(Math.max(0, mapX - 9), mapY) - terrainHeight(Math.min(WORLD.width, mapX + 9), mapY);
-      const slopeY = terrainHeight(mapX, Math.max(0, mapY - 9)) - terrainHeight(mapX, Math.min(WORLD.height, mapY + 9));
-      const slope = THREE.MathUtils.clamp(Math.hypot(slopeX, slopeY) * 0.08, 0, 1);
-      const edgeDistance = Math.min(mapX, WORLD.width - mapX, mapY, WORLD.height - mapY);
-      const shoreBlend = THREE.MathUtils.clamp(edgeDistance / 118, 0, 1);
-      const heightBlend = THREE.MathUtils.clamp((height - 1.8) / 7.8, 0, 1);
-      const ripple = Math.sin(mapX * 0.023 + mapY * 0.016) * 0.5 + 0.5;
+    for (let gx = 0; gx < TERRAIN_FIELD_COLUMNS * 2; gx += 1) {
+      const mapX = (gx / (TERRAIN_FIELD_COLUMNS * 2 - 1)) * WORLD.width;
+      for (let gy = 0; gy < TERRAIN_FIELD_ROWS * 2; gy += 1) {
+        const mapY = (gy / (TERRAIN_FIELD_ROWS * 2 - 1)) * WORLD.height;
+        const height = terrainHeight(mapX, mapY);
+        const slopeX = terrainHeight(Math.max(0, mapX - 10), mapY) - terrainHeight(Math.min(WORLD.width, mapX + 10), mapY);
+        const slopeY = terrainHeight(mapX, Math.max(0, mapY - 10)) - terrainHeight(mapX, Math.min(WORLD.height, mapY + 10));
+        const slope = THREE.MathUtils.clamp(Math.hypot(slopeX, slopeY) * 0.075, 0, 1);
+        const edgeDistance = Math.min(mapX, WORLD.width - mapX, mapY, WORLD.height - mapY);
+        const shoreBlend = THREE.MathUtils.clamp(edgeDistance / 144, 0, 1);
+        const heightBlend = THREE.MathUtils.clamp((height - 1.6) / 8.6, 0, 1);
+        const ripple = Math.sin(mapX * 0.017 + mapY * 0.013) * 0.5 + 0.5;
 
-      positions.setY(vertex, height);
-      terrainColor.copy(deepColor);
-      terrainColor.lerp(plateauColor, heightBlend * 0.72);
-      terrainColor.lerp(coastalColor, (1 - shoreBlend) * 0.58);
-      terrainColor.offsetHSL(0, 0.03 - slope * 0.05, ripple * 0.05 - slope * 0.08);
-      colors[vertex * 3] = terrainColor.r;
-      colors[vertex * 3 + 1] = terrainColor.g;
-      colors[vertex * 3 + 2] = terrainColor.b;
+        mapPointToWorld(mapX, mapY, height, world);
+        terrainColor.copy(deepColor);
+        terrainColor.lerp(plateauColor, heightBlend * 0.82);
+        terrainColor.lerp(coastalColor, (1 - shoreBlend) * 0.58);
+        terrainColor.offsetHSL(0, 0.03 - slope * 0.04, ripple * 0.04 - slope * 0.08);
+        addSplatPoint(
+          surfacePoints,
+          world.x,
+          world.y - 0.14 + hash01((gx + 1) * 37 + (gy + 1) * 19) * 0.28,
+          world.z,
+          terrainColor,
+          10.2 + heightBlend * 4.6 - slope * 1.8,
+          0.94
+        );
+
+        if ((gx + gy) % 2 === 0) {
+          addSplatPoint(
+            surfacePoints,
+            world.x + (hash01((gx + 3) * 53 + gy * 17) - 0.5) * 1.4,
+            world.y - 0.8 + hash01((gx + 5) * 31 + gy * 43) * 0.22,
+            world.z + (hash01((gx + 7) * 29 + gy * 47) - 0.5) * 1.4,
+            terrainColor,
+            8.4 + heightBlend * 3.2,
+            0.54
+          );
+        }
+
+        if (heightBlend > 0.44) {
+          const ridgeTint = terrainColor.clone().lerp(new THREE.Color(themeHighlightHex), 0.18 + heightBlend * 0.22);
+          addSplatPoint(
+            ridgePoints,
+            world.x,
+            world.y + 0.48 + heightBlend * 0.66,
+            world.z,
+            ridgeTint,
+            9 + heightBlend * 3.4,
+            0.72
+          );
+        }
+
+        if (shoreBlend < 0.42) {
+          const coastTint = terrainColor.clone().lerp(foamColor, 0.16 + (1 - shoreBlend) * 0.2);
+          addSplatPoint(
+            coastPoints,
+            world.x,
+            world.y + 0.16,
+            world.z,
+            coastTint,
+            10.8 + (1 - shoreBlend) * 4.2,
+            0.6
+          );
+        }
+      }
     }
 
-    surfaceGeometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    surfaceGeometry.computeVertexNormals();
-    terrainSurfaceMaterial = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      emissive: blendHex(themeDeepHex, themeAccentHex, 0.08),
-      emissiveIntensity: 0.1,
-      roughness: 0.94,
-      metalness: 0.04
-    });
-    const terrainSurface = new THREE.Mesh(surfaceGeometry, terrainSurfaceMaterial);
-    terrainSurface.receiveShadow = true;
+    for (let pointIndex = 0; pointIndex < 320; pointIndex += 1) {
+      const angle = (pointIndex / 320) * Math.PI * 2;
+      for (let layer = 0; layer < 5; layer += 1) {
+        const lift = -19 + layer * 4.8 + hash01(pointIndex * 7.13 + layer * 0.41) * 1.4;
+        const radiusX = landRadiusX * (1.02 + layer * 0.04) + hash01(pointIndex * 5.31 + layer * 0.37) * 3.4;
+        const radiusZ = landRadiusZ * (1.02 + layer * 0.05) + hash01(pointIndex * 6.27 + layer * 0.43) * 2.7;
+        addSplatPoint(
+          cliffPoints,
+          Math.cos(angle) * radiusX,
+          lift,
+          Math.sin(angle) * radiusZ,
+          cliffColor,
+          10.4 + layer * 1.6,
+          0.88
+        );
+      }
+    }
 
-    terrainCliffMaterial = new THREE.MeshStandardMaterial({
-      color: blendHex(themeDeepHex, 0x050708, 0.34),
-      emissive: blendHex(themeDeepHex, 0x000000, 0.22),
-      emissiveIntensity: 0.14,
-      roughness: 0.96,
-      metalness: 0.03,
-      side: THREE.DoubleSide
-    });
-    const cliffWall = new THREE.Mesh(
-      new THREE.CylinderGeometry(100, 118, 22, 72, 1, true),
-      terrainCliffMaterial
-    );
-    cliffWall.position.y = -8.6;
-    cliffWall.receiveShadow = true;
+    for (let ring = 0; ring < 5; ring += 1) {
+      for (let pointIndex = 0; pointIndex < 260; pointIndex += 1) {
+        const angle = (pointIndex / 260) * Math.PI * 2;
+        const radiusScale = 1.02 + ring * 0.06 + hash01(ring * 101 + pointIndex * 0.41) * 0.04;
+        const x = Math.cos(angle) * landRadiusX * radiusScale;
+        const z = Math.sin(angle) * landRadiusZ * (1.08 + ring * 0.05);
+        addSplatPoint(
+          waterPoints,
+          x,
+          0.08 + Math.sin(angle * 2.1 + ring) * 0.12,
+          z,
+          waterColor,
+          11.8 + ring * 1.3,
+          0.58
+        );
 
-    const cliffBase = new THREE.Mesh(
-      new THREE.CylinderGeometry(114, 118, 6.2, 72),
-      terrainCliffMaterial
-    );
-    cliffBase.position.y = -17.4;
-    cliffBase.receiveShadow = true;
-
-    terrainGlowMaterial = new THREE.MeshBasicMaterial({
-      color: blendHex(themeHighlightHex, themeAccentHex, 0.32),
-      transparent: true,
-      opacity: 0.12
-    });
-    const landAura = new THREE.Mesh(new THREE.RingGeometry(82, 114, 80), terrainGlowMaterial);
-    landAura.rotation.x = -Math.PI / 2;
-    landAura.position.y = 0.48;
-
-    waterSurface = new THREE.Mesh(
-      new THREE.CylinderGeometry(104, 104, 0.9, 72),
-      new THREE.MeshStandardMaterial({
-        color: blendHex(themeAccentHex, themeHighlightHex, 0.34),
-        emissive: blendHex(themeDeepHex, themeHighlightHex, 0.14),
-        emissiveIntensity: 0.34,
-        roughness: 0.22,
-        metalness: 0.16,
-        transparent: true,
-        opacity: 0.72
-      })
-    );
-    waterSurface.position.set(0, 0.12, 0);
-    waterSurface.receiveShadow = true;
-
-    waterGlow = new THREE.Mesh(
-      new THREE.CylinderGeometry(100, 102, 0.24, 72),
-      new THREE.MeshBasicMaterial({
-        color: blendHex(themeHighlightHex, 0xffffff, 0.24),
-        transparent: true,
-        opacity: 0.18
-      })
-    );
-    waterGlow.position.set(0, 0.62, 0);
-
-    waterRing = new THREE.Mesh(
-      new THREE.TorusGeometry(100, 1.7, 12, 112),
-      new THREE.MeshBasicMaterial({
-        color: blendHex(themeHighlightHex, themeAccentHex, 0.18),
-        transparent: true,
-        opacity: 0.22
-      })
-    );
-    waterRing.rotation.x = Math.PI / 2;
-    waterRing.position.set(0, 0.86, 0);
+        if (ring <= 2) {
+          addSplatPoint(
+            foamPoints,
+            x * 0.99,
+            0.44 + Math.sin(angle * 3.2 + ring) * 0.12,
+            z * 0.99,
+            foamColor,
+            10.4 + ring,
+            0.32
+          );
+        }
+      }
+    }
 
     buildTerrainDecor(group);
-    group.add(capMesh, terrainSurface, cliffWall, cliffBase, landAura, waterSurface, waterGlow, waterRing);
+    group.add(capMesh);
+    mountProceduralSplat(group, "terrain-surface", surfacePoints, {
+      opacity: 0.98,
+      sizeMultiplier: 1.08,
+      pointScale: 238
+    });
+    mountProceduralSplat(group, "terrain-ridges", ridgePoints, {
+      opacity: 0.78,
+      sizeMultiplier: 1.12,
+      pointScale: 244
+    });
+    mountProceduralSplat(group, "terrain-coast", coastPoints, {
+      opacity: 0.68,
+      sizeMultiplier: 1.18,
+      pointScale: 248
+    });
+    mountProceduralSplat(group, "terrain-cliffs", cliffPoints, {
+      opacity: 0.92,
+      sizeMultiplier: 1.24,
+      pointScale: 252
+    });
+    mountProceduralSplat(group, "terrain-water", waterPoints, {
+      opacity: 0.58,
+      sizeMultiplier: 1.34,
+      pointScale: 266
+    });
+    mountProceduralSplat(group, "terrain-foam", foamPoints, {
+      opacity: 0.28,
+      sizeMultiplier: 1.46,
+      pointScale: 278
+    });
 
     targetScene.add(group);
   }
 
   function buildAtmosphere(targetScene: THREE.Scene): void {
-    skyMaterial = new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      depthWrite: false,
-      uniforms: {
-        uTopColor: { value: new THREE.Color(shiftHex(themeDeepHex, -0.04, 0.1, 0.24)) },
-        uMidColor: { value: new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.38)) },
-        uHorizonColor: { value: new THREE.Color(blendHex(themeDeepHex, themeHighlightHex, 0.5)) }
-      },
-      vertexShader: `
-        varying vec3 vWorldPosition;
-
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * viewMatrix * worldPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 uTopColor;
-        uniform vec3 uMidColor;
-        uniform vec3 uHorizonColor;
-        varying vec3 vWorldPosition;
-
-        void main() {
-          float height = normalize(vWorldPosition).y * 0.5 + 0.5;
-          vec3 color = mix(uHorizonColor, uMidColor, smoothstep(0.0, 0.5, height));
-          color = mix(color, uTopColor, smoothstep(0.42, 1.0, height));
-          gl_FragColor = vec4(color, 1.0);
-        }
-      `
-    });
-    skyMaterial.toneMapped = false;
-
-    const skyDome = new THREE.Mesh(new THREE.SphereGeometry(230, 32, 24), skyMaterial);
-    skyDome.position.y = 28;
-    targetScene.add(skyDome);
-
     const sunGroup = new THREE.Group();
-    sunGroup.position.set(68, 58, -46);
-    const sunCore = new THREE.Mesh(
-      new THREE.SphereGeometry(7.4, 18, 18),
-      new THREE.MeshBasicMaterial({
-        color: blendHex(themeHighlightHex, 0xffffff, 0.45),
-        transparent: true,
-        opacity: 0.92
-      })
-    );
-    const sunHalo = new THREE.Mesh(
-      new THREE.SphereGeometry(14, 18, 18),
-      new THREE.MeshBasicMaterial({
-        color: blendHex(themeHighlightHex, themeAccentHex, 0.22),
-        transparent: true,
-        opacity: 0.16
-      })
-    );
-    sunGroup.add(sunCore, sunHalo);
+    sunGroup.position.set(78, 62, -56);
+    const sunCorePoints: GaussianSplatPoint[] = [];
+    const sunHaloPoints: GaussianSplatPoint[] = [];
+    const sunCoreColor = new THREE.Color(blendHex(themeHighlightHex, 0xffffff, 0.45));
+    const sunHaloColor = new THREE.Color(blendHex(themeHighlightHex, themeAccentHex, 0.22));
+
+    for (let index = 0; index < 64; index += 1) {
+      const angle = hash01(index * 3.17) * Math.PI * 2;
+      const radius = Math.pow(hash01(index * 5.11), 0.7) * 4.8;
+      addSplatPoint(
+        sunCorePoints,
+        Math.cos(angle) * radius,
+        (hash01(index * 7.19) - 0.5) * 3.8,
+        Math.sin(angle) * radius,
+        sunCoreColor,
+        14 + hash01(index * 11.03) * 6,
+        0.94
+      );
+    }
+
+    for (let index = 0; index < 120; index += 1) {
+      const angle = hash01(index * 2.73) * Math.PI * 2;
+      const radius = 7 + hash01(index * 4.91) * 11;
+      addSplatPoint(
+        sunHaloPoints,
+        Math.cos(angle) * radius,
+        (hash01(index * 6.83) - 0.5) * 7.4,
+        Math.sin(angle) * radius,
+        sunHaloColor,
+        18 + hash01(index * 8.71) * 8,
+        0.24
+      );
+    }
+
+    mountProceduralSplat(sunGroup, "atmos-sun-core", sunCorePoints, {
+      opacity: 0.95,
+      sizeMultiplier: 1.38,
+      pointScale: 284
+    });
+    mountProceduralSplat(sunGroup, "atmos-sun-halo", sunHaloPoints, {
+      opacity: 0.32,
+      sizeMultiplier: 1.7,
+      pointScale: 302
+    });
     targetScene.add(sunGroup);
 
     cloudBand = new THREE.Group();
-    const cloudGeometry = new THREE.IcosahedronGeometry(3.2, 1);
-    const cloudMaterial = new THREE.MeshStandardMaterial({
-      color: blendHex(themeHighlightHex, 0xffffff, 0.12),
-      emissive: blendHex(themeAccentHex, themeHighlightHex, 0.28),
-      emissiveIntensity: 0.25,
-      roughness: 0.92,
-      metalness: 0.02,
-      transparent: true,
-      opacity: 0.26
-    });
-    for (let index = 0; index < 15; index += 1) {
-      const angle = (index / 15) * Math.PI * 2;
-      const cloud = new THREE.Mesh(cloudGeometry, cloudMaterial);
-      const radius = 92 + (index % 4) * 7;
-      const scale = 1.5 + (index % 3) * 0.34;
-      cloud.position.set(Math.sin(angle) * radius, 44 + (index % 5) * 2.5, Math.cos(angle) * radius);
-      cloud.scale.set(scale * 2.2, scale, scale * 1.4);
-      cloud.rotation.set(index * 0.19, angle, index * 0.11);
-      cloudBand.add(cloud);
+    const cloudPoints: GaussianSplatPoint[] = [];
+    const mistPoints: GaussianSplatPoint[] = [];
+    const cloudColor = new THREE.Color(blendHex(themeHighlightHex, 0xffffff, 0.12));
+    const mistColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.3));
+    for (let index = 0; index < 420; index += 1) {
+      const angle = hash01(index * 1.73) * Math.PI * 2;
+      const band = index % 3;
+      const radiusX = WORLD_LAYOUT.width * (0.42 + band * 0.08 + hash01(index * 2.17) * 0.06);
+      const radiusZ = WORLD_LAYOUT.depth * (0.6 + band * 0.1 + hash01(index * 2.61) * 0.07);
+      const y = 34 + band * 5 + hash01(index * 3.19) * 14;
+      addSplatPoint(
+        cloudPoints,
+        Math.cos(angle) * radiusX,
+        y,
+        Math.sin(angle) * radiusZ,
+        cloudColor,
+        16 + hash01(index * 4.03) * 10,
+        0.22
+      );
+      if (index % 2 === 0) {
+        addSplatPoint(
+          mistPoints,
+          Math.cos(angle) * radiusX * 0.9,
+          y - 6 + hash01(index * 4.37) * 4,
+          Math.sin(angle) * radiusZ * 0.9,
+          mistColor,
+          18 + hash01(index * 4.79) * 12,
+          0.12
+        );
+      }
     }
+    mountProceduralSplat(cloudBand, "atmos-clouds", cloudPoints, {
+      opacity: 0.3,
+      sizeMultiplier: 1.55,
+      pointScale: 278
+    });
+    mountProceduralSplat(cloudBand, "atmos-mist", mistPoints, {
+      opacity: 0.18,
+      sizeMultiplier: 1.84,
+      pointScale: 290
+    });
     targetScene.add(cloudBand);
 
     shardField = new THREE.Group();
-    const shardGeometry = new THREE.OctahedronGeometry(1.2, 0);
-    const shardMaterial = new THREE.MeshBasicMaterial({
-      color: blendHex(themeHighlightHex, 0xffffff, 0.3),
-      transparent: true,
-      opacity: 0.26
-    });
-    for (let index = 0; index < 18; index += 1) {
-      const angle = (index / 18) * Math.PI * 2;
-      const shard = new THREE.Mesh(shardGeometry, shardMaterial);
-      const radius = 72 + (index % 5) * 6;
-      const lift = 18 + (index % 4) * 7;
-      shard.position.set(Math.sin(angle) * radius, lift, Math.cos(angle) * radius);
-      shard.scale.setScalar(0.7 + (index % 3) * 0.28);
-      shard.rotation.set(index * 0.41, angle * 0.7, index * 0.17);
-      shardField.add(shard);
+    const shardPoints: GaussianSplatPoint[] = [];
+    const emberPoints: GaussianSplatPoint[] = [];
+    const shardColor = new THREE.Color(blendHex(themeHighlightHex, 0xffffff, 0.3));
+    const emberColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.22));
+    for (let index = 0; index < 180; index += 1) {
+      const angle = (index / 180) * Math.PI * 2;
+      const radius = WORLD_LAYOUT.width * (0.34 + (index % 5) * 0.04);
+      const lift = 14 + (index % 4) * 7 + hash01(index * 5.41) * 2.5;
+      addSplatPoint(
+        shardPoints,
+        Math.sin(angle) * radius,
+        lift,
+        Math.cos(angle) * (WORLD_LAYOUT.depth * 0.58 + (index % 6) * 1.8),
+        shardColor,
+        7.8 + hash01(index * 6.17) * 3.8,
+        0.3
+      );
+      if (index % 3 === 0) {
+        addSplatPoint(
+          emberPoints,
+          Math.sin(angle) * radius * 0.92,
+          lift - 2 + hash01(index * 6.83) * 2.5,
+          Math.cos(angle) * WORLD_LAYOUT.depth * 0.52,
+          emberColor,
+          6.8 + hash01(index * 7.37) * 3.2,
+          0.18
+        );
+      }
     }
+    mountProceduralSplat(shardField, "atmos-shards", shardPoints, {
+      opacity: 0.3,
+      sizeMultiplier: 1.16,
+      pointScale: 264
+    });
+    mountProceduralSplat(shardField, "atmos-embers", emberPoints, {
+      opacity: 0.18,
+      sizeMultiplier: 1.32,
+      pointScale: 258
+    });
     targetScene.add(shardField);
   }
 
@@ -760,13 +881,13 @@
 
       const roomScale = Math.max(room.position.width / WORLD.width, room.position.height / WORLD.height);
       const { object, dispose } = gaussianSplatObject(payload, {
-        scale: 0.24 + roomScale * 1.65,
-        opacity: 0.9,
-        sizeMultiplier: 1.18,
-        pointScale: 224
+        scale: 0.28 + roomScale * 1.92,
+        opacity: 0.92,
+        sizeMultiplier: 1.26,
+        pointScale: 232
       });
 
-      object.position.y = 6.5 + room.diplomaRequirement * 0.75;
+      object.position.y = 6.9 + room.diplomaRequirement * 0.82;
       object.rotation.y = room.diplomaRequirement * 0.4;
       visual.anchor.add(object);
       splatDisposers.set(room.id, dispose);
@@ -782,8 +903,7 @@
   function buildRoomVisuals(targetScene: THREE.Scene): void {
     refreshTerrainCache();
     const group = new THREE.Group();
-    const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    const rimGeometry = new THREE.TorusGeometry(1, 0.24, 10, 32);
+    const rimGeometry = new THREE.TorusGeometry(1, 0.2, 10, 40);
     const markerGeometry = new THREE.BoxGeometry(1, 1, 1);
     const markerMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
@@ -799,23 +919,6 @@
       const width = (room.position.width / WORLD.width) * WORLD_LAYOUT.width;
       const depth = (room.position.height / WORLD.height) * WORLD_LAYOUT.depth;
       const towerHeight = 4.6 + room.diplomaRequirement * 1.1;
-
-      const material = new THREE.MeshStandardMaterial({
-        color: themeAccentHex,
-        emissive: blendHex(themeAccentHex, themeHighlightHex, 0.12),
-        emissiveIntensity: 0.18,
-        roughness: 0.82,
-        metalness: 0.05,
-        flatShading: true
-      });
-      const roofMaterial = new THREE.MeshStandardMaterial({
-        color: themeHighlightHex,
-        emissive: blendHex(themeHighlightHex, 0xffffff, 0.08),
-        emissiveIntensity: 0.24,
-        roughness: 0.72,
-        metalness: 0.08,
-        flatShading: true
-      });
       const beaconMaterial = new THREE.MeshStandardMaterial({
         color: themeHighlightHex,
         emissive: themeHighlightHex,
@@ -823,69 +926,98 @@
         roughness: 0.24,
         metalness: 0.12
       });
-      const pad = new THREE.Mesh(
-        new THREE.CylinderGeometry(Math.max(width, depth) * 0.48, Math.max(width, depth) * 0.56, 1, 8),
-        new THREE.MeshStandardMaterial({
-          color: blendHex(themeDeepHex, 0x000000, 0.18),
-          roughness: 0.94,
-          metalness: 0.02,
-          flatShading: true
-        })
-      );
-      pad.position.set(world.x, world.y + 0.5, world.z);
-      pad.receiveShadow = true;
-
-      const base = new THREE.Mesh(boxGeometry, material);
-      base.scale.set(width, towerHeight, depth);
-      base.position.copy(world);
-      base.position.y += towerHeight / 2 + 0.8;
-      base.castShadow = true;
-      base.receiveShadow = true;
-
-      const roof = new THREE.Mesh(boxGeometry, roofMaterial);
-      roof.scale.set(width * 0.88, 1.3, depth * 0.88);
-      roof.position.copy(base.position);
-      roof.position.y += towerHeight / 2 + 0.9;
-      roof.castShadow = true;
-      roof.receiveShadow = true;
-
-      const ramp = new THREE.Mesh(boxGeometry, roofMaterial);
-      ramp.scale.set(width * 0.42, 2.2, depth * 0.34);
-      ramp.position.set(base.position.x + width * 0.12, base.position.y - towerHeight * 0.2, base.position.z + depth * 0.14);
-      ramp.rotation.x = -0.38;
-      ramp.castShadow = true;
-      ramp.receiveShadow = true;
+      const rimMaterial = new THREE.MeshBasicMaterial({
+        color: themeHighlightHex,
+        transparent: true,
+        opacity: 0.28
+      });
 
       const rim = new THREE.Mesh(
         rimGeometry,
-        new THREE.MeshBasicMaterial({
-          color: themeHighlightHex,
-          transparent: true,
-          opacity: 0.28
-        })
+        rimMaterial
       );
-      rim.scale.setScalar(Math.max(width, depth) * 0.44);
+      rim.scale.setScalar(Math.max(width, depth) * 0.48);
       rim.rotation.x = Math.PI / 2;
-      rim.position.set(world.x, world.y + 1.2, world.z);
+      rim.position.set(world.x, world.y + 1.35, world.z);
 
-      const beacon = new THREE.Mesh(new THREE.OctahedronGeometry(1.1, 0), beaconMaterial);
-      beacon.position.copy(base.position);
-      beacon.position.y += towerHeight / 2 + 2.2;
+      const beacon = new THREE.Mesh(new THREE.OctahedronGeometry(0.98, 0), beaconMaterial);
+      beacon.position.set(world.x, world.y + towerHeight + 5.2, world.z);
       beacon.castShadow = true;
 
       const anchor = new THREE.Group();
-      anchor.position.set(world.x, world.y + 1.4, world.z);
+      anchor.position.set(world.x, world.y + 1.25, world.z);
+      const landmarkPoints: GaussianSplatPoint[] = [];
+      const baseColor = new THREE.Color(blendHex(themeAccentHex, themeHighlightHex, 0.16));
+      const crownColor = new THREE.Color(blendHex(themeHighlightHex, 0xffffff, 0.18));
+      const deepColor = new THREE.Color(blendHex(themeDeepHex, themeAccentHex, 0.12));
+      const tint = new THREE.Color();
+      const radius = Math.max(width, depth) * 0.42;
+
+      for (let pointIndex = 0; pointIndex < 88; pointIndex += 1) {
+        const angle = hash01((pointIndex + 1) * 2.11 + room.diplomaRequirement * 7) * Math.PI * 2;
+        const shell = Math.pow(hash01((pointIndex + 1) * 3.19 + room.position.x), 0.82);
+        tint.copy(deepColor);
+        tint.lerp(baseColor, 0.28 + shell * 0.36);
+        addSplatPoint(
+          landmarkPoints,
+          Math.cos(angle) * radius * (0.42 + shell * 0.7),
+          0.25 + hash01((pointIndex + 1) * 4.27) * 1.6,
+          Math.sin(angle) * radius * (0.38 + shell * 0.64),
+          tint,
+          8.6 + hash01((pointIndex + 1) * 4.93) * 3.6,
+          0.72
+        );
+      }
+
+      for (let pointIndex = 0; pointIndex < 118; pointIndex += 1) {
+        const t = pointIndex / 117;
+        const angle = hash01((pointIndex + 1) * 5.13 + room.position.y) * Math.PI * 2;
+        const spanX = THREE.MathUtils.lerp(width * 0.34, width * 0.1, t);
+        const spanZ = THREE.MathUtils.lerp(depth * 0.34, depth * 0.1, t);
+        tint.copy(baseColor);
+        tint.lerp(crownColor, t * 0.42);
+        tint.offsetHSL(hash01((pointIndex + 1) * 5.73) * 0.04 - 0.02, 0.04, hash01((pointIndex + 1) * 6.17) * 0.12 - 0.05);
+        addSplatPoint(
+          landmarkPoints,
+          Math.cos(angle) * spanX,
+          0.9 + t * towerHeight,
+          Math.sin(angle) * spanZ,
+          tint,
+          9.2 + hash01((pointIndex + 1) * 6.71) * 4.6,
+          0.8
+        );
+      }
+
+      for (let pointIndex = 0; pointIndex < 36; pointIndex += 1) {
+        const angle = (pointIndex / 36) * Math.PI * 2;
+        addSplatPoint(
+          landmarkPoints,
+          Math.cos(angle) * radius * 0.96,
+          0.44 + Math.sin(angle * 2.4) * 0.14,
+          Math.sin(angle) * radius * 0.96,
+          crownColor,
+          7.8 + (pointIndex % 3) * 0.9,
+          0.28
+        );
+      }
+
+      mountProceduralSplat(anchor, `room-landmark-${room.id}`, landmarkPoints, {
+        opacity: 0.88,
+        sizeMultiplier: 1.2,
+        pointScale: 254
+      });
 
       const marker = new THREE.Mesh(markerGeometry, markerMaterial);
       marker.scale.set(Math.max(width, depth) * 0.55, towerHeight + 3, Math.max(width, depth) * 0.55);
-      marker.position.copy(base.position);
+      marker.position.set(world.x, world.y + towerHeight * 0.5 + 2.2, world.z);
       marker.userData.roomId = room.id;
 
       const visual: RoomVisual = {
         id: room.id,
-        material,
-        roofMaterial,
+        baseAnchorY: anchor.position.y,
+        beaconBaseY: beacon.position.y,
         beaconMaterial,
+        rimMaterial,
         rim,
         beacon,
         marker,
@@ -900,7 +1032,7 @@
       roomVisuals.set(room.id, visual);
       roomMarkers.push(marker);
 
-      group.add(pad, base, roof, ramp, rim, beacon, anchor, marker);
+      group.add(rim, beacon, anchor, marker);
     }
 
     targetScene.add(group);
@@ -1106,8 +1238,7 @@
         void loadRoomSplat(room, visual);
       }
 
-      const unlocked = game?.unlockedRoomIds.includes(room.id) ?? room.startUnlocked;
-      visual.anchor.visible = unlocked && visual.splatLoaded;
+      visual.anchor.visible = true;
     }
   }
 
@@ -1121,29 +1252,24 @@
       const unlocked = game?.unlockedRoomIds.includes(room.id) ?? room.startUnlocked;
       const selected = game?.selectedRoomId === room.id;
       if (visual.lastThemeKey !== themePaletteKey || visual.lastUnlocked !== unlocked) {
-        visual.material.color.setHex(unlocked ? themeAccentHex : 0x44505a);
-        visual.roofMaterial.color.setHex(unlocked ? themeHighlightHex : 0x7a7c80);
-        visual.material.emissive.setHex(unlocked ? blendHex(themeAccentHex, themeHighlightHex, 0.12) : 0x1c2024);
-        visual.roofMaterial.emissive.setHex(unlocked ? blendHex(themeHighlightHex, 0xffffff, 0.08) : 0x222326);
         visual.beaconMaterial.color.setHex(unlocked ? themeHighlightHex : 0x6a7076);
         visual.beaconMaterial.emissive.setHex(unlocked ? themeHighlightHex : 0x24282d);
-        (visual.rim.material as THREE.MeshBasicMaterial).color.setHex(themeHighlightHex);
+        visual.rimMaterial.color.setHex(themeHighlightHex);
         visual.lastThemeKey = themePaletteKey;
         visual.lastUnlocked = unlocked;
       }
 
       if (visual.lastSelected !== selected || visual.lastUnlocked !== unlocked) {
-        (visual.rim.material as THREE.MeshBasicMaterial).opacity = selected ? 0.92 : unlocked ? 0.34 : 0.12;
+        visual.rimMaterial.opacity = selected ? 0.92 : unlocked ? 0.34 : 0.12;
         visual.lastSelected = selected;
       }
 
-      visual.rim.position.y = 2 + Math.sin(elapsed * 2.4 + room.diplomaRequirement) * 0.18;
-      visual.beacon.position.y =
-        visual.anchor.position.y + 5.6 + room.diplomaRequirement * 1.1 + Math.sin(elapsed * 3 + room.diplomaRequirement) * 0.42;
+      visual.anchor.position.y = visual.baseAnchorY + (selected ? 0.28 : 0) + Math.sin(elapsed * 2.4 + room.diplomaRequirement) * 0.18;
+      visual.anchor.scale.setScalar(selected ? 1.08 : unlocked ? 1 : 0.88);
+      visual.rim.position.y = visual.baseAnchorY + 0.08 + Math.sin(elapsed * 2.4 + room.diplomaRequirement) * 0.18;
+      visual.beacon.position.y = visual.beaconBaseY + Math.sin(elapsed * 3 + room.diplomaRequirement) * 0.42;
       visual.beacon.rotation.y = elapsed * 0.9 + room.diplomaRequirement * 0.2;
       visual.beaconMaterial.emissiveIntensity = selected ? 0.96 : unlocked ? 0.34 + Math.sin(elapsed * 2.6 + room.diplomaRequirement) * 0.08 : 0.05;
-      visual.roofMaterial.emissiveIntensity = selected ? 0.52 : unlocked ? 0.24 : 0.06;
-      visual.material.emissiveIntensity = selected ? 0.3 : unlocked ? 0.18 : 0.04;
     }
   }
 
@@ -1382,10 +1508,10 @@
 
     scene = new THREE.Scene();
     scene.background = new THREE.Color(blendHex(themeDeepHex, themeHighlightHex, 0.5));
-    scene.fog = new THREE.Fog(blendHex(themeDeepHex, themeHighlightHex, 0.5), 68, 170);
+    scene.fog = new THREE.Fog(blendHex(themeDeepHex, themeHighlightHex, 0.5), 88, 248);
 
-    camera = new THREE.PerspectiveCamera(52, 1, 0.1, 500);
-    camera.position.set(34, 38, 34);
+    camera = new THREE.PerspectiveCamera(50, 1, 0.1, 620);
+    camera.position.set(52, 50, 48);
     camera.lookAt(0, 0, 0);
     cameraTarget.set(0, 0, 0);
 
@@ -1395,40 +1521,40 @@
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.14;
+    renderer.toneMappingExposure = 1.18;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.35);
+    maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
     currentPixelRatio = maxPixelRatio;
     renderer.setPixelRatio(currentPixelRatio);
     host.appendChild(renderer.domElement);
     raycaster = new THREE.Raycaster();
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.76));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.82));
 
-    const sun = new THREE.DirectionalLight(0xfff0cc, 1.8);
-    sun.position.set(42, 58, 26);
+    const sun = new THREE.DirectionalLight(0xfff0cc, 2.1);
+    sun.position.set(54, 72, 30);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1536, 1536);
+    sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 12;
-    sun.shadow.camera.far = 180;
-    sun.shadow.camera.left = -110;
-    sun.shadow.camera.right = 110;
-    sun.shadow.camera.top = 110;
-    sun.shadow.camera.bottom = -110;
+    sun.shadow.camera.far = 260;
+    sun.shadow.camera.left = -160;
+    sun.shadow.camera.right = 160;
+    sun.shadow.camera.top = 160;
+    sun.shadow.camera.bottom = -160;
     sun.shadow.bias = -0.00025;
     sun.shadow.normalBias = 0.025;
     scene.add(sun);
 
-    const skyLight = new THREE.HemisphereLight(0xd5f2ff, 0x274236, 1.18);
+    const skyLight = new THREE.HemisphereLight(0xd5f2ff, 0x274236, 1.24);
     scene.add(skyLight);
 
-    const rimLight = new THREE.DirectionalLight(blendHex(themeHighlightHex, 0xffffff, 0.2), 0.5);
+    const rimLight = new THREE.DirectionalLight(blendHex(themeHighlightHex, 0xffffff, 0.2), 0.62);
     rimLight.position.set(-34, 26, -48);
     scene.add(rimLight);
 
-    const bounceLight = new THREE.PointLight(blendHex(themeAccentHex, themeHighlightHex, 0.16), 12, 220, 2.2);
-    bounceLight.position.set(0, 18, 0);
+    const bounceLight = new THREE.PointLight(blendHex(themeAccentHex, themeHighlightHex, 0.16), 15, 280, 2.1);
+    bounceLight.position.set(0, 22, 0);
     scene.add(bounceLight);
 
     buildAtmosphere(scene);
@@ -1551,7 +1677,7 @@
       );
       CAMERA_POINT.copy(cameraTarget).add(CAMERA_ORBIT);
       camera.position.lerp(CAMERA_POINT, 1 - Math.exp(-delta * 4.2));
-      const dynamicFov = 50 + Math.min(5, Math.hypot(cameraLeadX, cameraLeadZ) * 0.32);
+      const dynamicFov = 48 + Math.min(6, Math.hypot(cameraLeadX, cameraLeadZ) * 0.34);
       if (Math.abs(camera.fov - dynamicFov) > 0.01) {
         camera.fov = THREE.MathUtils.lerp(camera.fov, dynamicFov, 1 - Math.exp(-delta * 3.4));
         camera.updateProjectionMatrix();
@@ -1580,6 +1706,9 @@
         dispose();
       }
       splatDisposers.clear();
+      while (stageSplatDisposers.length) {
+        stageSplatDisposers.pop()?.();
+      }
       roomVisuals.clear();
       roomMarkers.length = 0;
       terrainPickTargets.length = 0;
