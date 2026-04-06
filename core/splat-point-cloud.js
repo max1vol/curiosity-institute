@@ -277,6 +277,7 @@ export async function writeAsciiPly(filePath, points, metadata = {}) {
     "format ascii 1.0",
     `comment asset ${metadata.asset ?? ""}`.trim(),
     `comment sourceMode ${metadata.sourceMode ?? ""}`.trim(),
+    "comment topology vertex-only-gaussian-splats",
     `comment generatedAt ${metadata.generatedAt ?? new Date().toISOString()}`.trim(),
     `element vertex ${points.length}`,
     "property float x",

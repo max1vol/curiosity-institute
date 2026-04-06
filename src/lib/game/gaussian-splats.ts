@@ -30,6 +30,10 @@ function parseAsciiPly(text: string, asset: string): GaussianSplatData {
     throw new Error("Invalid gaussian splat PLY: missing end_header.");
   }
 
+  if (lines.some((line) => line.startsWith("element face "))) {
+    throw new Error("Triangulated PLY meshes are not supported for gaussian splat rendering.");
+  }
+
   const vertexLine = lines.find((line) => line.startsWith("element vertex "));
   const vertexCount = Number(vertexLine?.split(/\s+/)[2] ?? 0);
   const points: GaussianSplatData["points"] = [];
