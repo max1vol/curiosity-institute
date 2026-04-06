@@ -1,27 +1,27 @@
 export const CATEGORY_METADATA = {
   "detail-sheets": {
     label: "Detail Sheets",
-    description: "Navigation props, route boards, and art-language sheets that define the Gocean splat world.",
+    description: "Prop sheets, material studies, and building cues for the blocky splat island.",
   },
   "developed-views": {
     label: "Developed Views",
-    description: "Focused zone mockups that show specific loops, splat travel, and study interactions.",
+    description: "Focused zone mockups that show capture loops, traversal lanes, and study interactions.",
   },
   "gameplay-directions": {
-    label: "Gameplay Directions",
-    description: "The three major visual directions for the playable Gocean splat map.",
+    label: "Battlefield Studies",
+    description: "Reference angles that feed the unified splat-driven island presentation.",
   },
   "main-views": {
     label: "Main Views",
-    description: "High-level zone concepts for the dock and archive routes.",
+    description: "High-level zone concepts for the island hub, storm lanes, and curriculum strongholds.",
   },
   references: {
     label: "References",
-    description: "Navigator and layout anchors used to keep the route readable.",
+    description: "Player and layout anchors used to keep the island readable in motion.",
   },
   "side-games": {
-    label: "Side Games",
-    description: "Lightweight Gocean study-hub concepts for quizzes, writing, and reef-lab checks.",
+    label: "Study Arenas",
+    description: "Curriculum arenas for quizzes, writing, matching, and final diploma pushes.",
   },
 };
 
@@ -46,45 +46,17 @@ export const TITLE_OVERRIDES = {
 
 export const THEME_DEFINITIONS = [
   {
-    id: "heritage-hall",
-    label: "Kelp Bastion",
-    asset: "gameplay-directions/direction-1-heritage-hall.png",
-    starterRoomId: "heritage-hall",
+    id: "blockstorm-island",
+    label: "Blockstorm Island",
+    asset: "main-views/dusty-foyer-start.png",
+    starterRoomId: "foyer",
     description:
-      "Deep green lanes, brass trim, and shadowed currents for a sturdy harbor-route mood.",
+      "One large blocky island with landing pads, buildable ridges, splat landmarks, and curriculum strongholds.",
     palette: {
-      accent: "#c79f58",
-      deep: "#17352f",
-      highlight: "#f4ead9",
-      shadow: "#092017",
-    },
-  },
-  {
-    id: "marble-atrium",
-    label: "Openwater Deck",
-    asset: "gameplay-directions/direction-2-marble-atrium.png",
-    starterRoomId: "marble-atrium",
-    description:
-      "Bright stone surfaces, skylit water glare, and teal lanes for a clean ocean-campus route.",
-    palette: {
-      accent: "#4aa8a7",
-      deep: "#194250",
-      highlight: "#eef4f5",
-      shadow: "#0d2630",
-    },
-  },
-  {
-    id: "glasshouse-museum",
-    label: "Coral Glass Bay",
-    asset: "gameplay-directions/direction-3-glasshouse-museum.png",
-    starterRoomId: "glasshouse-rotunda",
-    description:
-      "Glass partitions, reef tones, and terracotta decks for a softer tropical splat atmosphere.",
-    palette: {
-      accent: "#d17d43",
-      deep: "#21433f",
-      highlight: "#fbf1dd",
-      shadow: "#122725",
+      accent: "#f59b42",
+      deep: "#173235",
+      highlight: "#f4edd6",
+      shadow: "#0a1d22",
     },
   },
 ];
@@ -92,10 +64,10 @@ export const THEME_DEFINITIONS = [
 export const ROOM_BLUEPRINTS = [
   {
     id: "foyer",
-    label: "Dock Zero",
+    label: "Drop Harbor",
     artAsset: "main-views/dusty-foyer-start.png",
     previewAsset: "references/foyer-layout-anchor.png",
-    blurb: "The starting dock where the navigator launches a run, gathers early drift coins, and chooses the day's route.",
+    blurb: "The central landing harbor where each run starts, early pickups spawn, and the whole island opens out around the player.",
     cost: 0,
     diplomaRequirement: 0,
     startUnlocked: true,
@@ -106,10 +78,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "heritage-hall",
-    label: "Kelp Bastion Route",
+    label: "Brick Bastion",
     artAsset: "gameplay-directions/direction-1-heritage-hall.png",
     previewAsset: "main-views/roman-gallery-open-day1.png",
-    blurb: "A dense kelp-lined route with early coin drift, locked future passages, and steady traffic.",
+    blurb: "A chunky red-stone stronghold with early loot lines, short build cover, and English-heavy opening missions.",
     cost: 34,
     diplomaRequirement: 1,
     startUnlocked: false,
@@ -120,10 +92,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "marble-atrium",
-    label: "Openwater Transit",
+    label: "Skyforge Plaza",
     artAsset: "gameplay-directions/direction-2-marble-atrium.png",
     previewAsset: "developed-views/level-2-map-gallery-clean.png",
-    blurb: "A bright openwater lane with long sightlines and clear links into later study zones.",
+    blurb: "A bright block-built plaza with long sightlines, fast rotation routes, and maths-focused objective lanes.",
     cost: 38,
     diplomaRequirement: 2,
     startUnlocked: false,
@@ -134,10 +106,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "glasshouse-rotunda",
-    label: "Coral Glass Bay",
+    label: "Canopy Commons",
     artAsset: "gameplay-directions/direction-3-glasshouse-museum.png",
     previewAsset: "references/curator-style-anchor.png",
-    blurb: "A reef-lit hub that branches into side activities, splat scenes, and softer tropical study routes.",
+    blurb: "A tropical commons with stacked glass cover, bounce routes, splat landmarks, and flexible study detours.",
     cost: 42,
     diplomaRequirement: 2,
     startUnlocked: false,
@@ -148,10 +120,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "roman-gallery",
-    label: "Current Archive",
+    label: "Diploma Citadel",
     artAsset: "main-views/roman-gallery-open-day1.png",
     previewAsset: "detail-sheets/roman-gallery-prop-sheet.png",
-    blurb: "A higher-value archive current with denser prop language, stronger splat travel, and richer guided-route rewards.",
+    blurb: "A high-tier capture citadel with denser cover, larger splat landmarks, and stronger diploma-route rewards.",
     cost: 58,
     diplomaRequirement: 3,
     startUnlocked: false,
@@ -162,10 +134,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "coin-mint-lab",
-    label: "Maths Tide Lab",
+    label: "Craft Quarry",
     artAsset: "developed-views/coin-mint-demo-day2.png",
     previewAsset: "side-games/estimation-mini-game.png",
-    blurb: "A Year 6 maths zone for hard reasoning prompts, quick working, and diploma-building practice.",
+    blurb: "A quarry arena for hard Year 6 maths, fast resource farming, and build-up toward diploma finals.",
     cost: 46,
     diplomaRequirement: 3,
     startUnlocked: false,
@@ -177,10 +149,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "hotline-desk",
-    label: "Signal Deck English",
+    label: "Signal Forge",
     artAsset: "references/curator-style-anchor.png",
     previewAsset: "side-games/mcq-mini-game.png",
-    blurb: "A signal deck for reading, writing, model answers, and rewrite tasks across the hardest Year 6 prompts.",
+    blurb: "A close-range forge for reading, writing, model answers, and rewrite quests across tougher English prompts.",
     cost: 28,
     diplomaRequirement: 1,
     startUnlocked: false,
@@ -192,10 +164,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "review-studio",
-    label: "Reef Lab Science",
+    label: "Storm Lab",
     artAsset: "detail-sheets/review-board-development-cards.png",
     previewAsset: "side-games/curator-check-mini-game.png",
-    blurb: "A reef lab for challenging science and reasoning rounds that feed quests and final diploma checks.",
+    blurb: "A storm-charged science arena for sharper reasoning rounds, follow-up quests, and final diploma checks.",
     cost: 52,
     diplomaRequirement: 4,
     startUnlocked: false,
@@ -207,10 +179,10 @@ export const ROOM_BLUEPRINTS = [
   },
   {
     id: "curiosity-arcade",
-    label: "Atlas Reef Match Deck",
+    label: "Atlas Arena",
     artAsset: "detail-sheets/museum-style-details.png",
     previewAsset: "side-games/match-pairs-mini-game.png",
-    blurb: "A Year 6 history and geography deck that mixes matching practice with tougher quiz rounds.",
+    blurb: "A humanities arena that mixes history, geography, and vocabulary drills into faster match-heavy skirmishes.",
     cost: 54,
     diplomaRequirement: 4,
     startUnlocked: false,

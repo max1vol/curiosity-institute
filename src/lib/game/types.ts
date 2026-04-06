@@ -21,7 +21,7 @@ export interface ImmersiveEdge {
   imagePath: string;
 }
 
-export type SplatFormat = "ply" | "splat" | "ksplat" | "spz";
+export type SplatFormat = "ply" | "splat" | "ksplat" | "spz" | "gsplat";
 
 export interface ImmersiveNode {
   id: string;

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import * as THREE from "three";
 
+  import { gaussianSplatObject, loadGaussianSplat } from "$lib/game/gaussian-splats";
   import type { ImmersiveEdge, ImmersiveNode, RoomBlueprint, ViewerMoveDirection } from "$lib/game/types";
 
   interface Props {
@@ -50,54 +51,107 @@
     upgradeRoom
   }: Props = $props();
 
-  let stageElement: HTMLDivElement | null = null;
-  let loadMessage = $state("Loading immersive scene...");
+  let host: HTMLDivElement | null = null;
+  let loadMessage = $state("Loading gaussian splat zone...");
   let errorMessage = $state("");
-  let fov = $state(72);
   let viewerReady = $state(false);
+
+  let scene: THREE.Scene | null = null;
+  let camera: THREE.PerspectiveCamera | null = null;
+  let renderer: THREE.WebGLRenderer | null = null;
+  let pivot: THREE.Group | null = null;
+  let cloudRoot: THREE.Group | null = null;
+  let animationFrame = 0;
+  let currentDispose: (() => void) | null = null;
+  let loadGeneration = 0;
+  let disposed = false;
+  let renderQueued = false;
 
   let pointerId: number | null = null;
   let lastPointerX = 0;
   let lastPointerY = 0;
 
-  let scene: THREE.Scene | null = null;
-  let camera: THREE.PerspectiveCamera | null = null;
-  let renderer: THREE.WebGLRenderer | null = null;
-  let material: THREE.MeshBasicMaterial | null = null;
-  let textureLoader: THREE.TextureLoader | null = null;
-  let sphereGeometry: THREE.SphereGeometry | null = null;
-  let loadGeneration = 0;
-  let viewerDisposed = false;
-
-  const textureCache = new Map<string, THREE.Texture>();
-  const pendingTextureLoads = new Map<string, Promise<THREE.Texture>>();
-  const panoramaTarget = new THREE.Vector3();
-
   function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
-  }
-
-  function tierSteps(maxTier: number): number[] {
-    return Array.from({ length: maxTier + 1 }, (_, index) => index + 1);
   }
 
   function normalizeYaw(value: number): number {
     return ((value % 360) + 360) % 360;
   }
 
+  function tierSteps(maxTier: number): number[] {
+    return Array.from({ length: maxTier + 1 }, (_, index) => index + 1);
+  }
+
+  function vectorFromTuple(tuple: [number, number, number] | undefined, fallback: THREE.Vector3): THREE.Vector3 {
+    if (!tuple) {
+      return fallback.clone();
+    }
+
+    return new THREE.Vector3(tuple[0], tuple[1], tuple[2]);
+  }
+
+  function cameraRadius(): number {
+    return node.splatCameraRadius ?? room.splatCameraRadius ?? 34;
+  }
+
+  function focusPoint(): THREE.Vector3 {
+    return vectorFromTuple(node.splatLookAt ?? room.splatLookAt, new THREE.Vector3(0, 2.5, 0));
+  }
+
+  function updateCamera(): void {
+    if (!camera) {
+      return;
+    }
+
+    const radius = cameraRadius();
+    const phi = THREE.MathUtils.degToRad(90 - pitch);
+    const theta = THREE.MathUtils.degToRad(yaw + (node.splatHeadingOffsetDeg ?? room.splatHeadingOffsetDeg ?? 0));
+    const focus = focusPoint();
+
+    camera.position.set(
+      focus.x + radius * Math.sin(phi) * Math.sin(theta),
+      focus.y + radius * Math.cos(phi),
+      focus.z + radius * Math.sin(phi) * Math.cos(theta)
+    );
+    camera.lookAt(focus);
+  }
+
+  function renderScene(): void {
+    if (!scene || !camera || !renderer || disposed) {
+      return;
+    }
+
+    updateCamera();
+    renderer.render(scene, camera);
+  }
+
+  function requestRender(): void {
+    if (!viewerReady || !scene || !camera || !renderer || disposed || renderQueued) {
+      return;
+    }
+
+    renderQueued = true;
+    animationFrame = window.requestAnimationFrame(() => {
+      animationFrame = 0;
+      renderQueued = false;
+      renderScene();
+    });
+  }
+
   function nudgeCamera(deltaYaw: number, deltaPitch: number): void {
-    setPose(normalizeYaw(yaw + deltaYaw), clamp(pitch + deltaPitch, -80, 80));
+    setPose(normalizeYaw(yaw + deltaYaw), clamp(pitch + deltaPitch, -72, 78));
   }
 
   function handlePointerDown(event: PointerEvent): void {
-    if (!stageElement) {
+    if (!host) {
       return;
     }
 
     pointerId = event.pointerId;
     lastPointerX = event.clientX;
     lastPointerY = event.clientY;
-    stageElement.setPointerCapture(event.pointerId);
+    host.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: PointerEvent): void {
@@ -107,258 +161,167 @@
 
     const deltaX = event.clientX - lastPointerX;
     const deltaY = event.clientY - lastPointerY;
-
     nudgeCamera(-deltaX * 0.14, deltaY * 0.12);
     lastPointerX = event.clientX;
     lastPointerY = event.clientY;
   }
 
   function handlePointerUp(event: PointerEvent): void {
-    if (!stageElement || pointerId !== event.pointerId) {
+    if (!host || pointerId !== event.pointerId) {
       return;
     }
 
-    stageElement.releasePointerCapture(event.pointerId);
+    host.releasePointerCapture(event.pointerId);
     pointerId = null;
   }
 
-  function handleWheel(event: WheelEvent): void {
-    event.preventDefault();
-    fov = clamp(fov + event.deltaY * 0.02, 48, 92);
+  function buildArena(targetScene: THREE.Scene): void {
+    const floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(34, 38, 2.2, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0x173235,
+        roughness: 0.92,
+        metalness: 0.05
+      })
+    );
+    floor.position.y = -1.2;
+    targetScene.add(floor);
+
+    const cap = new THREE.Mesh(
+      new THREE.CylinderGeometry(30, 30, 0.8, 32),
+      new THREE.MeshStandardMaterial({
+        color: 0xf4edd6,
+        roughness: 0.88,
+        metalness: 0.02
+      })
+    );
+    cap.position.y = 0.3;
+    targetScene.add(cap);
+
+    for (let index = 0; index < 12; index += 1) {
+      const angle = (index / 12) * Math.PI * 2;
+      const pillar = new THREE.Mesh(
+        new THREE.BoxGeometry(2.8, 10 + (index % 3) * 1.8, 2.8),
+        new THREE.MeshStandardMaterial({
+          color: index % 2 === 0 ? 0xf59b42 : 0x48677a,
+          roughness: 0.82,
+          metalness: 0.08,
+          flatShading: true
+        })
+      );
+      pillar.position.set(Math.sin(angle) * 26, 4.5, Math.cos(angle) * 26);
+      targetScene.add(pillar);
+    }
   }
 
-  function clearPanoramaMaterial(): void {
-    if (!material) {
+  async function loadCloud(): Promise<void> {
+    if (!scene || !viewerReady) {
       return;
     }
 
-    material.map = null;
-    material.needsUpdate = true;
-  }
-
-  function loadTexture(imagePath: string): Promise<THREE.Texture> {
-    if (!textureLoader) {
-      return Promise.reject(new Error("Viewer is not ready yet."));
-    }
-
-    const cached = textureCache.get(imagePath);
-    if (cached) {
-      return Promise.resolve(cached);
-    }
-
-    const pending = pendingTextureLoads.get(imagePath);
-    if (pending) {
-      return pending;
-    }
-
-    const promise = textureLoader.loadAsync(imagePath)
-      .then((texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-
-        if (viewerDisposed) {
-          texture.dispose();
-          throw new Error("Viewer is no longer mounted.");
-        }
-
-        textureCache.set(imagePath, texture);
-        return texture;
-      })
-      .finally(() => {
-        pendingTextureLoads.delete(imagePath);
-      });
-
-    pendingTextureLoads.set(imagePath, promise);
-    return promise;
-  }
-
-  async function showPanoramaFallback(panoramaPath: string, currentLoad: number): Promise<boolean> {
-    if (!material) {
-      return false;
-    }
-
-    loadMessage = "Loading immersive scene...";
+    const activeLoad = ++loadGeneration;
+    loadMessage = "Loading gaussian splat zone...";
     errorMessage = "";
-    clearPanoramaMaterial();
+
+    currentDispose?.();
+    currentDispose = null;
+    if (cloudRoot && scene) {
+      scene.remove(cloudRoot);
+    }
+    cloudRoot = null;
+
+    const splatPath = node.splatPath ?? room.splatPath;
+    if (!splatPath) {
+      loadMessage = "";
+      errorMessage = "This zone does not have a gaussian splat asset yet.";
+      requestRender();
+      return;
+    }
 
     try {
-      const texture = await loadTexture(panoramaPath);
-
-      if (currentLoad !== loadGeneration || !material) {
-        return false;
+      const payload = await loadGaussianSplat(splatPath);
+      if (disposed || activeLoad !== loadGeneration || !scene) {
+        return;
       }
 
-      material.map = texture;
-      material.needsUpdate = true;
+      const { object, dispose } = gaussianSplatObject(payload, {
+        scale: 0.95,
+        opacity: 0.92,
+        sizeMultiplier: 1.16
+      });
+
+      cloudRoot = new THREE.Group();
+      cloudRoot.add(object);
+      scene.add(cloudRoot);
+      currentDispose = dispose;
       loadMessage = "";
-      return true;
+      sceneReady(node.roomId);
+      requestRender();
     } catch {
-      if (currentLoad !== loadGeneration) {
-        return false;
-      }
-
-      loadMessage = "";
-      errorMessage = "Unable to load this immersive scene.";
-      return false;
-    }
-  }
-
-  function preloadNeighborTextures(): void {
-    for (const edge of node.edges) {
-      if (!edge.panoramaPath) {
-        continue;
-      }
-
-      void loadTexture(edge.panoramaPath).catch(() => {});
-    }
-  }
-
-  function disposeTextures(): void {
-    for (const texture of textureCache.values()) {
-      texture.dispose();
-    }
-
-    textureCache.clear();
-    pendingTextureLoads.clear();
-  }
-
-  async function showActiveImmersiveScene(): Promise<void> {
-    if (!viewerReady) {
-      return;
-    }
-
-    const currentLoad = ++loadGeneration;
-    const hasPanorama = Boolean(node.panoramaPath);
-
-    errorMessage = "";
-
-    if (!hasPanorama) {
-      loadMessage = "";
-      clearPanoramaMaterial();
-      if (currentLoad === loadGeneration) {
-        errorMessage = "This zone does not have a generated immersive scene yet.";
-      }
-      return;
-    }
-
-    loadMessage = "Loading immersive scene...";
-
-    if (!hasPanorama || !node.panoramaPath) {
-      if (currentLoad !== loadGeneration) {
+      if (activeLoad !== loadGeneration) {
         return;
       }
 
       loadMessage = "";
-      errorMessage = "Unable to load this immersive scene.";
-      return;
-    }
-
-    const loadedPanorama = await showPanoramaFallback(node.panoramaPath, currentLoad);
-    if (loadedPanorama && currentLoad === loadGeneration) {
-      sceneReady(node.roomId);
-      preloadNeighborTextures();
+      errorMessage = "Unable to load this gaussian splat zone.";
+      requestRender();
     }
   }
 
   onMount(() => {
-    if (!stageElement) {
+    if (!host) {
       return;
     }
 
-    viewerDisposed = false;
+    disposed = false;
+    viewerReady = false;
 
     scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 1100);
+    scene.background = new THREE.Color("#091512");
+    scene.fog = new THREE.Fog("#091512", 48, 116);
+
+    camera = new THREE.PerspectiveCamera(52, 1, 0.1, 240);
+    updateCamera();
+
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    stageElement.appendChild(renderer.domElement);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    host.appendChild(renderer.domElement);
 
-    sphereGeometry = new THREE.SphereGeometry(500, 80, 48);
-    sphereGeometry.scale(-1, 1, 1);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.68));
+    const sun = new THREE.DirectionalLight(0xfff0d2, 1.4);
+    sun.position.set(18, 32, 12);
+    scene.add(sun);
+    scene.add(new THREE.HemisphereLight(0xa7e8ff, 0x13392b, 0.85));
 
-    material = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#12211f")
-    });
-    textureLoader = new THREE.TextureLoader();
+    pivot = new THREE.Group();
+    scene.add(pivot);
+    buildArena(scene);
 
-    const sphere = new THREE.Mesh(sphereGeometry, material);
-    scene.add(sphere);
-
-    let animationFrame = 0;
-    let renderingActive = false;
-
-    function stopRendering(): void {
-      renderingActive = false;
-
-      if (animationFrame) {
-        window.cancelAnimationFrame(animationFrame);
-        animationFrame = 0;
-      }
-    }
-
-    function renderFrame(): void {
-      if (viewerDisposed || !stageElement || !renderingActive || !camera || !renderer || !scene) {
+    function resize() {
+      if (!host || !camera || !renderer) {
         return;
       }
 
-      camera.fov = fov;
-      camera.updateProjectionMatrix();
-
-      const phi = THREE.MathUtils.degToRad(90 - pitch);
-      const theta = THREE.MathUtils.degToRad(yaw);
-
-      camera.position.set(0, 0, 0);
-      panoramaTarget.set(
-        500 * Math.sin(phi) * Math.sin(theta),
-        500 * Math.cos(phi),
-        500 * Math.sin(phi) * Math.cos(theta)
-      );
-      camera.lookAt(panoramaTarget);
-      renderer.render(scene, camera);
-
-      animationFrame = window.requestAnimationFrame(renderFrame);
-    }
-
-    function startRendering(): void {
-      if (viewerDisposed || renderingActive || document.hidden) {
-        return;
-      }
-
-      renderingActive = true;
-      animationFrame = window.requestAnimationFrame(renderFrame);
-    }
-
-    function resizeRenderer(): void {
-      if (!stageElement || !camera || !renderer) {
-        return;
-      }
-
-      const width = Math.max(stageElement.clientWidth, 1);
-      const height = Math.max(stageElement.clientHeight, 1);
-
+      const width = Math.max(host.clientWidth, 1);
+      const height = Math.max(host.clientHeight, 1);
       camera.aspect = width / height;
-      camera.fov = fov;
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
+      requestRender();
     }
 
-    const resizeObserver = new ResizeObserver(() => {
-      resizeRenderer();
-    });
-    resizeObserver.observe(stageElement);
+    const resizeObserver = new ResizeObserver(() => resize());
+    resizeObserver.observe(host);
+    resize();
 
-    const handleVisibilityChange = (): void => {
-      if (document.hidden) {
-        stopRendering();
-        return;
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        requestRender();
       }
-
-      startRendering();
     };
 
-    const handleKeyDown = (event: KeyboardEvent): void => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
 
       if (event.key === "Escape") {
@@ -368,26 +331,22 @@
 
       if (event.key === "ArrowLeft" || key === "a") {
         event.preventDefault();
-        nudgeCamera(-8, 0);
+        nudgeCamera(-7, 0);
       }
 
       if (event.key === "ArrowRight" || key === "d") {
         event.preventDefault();
-        nudgeCamera(8, 0);
+        nudgeCamera(7, 0);
       }
 
-      if (event.key === "ArrowUp" || key === "w") {
+      if (event.key === "ArrowUp") {
         event.preventDefault();
-        if (canMoveForward) {
-          move("forward");
-        }
+        nudgeCamera(0, -5);
       }
 
-      if (event.key === "ArrowDown" || key === "s") {
+      if (event.key === "ArrowDown") {
         event.preventDefault();
-        if (canMoveBack) {
-          move("back");
-        }
+        nudgeCamera(0, 5);
       }
 
       if ((key === "f" || event.key === "Enter") && canMoveForward) {
@@ -403,60 +362,71 @@
 
     window.addEventListener("keydown", handleKeyDown);
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    resizeRenderer();
     viewerReady = true;
-    startRendering();
+    requestRender();
+    void loadCloud();
 
     return () => {
-      viewerDisposed = true;
+      disposed = true;
       viewerReady = false;
       loadGeneration += 1;
-      stopRendering();
+      if (animationFrame) {
+        window.cancelAnimationFrame(animationFrame);
+      }
       window.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       resizeObserver.disconnect();
-      disposeTextures();
-      material?.dispose();
-      sphereGeometry?.dispose();
+      currentDispose?.();
       renderer?.dispose();
       renderer?.domElement.remove();
       scene = null;
       camera = null;
       renderer = null;
-      sphereGeometry = null;
-      material = null;
-      textureLoader = null;
+      pivot = null;
+      cloudRoot = null;
     };
   });
 
   $effect(() => {
-    if (!viewerReady || !material || !textureLoader) {
+    const activeNodeId = node.id;
+
+    if (!viewerReady || !activeNodeId) {
       return;
     }
 
-    void showActiveImmersiveScene();
+    void loadCloud();
+  });
+
+  $effect(() => {
+    yaw;
+    pitch;
+
+    if (!viewerReady) {
+      return;
+    }
+
+    requestRender();
   });
 </script>
 
-<div aria-label={`${room.label} immersive scene viewer`} aria-modal="true" class="viewer-root" role="dialog">
+<div aria-label={`${room.label} gaussian splat viewer`} aria-modal="true" class="viewer-root" role="dialog">
   <div class="viewer-shell">
     <div class="viewer-stage-wrap">
       <div
-        bind:this={stageElement}
-        aria-label={`${room.label} immersive scene`}
+        bind:this={host}
+        aria-label={`${room.label} splat zone`}
         class="viewer-stage"
         role="application"
         onpointerdown={handlePointerDown}
         onpointermove={handlePointerMove}
         onpointerup={handlePointerUp}
         onpointercancel={handlePointerUp}
-        onwheel={handleWheel}
       ></div>
 
-      <section class="viewer-tier-panel" aria-label="Tier progression panel">
+      <section class="viewer-tier-panel" aria-label="Zone progression panel">
         <div class="viewer-tier-topline">
           <div>
-            <p class="eyebrow">Zone Progression</p>
+            <p class="eyebrow">Gaussian Splat Zone</p>
             <h2>{room.label}</h2>
           </div>
           <div class="viewer-tier-badge">{roomTierLabel}</div>
@@ -475,16 +445,16 @@
 
         <div class="viewer-tier-meta">
           <div class="viewer-tier-stat">
-            <span>Current Scene</span>
+            <span>Zone</span>
             <strong>{node.label}</strong>
           </div>
           <div class="viewer-tier-stat">
-            <span>Connected Routes</span>
+            <span>Routes</span>
             <strong>{node.edges.length}</strong>
           </div>
           <div class="viewer-tier-stat">
-            <span>Upgrade Cost</span>
-            <strong>{roomUpgradeCost === null ? "Max tier" : `${roomUpgradeCost} resources`}</strong>
+            <span>Upgrade</span>
+            <strong>{roomUpgradeCost === null ? "Max" : `${roomUpgradeCost} resources`}</strong>
           </div>
         </div>
 
@@ -493,7 +463,7 @@
         </button>
       </section>
 
-      <button aria-label="Close immersive scene" class="viewer-close" type="button" onclick={close}>&times;</button>
+      <button aria-label="Close gaussian splat scene" class="viewer-close" type="button" onclick={close}>&times;</button>
 
       {#if loadMessage || errorMessage}
         <div class:viewer-status-error={!!errorMessage} class="viewer-status">
@@ -502,12 +472,12 @@
       {/if}
 
       <div class="viewer-hint">
-        <span>Current Scene</span>
+        <span>Current Zone</span>
         <strong>{node.label}</strong>
-        <small class="viewer-subhint">Drag to scan, scroll to zoom, and use F/B or the route buttons to move between connected scenes.</small>
+        <small class="viewer-subhint">Drag to orbit. Use F/B or the route buttons to jump between connected splat zones.</small>
       </div>
 
-      <div class="viewer-travel" aria-label="Immersive scene travel controls">
+      <div class="viewer-travel" aria-label="Splat viewer travel controls">
         <button class="viewer-travel-button" type="button" disabled={!backEdge || !canMoveBack} onclick={() => move("back")}>
           <span>Back</span>
           <strong>{backEdge ? backEdge.label : "No previous zone"}</strong>
@@ -519,9 +489,249 @@
           onclick={() => move("forward")}
         >
           <span>Forward</span>
-          <strong>{forwardEdge ? forwardEdge.label : "No linked scene ahead"}</strong>
+          <strong>{forwardEdge ? forwardEdge.label : "No linked zone ahead"}</strong>
         </button>
       </div>
     </div>
   </div>
 </div>
+
+<style>
+  .viewer-root {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(3, 10, 8, 0.76);
+    backdrop-filter: blur(10px);
+  }
+
+  .viewer-shell {
+    width: min(1320px, 100%);
+  }
+
+  .viewer-stage-wrap {
+    position: relative;
+    min-height: 78vh;
+    overflow: hidden;
+    border-radius: 28px;
+    border: 1px solid rgba(244, 237, 214, 0.18);
+    background: rgba(4, 12, 10, 0.96);
+    box-shadow: 0 34px 80px rgba(0, 0, 0, 0.42);
+  }
+
+  .viewer-stage {
+    min-height: 78vh;
+  }
+
+  .viewer-stage :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .viewer-tier-panel,
+  .viewer-hint,
+  .viewer-status,
+  .viewer-travel {
+    position: absolute;
+    backdrop-filter: blur(10px);
+  }
+
+  .viewer-tier-panel {
+    top: 18px;
+    left: 18px;
+    display: grid;
+    gap: 14px;
+    width: min(360px, calc(100% - 36px));
+    padding: 18px;
+    border-radius: 22px;
+    background: rgba(10, 20, 17, 0.78);
+    color: #f6efd8;
+  }
+
+  .viewer-tier-topline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .viewer-tier-topline h2 {
+    margin: 0;
+  }
+
+  .viewer-tier-badge {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(245, 155, 66, 0.2);
+    color: #ffd7a1;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+
+  .viewer-tier-copy {
+    margin: 0;
+    color: rgba(246, 239, 216, 0.78);
+    line-height: 1.45;
+  }
+
+  .viewer-tier-track {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .viewer-tier-step {
+    display: grid;
+    gap: 2px;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(246, 239, 216, 0.08);
+    color: rgba(246, 239, 216, 0.72);
+  }
+
+  .viewer-tier-step.active {
+    background: rgba(245, 155, 66, 0.18);
+    color: #fff0cf;
+  }
+
+  .viewer-tier-step.current {
+    box-shadow: 0 0 0 1px rgba(245, 155, 66, 0.42) inset;
+  }
+
+  .viewer-tier-step span,
+  .viewer-tier-stat span,
+  .viewer-hint span {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(246, 239, 216, 0.58);
+  }
+
+  .viewer-tier-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .viewer-tier-stat {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(246, 239, 216, 0.06);
+  }
+
+  .viewer-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 48px;
+    height: 48px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(246, 239, 216, 0.12);
+    color: #f6efd8;
+    font-size: 1.8rem;
+    cursor: pointer;
+  }
+
+  .viewer-status {
+    top: 18px;
+    right: 80px;
+    max-width: min(360px, calc(100% - 458px));
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: rgba(10, 20, 17, 0.78);
+    color: #f6efd8;
+  }
+
+  .viewer-status-error {
+    background: rgba(120, 24, 24, 0.76);
+  }
+
+  .viewer-hint {
+    right: 18px;
+    bottom: 120px;
+    display: grid;
+    gap: 2px;
+    max-width: 320px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(10, 20, 17, 0.78);
+    color: #f6efd8;
+  }
+
+  .viewer-subhint {
+    color: rgba(246, 239, 216, 0.7);
+    line-height: 1.4;
+  }
+
+  .viewer-travel {
+    left: 18px;
+    right: 18px;
+    bottom: 18px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .viewer-travel-button {
+    display: grid;
+    gap: 4px;
+    text-align: left;
+  }
+
+  @media (max-width: 860px) {
+    .viewer-root {
+      padding: 10px;
+    }
+
+    .viewer-stage-wrap,
+    .viewer-stage {
+      min-height: 86vh;
+    }
+
+    .viewer-tier-panel {
+      width: calc(100% - 20px);
+      left: 10px;
+      top: 10px;
+      padding-right: 60px;
+    }
+
+    .viewer-tier-meta,
+    .viewer-tier-track,
+    .viewer-travel {
+      grid-template-columns: 1fr;
+    }
+
+    .viewer-status {
+      left: 10px;
+      right: 10px;
+      top: auto;
+      bottom: 176px;
+      max-width: none;
+    }
+
+    .viewer-hint {
+      left: 10px;
+      right: 10px;
+      bottom: 94px;
+      max-width: none;
+    }
+
+    .viewer-travel {
+      left: 10px;
+      right: 10px;
+      bottom: 10px;
+    }
+
+    .viewer-close {
+      top: 10px;
+      right: 10px;
+    }
+  }
+</style>

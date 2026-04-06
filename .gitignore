@@ -86,6 +86,8 @@ output/reports/*
 output/renders/*
 !output/.gitkeep
 !output/renders/.gitkeep
+output/splats/*
+output/splats/reports/
 # Nuxt.js build / generate output
 .nuxt
 dist
@@ -109,6 +111,7 @@ build
 static/docs/concept-art/
 static/output/renders/
 static/output/photospheres/
+static/output/splats/
 static/game/data/assets.json
 
 # vitepress build output

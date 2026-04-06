@@ -15,7 +15,7 @@ test("buildGameData discovers repo art, render libraries, and themes", async () 
   assert.equal(typeof data.summary.panoramaCount, "number");
   assert.equal(data.summary.photosphereCount, data.summary.panoramaCount);
   assert.equal(typeof data.summary.splatCount, "number");
-  assert.equal(data.themes.length, 3);
+  assert.equal(data.themes.length, 1);
   assert.equal(data.roomBlueprints.length, 9);
   assert.equal(data.miniGames.length, 4);
   assert.ok(data.mcqDeck.length >= 12);

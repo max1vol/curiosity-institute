@@ -14,117 +14,30 @@ function reward(paper: number, ink: number, revisionTokens: number): QuestResour
 }
 
 export function buildDailyGoals(themeId: string): DailyGoal[] {
-  if (themeId === "heritage-hall") {
-    return [
-      buildGoal({
-        id: "heritage-rewrite",
-        kind: "free-text-completed",
-        label: "Rewrite Your Essay On Paper",
-        detail: "Finish 1 extended answer and redraft it carefully, as if edits are no longer available.",
-        target: 1,
-        reward: reward(2, 1, 1),
-      }),
-      buildGoal({
-        id: "heritage-diplomas",
-        kind: "diplomas-earned",
-        label: "Earn Reading Diplomas",
-        detail: "Secure 2 diplomas by finishing perfection quests and passing the final tests.",
-        target: 2,
-        reward: reward(1, 1, 2),
-      }),
-      buildGoal({
-        id: "heritage-open-wing",
-        kind: "rooms-opened",
-        label: "Open A New Sea Route",
-        detail: "Use your diplomas to unlock 1 new zone without spending them.",
-        target: 1,
-        reward: reward(1, 0, 2),
-      }),
-    ];
-  }
-
-  if (themeId === "marble-atrium") {
-    return [
-      buildGoal({
-        id: "marble-working",
-        kind: "quiz-completed",
-        label: "Show The Working",
-        detail: "Complete 2 harder quiz rounds and keep your method tidy enough to check again.",
-        target: 2,
-        reward: reward(2, 0, 1),
-      }),
-      buildGoal({
-        id: "marble-diplomas",
-        kind: "diplomas-earned",
-        label: "Collect Maths Diplomas",
-        detail: "Earn 3 diplomas from perfected topics and their final tests.",
-        target: 3,
-        reward: reward(1, 1, 2),
-      }),
-      buildGoal({
-        id: "marble-match",
-        kind: "challenge-completed",
-        label: "Finish The Revision Circuit",
-        detail: "Complete 3 study activities of any kind to build revision momentum.",
-        target: 3,
-        reward: reward(1, 2, 1),
-      }),
-    ];
-  }
-
-  if (themeId === "glasshouse-museum") {
-    return [
-      buildGoal({
-        id: "glasshouse-redraft",
-        kind: "free-text-completed",
-        label: "If You Cannot Edit, Redraft",
-        detail: "Complete 1 free-text answer and treat the rewrite on paper as the improvement step.",
-        target: 1,
-        reward: reward(2, 1, 2),
-      }),
-      buildGoal({
-        id: "glasshouse-match",
-        kind: "match-pairs-completed",
-        label: "Lock The Vocabulary Pairs",
-        detail: "Clear 1 match-pairs round from the Year 6 vocabulary and humanities deck.",
-        target: 1,
-        reward: reward(1, 1, 1),
-      }),
-      buildGoal({
-        id: "glasshouse-immersive",
-        kind: "immersive-scenes-visited",
-        label: "Survey The Immersive Zones",
-        detail: "Enter 2 immersive scenes while building your diploma total.",
-        target: 2,
-        reward: reward(1, 0, 2),
-      }),
-    ];
-  }
-
   return [
     buildGoal({
-        id: "default-diplomas",
-        kind: "diplomas-earned",
-        label: "Earn Starter Diplomas",
-        detail: "Collect 2 diplomas from completed perfection quests and final tests.",
-      target: 2,
-      reward: reward(1, 1, 1),
-    }),
-    buildGoal({
-      id: "default-quiz",
-      kind: "quiz-completed",
-      label: "Complete Quick Quiz Rounds",
-      detail: "Finish 2 quiz rounds from the weighted challenge pool.",
-      target: 2,
-      reward: reward(1, 0, 2),
-    }),
-    buildGoal({
-      id: "default-room",
+      id: themeId === "blockstorm-island" ? "dropzone-open" : "default-room",
       kind: "rooms-opened",
-      label: "Unlock The Next Zone",
-      detail: "Use non-spendable diplomas to unlock 1 more zone.",
+      label: "Capture A New Island Zone",
+      detail: "Use non-spendable diplomas to unlock 1 new zone and widen the island route.",
       target: 1,
       reward: reward(2, 1, 0),
+    }),
+    buildGoal({
+      id: themeId === "blockstorm-island" ? "storm-circuit" : "default-quiz",
+      kind: "challenge-completed",
+      label: "Clear The Storm Circuit",
+      detail: "Finish 3 study activities from the weighted Year 6 mix to keep resources flowing.",
+      target: 3,
+      reward: reward(1, 1, 2),
+    }),
+    buildGoal({
+      id: themeId === "blockstorm-island" ? "diploma-rush" : "default-diplomas",
+      kind: "diplomas-earned",
+      label: "Secure Diploma Drops",
+      detail: "Earn 2 diplomas by finishing perfection quests and passing the final tests.",
+      target: 2,
+      reward: reward(1, 0, 2),
     }),
   ];
 }

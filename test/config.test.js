@@ -66,14 +66,15 @@ test("buildPhotosphereConfig defaults to five retries", () => {
   assert.equal(config.model, "gemini-3.1-flash-image-preview");
 });
 
-test("buildSplatConfig mirrors the splat-first immersive config", () => {
+test("buildSplatConfig defaults to the local multi-view splat pipeline", () => {
   const config = buildSplatConfig({
     argv: ["--dry-run"],
     env: {},
   });
 
   assert.equal(config.retryLimit, 5);
-  assert.equal(config.model, "gemini-3.1-flash-image-preview");
+  assert.equal(config.model, "gemini-3-pro-image-preview");
+  assert.equal(config.refreshViews, false);
 });
 
 test("buildSplatConfig accepts SPLAT_RETRY_LIMIT overrides up to six", () => {

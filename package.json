@@ -9,7 +9,7 @@
     "predev": "npm run app:sync",
     "dev": "vite dev",
     "prebuild": "npm run app:sync",
-    "build": "vite build",
+    "build": "node scripts/clean-build-output.js && vite build",
     "prepreview": "npm run app:sync",
     "preview": "vite preview",
     "prepare": "node scripts/setup-git-hooks.js && svelte-kit sync || echo ''",

@@ -73,6 +73,7 @@ export const WORLD = {
 } as const;
 
 const MOVEMENT_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
+const SPRINT_KEY = "Shift";
 const STORAGE_KEY_PREFIX = "curiosity-institute-save-v5";
 const LEGACY_STORAGE_KEY = "curiosity-institute-save-v4";
 const SAVE_INTERVAL_MS = 2500;
@@ -145,6 +146,14 @@ function moveToward(entity: Point, target: Point, speed: number, deltaSeconds: n
   entity.x += (dx / distanceToTarget) * travel;
   entity.y += (dy / distanceToTarget) * travel;
   return distanceToTarget - travel <= 1;
+}
+
+function approachNumber(current: number, target: number, maxDelta: number): number {
+  if (current < target) {
+    return Math.min(current + maxDelta, target);
+  }
+
+  return Math.max(current - maxDelta, target);
 }
 
 function createRoomNumberMap(rooms: RoomBlueprint[], initialValue = 0): Record<string, number> {
@@ -272,6 +281,8 @@ export class MuseumGameController {
   private animationFrame = 0;
   private lastFrame = 0;
   private lastPersistAt = 0;
+  private curatorVelocityX = 0;
+  private curatorVelocityY = 0;
   private mounted = false;
 
   constructor(content: GameContent, options: MuseumGameControllerOptions = {}) {
@@ -468,7 +479,7 @@ export class MuseumGameController {
 
   get gradeSummary(): string {
     if (!this.game) {
-      return "Choose a route, then start or resume a Year 6 voyage.";
+      return "Start or resume the island run, then push outward through the Year 6 capture zones.";
     }
 
     if (this.completedGoalsCount === this.dailyGoals.length) {
@@ -525,7 +536,7 @@ export class MuseumGameController {
 
     return [
       {
-        label: "Route Tier",
+        label: "Zone Tier",
         value: `Tier ${level + 1}/${MAX_ROOM_LEVEL + 1}`,
         accent: true
       },
@@ -539,12 +550,12 @@ export class MuseumGameController {
       },
       {
         label: "Traffic",
-        value: `${visitCount} routed`
+        value: `${visitCount} captured`
       },
       {
         label: "Immersive Scene",
         value: room.immersiveMap?.nodes[0]?.edges.length
-          ? `${room.immersiveMap.nodes[0].edges.length} connected routes`
+          ? `${room.immersiveMap.nodes[0].edges.length} connected lanes`
           : this.hasImmersiveScene(room)
             ? "Standalone zone"
             : "Not generated"
@@ -582,7 +593,7 @@ export class MuseumGameController {
 
   get currentObjective(): string {
     if (!this.game) {
-      return "Start a voyage, pick a route, and begin unlocking Year 6 zones.";
+      return "Drop into the island and begin unlocking Year 6 zones.";
     }
 
     if (this.game.pendingCall) {
@@ -617,11 +628,11 @@ export class MuseumGameController {
   }
 
   get objectivePills(): ObjectivePill[] {
-    const themeLabel = this.activeTheme?.label ?? "Route";
+    const themeLabel = this.activeTheme?.label ?? "Island";
 
     if (!this.game) {
       return [
-        { label: "Route", value: themeLabel },
+        { label: "Island", value: themeLabel },
         { label: "Rank", value: "Preview" },
         { label: "Quests", value: `0/${buildDailyGoals(this.activeTheme?.id ?? "").length}` },
         { label: "Autosave", value: this.savedGameAvailable ? "Ready" : "None" }
@@ -629,7 +640,7 @@ export class MuseumGameController {
     }
 
     return [
-      { label: "Route", value: themeLabel },
+      { label: "Island", value: themeLabel },
       { label: "Rank", value: this.museumGrade },
       { label: "Diplomas", value: String(this.game.diplomas) },
       { label: "Quests", value: `${this.completedGoalsCount}/${this.dailyGoals.length}` },
@@ -692,7 +703,7 @@ export class MuseumGameController {
         actions.push({
           id: `${room.id}-tour`,
           action: "tour",
-          label: `Run Drift Route (+${this.roomTourRewardValue(room)} coins)`,
+          label: `Sweep Zone (+${this.roomTourRewardValue(room)} coins)`,
           primary: !this.hasImmersiveScene(room)
         });
       }
@@ -714,11 +725,11 @@ export class MuseumGameController {
       }
     }
 
-    actions.push({
-      id: `${room.id}-move`,
-      action: "move",
-      label: "Navigate Here"
-    });
+      actions.push({
+        id: `${room.id}-move`,
+        action: "move",
+        label: "Move Here"
+      });
 
     return actions;
   }
@@ -731,6 +742,40 @@ export class MuseumGameController {
     }
 
     return (room.previewRenderViews.length ? room.previewRenderViews : room.renderViews).slice(0, 3);
+  }
+
+  get primaryRoomAction(): RoomAction | undefined {
+    return this.roomActions.find((action) => action.action !== "move");
+  }
+
+  get travelRoomAction(): RoomAction | undefined {
+    return this.roomActions.find((action) => action.action === "move");
+  }
+
+  get selectedRoomInstruction(): string {
+    const room = this.selectedRoom;
+
+    if (!room) {
+      return "Click a zone or terrain patch to lock on. Then use the quick actions to move or interact.";
+    }
+
+    if (!this.isRoomUnlocked(room.id)) {
+      if (this.canUnlockRoom(room)) {
+        return "Primary action opens this zone right away. Move Here sends the curator to the gate first.";
+      }
+
+      return "This zone is still gated. Move Here will path to it once the prerequisite rooms and diplomas are ready.";
+    }
+
+    if (this.hasImmersiveScene(room)) {
+      return "Primary action enters the immersive scene. Move Here keeps the curator on route if you want to walk over first.";
+    }
+
+    if (room.miniGameId) {
+      return "Primary action launches the zone challenge. Move Here travels to the room without starting it.";
+    }
+
+    return "Primary action sweeps the zone for coins. Move Here is the travel-only option.";
   }
 
   get themeStyle(): string {
@@ -834,8 +879,9 @@ export class MuseumGameController {
     }
 
     this.game = this.createGameSession(theme);
+    this.stopCuratorMotion();
     this.closeRoomViewer();
-    this.logEvent(`The ${theme.label} voyage begins.`);
+    this.logEvent(`${theme.label} is live. Sweep zones, bank resources, and push for diplomas.`);
     this.checkGoals();
     this.persistGameSnapshot();
     this.syncSimulationLoop(true);
@@ -861,10 +907,11 @@ export class MuseumGameController {
     }
 
     this.game = restored;
+    this.stopCuratorMotion();
     this.closeRoomViewer();
     this.lastSavedAt = snapshot.savedAt;
     this.savedGameAvailable = true;
-    this.logEvent("Resumed a saved voyage.");
+    this.logEvent("Resumed the saved island run.");
     this.checkGoals();
     this.persistGameSnapshot();
     this.syncSimulationLoop(true);
@@ -927,6 +974,20 @@ export class MuseumGameController {
     this.openStudyMode(this.nextStudyMode(), miniGame);
   }
 
+  selectRoom(roomId: string): void {
+    if (!this.game) {
+      return;
+    }
+
+    const room = this.findRoom(roomId);
+
+    if (!room) {
+      return;
+    }
+
+    this.game.selectedRoomId = room.id;
+  }
+
   handleRoomNodeClick(roomId: string): void {
     if (!this.game) {
       return;
@@ -939,23 +1000,6 @@ export class MuseumGameController {
     }
 
     this.game.selectedRoomId = room.id;
-
-    if (!this.isRoomUnlocked(room.id) && this.canUnlockRoom(room)) {
-      this.unlockRoom(room.id);
-      return;
-    }
-
-    if (!this.isRoomUnlocked(room.id)) {
-      this.logEvent(`${room.label} is still locked. Earn more diplomas or clear the prerequisite routes.`);
-      return;
-    }
-
-    if (this.hasImmersiveScene(room)) {
-      this.openRoomViewer(room.id);
-      return;
-    }
-
-    this.setCuratorTarget(roomCenter(room));
   }
 
   moveCuratorToPointer(event: MouseEvent, worldElement: HTMLElement): void {
@@ -968,6 +1012,22 @@ export class MuseumGameController {
       x: ((event.clientX - bounds.left) / bounds.width) * WORLD.width,
       y: ((event.clientY - bounds.top) / bounds.height) * WORLD.height
     };
+
+    this.moveCuratorToWorldPoint(target);
+  }
+
+  moveCuratorToWorldPoint(target: Point): void {
+    if (!this.game) {
+      return;
+    }
+
+    const room = this.findRoomNearPoint(target);
+
+    if (room) {
+      this.game.selectedRoomId = room.id;
+      this.setCuratorTarget(roomCenter(room));
+      return;
+    }
 
     this.setCuratorTarget(target);
   }
@@ -985,6 +1045,7 @@ export class MuseumGameController {
 
     if (action === "unlock") {
       this.unlockRoom(roomId);
+      this.focusRoom(room);
       return;
     }
 
@@ -1008,7 +1069,27 @@ export class MuseumGameController {
       return;
     }
 
-    this.setCuratorTarget(roomCenter(room));
+    this.focusRoom(room);
+  }
+
+  focusSelectedRoom(): void {
+    const room = this.selectedRoom;
+
+    if (!room) {
+      return;
+    }
+
+    this.focusRoom(room);
+  }
+
+  activateSelectedRoomPrimaryAction(): void {
+    const room = this.selectedRoom;
+
+    if (!room) {
+      return;
+    }
+
+    this.activateRoomPrimaryAction(room);
   }
 
   closeModal(): void {
@@ -1017,6 +1098,7 @@ export class MuseumGameController {
     }
 
     this.game.activeModal = null;
+    this.stopCuratorMotion();
     this.clearMovementKeys();
     this.syncSimulationLoop(true);
   }
@@ -1250,6 +1332,7 @@ export class MuseumGameController {
     }
 
     this.game.selectedRoomId = room.id;
+    this.stopCuratorMotion();
     const entryEdge =
       this.preferredForwardEdge(startNode, null, 180, { preferTraversable: true }) ??
       this.preferredForwardEdge(startNode, null, 180);
@@ -1266,6 +1349,7 @@ export class MuseumGameController {
   closeRoomViewer(): void {
     this.viewerState = null;
     this.viewerHistory = [];
+    this.stopCuratorMotion();
     this.clearMovementKeys();
     this.syncSimulationLoop(true);
   }
@@ -1352,6 +1436,7 @@ export class MuseumGameController {
     }
 
     this.game.activeModal = modal;
+    this.stopCuratorMotion();
     this.syncSimulationLoop(true);
   }
 
@@ -2007,6 +2092,14 @@ export class MuseumGameController {
       }
     }
 
+    if (key === SPRINT_KEY) {
+      if (this.game?.activeModal || this.viewerState) {
+        this.keys.delete(SPRINT_KEY);
+      } else {
+        this.keys.add(SPRINT_KEY);
+      }
+    }
+
     if (key === "Escape") {
       if (this.viewerState) {
         this.closeRoomViewer();
@@ -2504,10 +2597,77 @@ export class MuseumGameController {
       return;
     }
 
+    this.curatorVelocityX *= 0.42;
+    this.curatorVelocityY *= 0.42;
     this.game.curator.target = {
       x: clamp(target.x, 20, WORLD.width - 20),
       y: clamp(target.y, 20, WORLD.height - 20)
     };
+  }
+
+  private focusRoom(room: RoomBlueprint): void {
+    if (!this.game) {
+      return;
+    }
+
+    this.game.selectedRoomId = room.id;
+    this.setCuratorTarget(roomCenter(room));
+  }
+
+  private activateRoomPrimaryAction(room: RoomBlueprint): void {
+    if (!this.game) {
+      return;
+    }
+
+    if (!this.isRoomUnlocked(room.id)) {
+      if (this.canUnlockRoom(room)) {
+        this.unlockRoom(room.id);
+      } else {
+        this.logEvent(`${room.label} is still locked. Earn more diplomas or clear the prerequisite zones.`);
+      }
+
+      this.focusRoom(room);
+      return;
+    }
+
+    if (this.hasImmersiveScene(room)) {
+      this.openRoomViewer(room.id);
+      return;
+    }
+
+    if (room.miniGameId) {
+      this.openMiniGame(room.miniGameId);
+      return;
+    }
+
+    this.tourRoom(room.id);
+  }
+
+  private findRoomNearPoint(target: Point): RoomBlueprint | undefined {
+    let closestRoom: RoomBlueprint | undefined;
+    let closestDistance = Infinity;
+
+    for (const room of this.content.roomBlueprints) {
+      const left = room.position.x;
+      const right = room.position.x + room.position.width;
+      const top = room.position.y;
+      const bottom = room.position.y + room.position.height;
+      const clampedX = clamp(target.x, left, right);
+      const clampedY = clamp(target.y, top, bottom);
+      const distanceToRoom = Math.hypot(target.x - clampedX, target.y - clampedY);
+
+      if (distanceToRoom < closestDistance) {
+        closestDistance = distanceToRoom;
+        closestRoom = room;
+      }
+    }
+
+    return closestDistance <= 80 ? closestRoom : undefined;
+  }
+
+  private stopCuratorMotion(): void {
+    this.curatorVelocityX = 0;
+    this.curatorVelocityY = 0;
   }
 
   private spawnCoin(position: Point, value: number): void {
@@ -2550,7 +2710,7 @@ export class MuseumGameController {
     const total = collected.reduce((sum, coin) => sum + coin.value, 0);
     this.game.coins += total;
     this.game.revenueEarned += total;
-    this.logEvent(`Collected ${total} drift coins from the route.`);
+    this.logEvent(`Collected ${total} pickups from the island.`);
     this.checkGoals();
   }
 
@@ -2579,17 +2739,60 @@ export class MuseumGameController {
       moveX += 1;
     }
 
-    if (moveX || moveY) {
+    const hasInput = moveX !== 0 || moveY !== 0;
+    const sprintMultiplier = this.keys.has(SPRINT_KEY) ? 1.24 : 1;
+    const topSpeed = curator.speed * sprintMultiplier;
+    const acceleration = topSpeed * (hasInput ? 11.5 : 9.2);
+    const maxStep = acceleration * deltaSeconds;
+
+    if (hasInput) {
       const normal = Math.hypot(moveX, moveY) || 1;
-      curator.x += (moveX / normal) * curator.speed * deltaSeconds;
-      curator.y += (moveY / normal) * curator.speed * deltaSeconds;
+      const desiredX = (moveX / normal) * topSpeed;
+      const desiredY = (moveY / normal) * topSpeed;
+      this.curatorVelocityX = approachNumber(this.curatorVelocityX, desiredX, maxStep);
+      this.curatorVelocityY = approachNumber(this.curatorVelocityY, desiredY, maxStep);
       curator.target = null;
     } else if (curator.target) {
-      moveToward(curator, curator.target, curator.speed, deltaSeconds);
+      const dx = curator.target.x - curator.x;
+      const dy = curator.target.y - curator.y;
+      const distanceToTarget = Math.hypot(dx, dy);
+      const stopRadius = Math.max(4, curator.radius * 0.22);
+      const easeRadius = Math.max(28, curator.radius * 1.2);
+
+      if (distanceToTarget <= stopRadius) {
+        curator.x = curator.target.x;
+        curator.y = curator.target.y;
+        curator.target = null;
+        this.stopCuratorMotion();
+      } else {
+        const easedRatio = Math.min(1, distanceToTarget / easeRadius);
+        const targetSpeed = clamp(
+          topSpeed * (0.22 + easedRatio * 0.88),
+          curator.speed * 0.2,
+          topSpeed * 1.04
+        );
+        const desiredX = (dx / distanceToTarget) * targetSpeed;
+        const desiredY = (dy / distanceToTarget) * targetSpeed;
+        this.curatorVelocityX = approachNumber(this.curatorVelocityX, desiredX, maxStep);
+        this.curatorVelocityY = approachNumber(this.curatorVelocityY, desiredY, maxStep);
+      }
+    } else {
+      this.curatorVelocityX = approachNumber(this.curatorVelocityX, 0, topSpeed * 12 * deltaSeconds);
+      this.curatorVelocityY = approachNumber(this.curatorVelocityY, 0, topSpeed * 12 * deltaSeconds);
     }
+
+    curator.x += this.curatorVelocityX * deltaSeconds;
+    curator.y += this.curatorVelocityY * deltaSeconds;
 
     curator.x = clamp(curator.x, 20, WORLD.width - 20);
     curator.y = clamp(curator.y, 20, WORLD.height - 20);
+
+    if (curator.target && distance(curator, curator.target) <= 4) {
+      curator.x = curator.target.x;
+      curator.y = curator.target.y;
+      curator.target = null;
+      this.stopCuratorMotion();
+    }
   }
 
   private pickUnlockedDestination(): RoomBlueprint {
@@ -2724,7 +2927,7 @@ export class MuseumGameController {
     }
 
     this.game.pendingCall = this.nextStudyMode();
-    this.logEvent(`${formatStudyModeLabel(this.game.pendingCall)} round queued on the route board.`);
+    this.logEvent(`${formatStudyModeLabel(this.game.pendingCall)} round queued at the storm board.`);
   }
 
   private markImmersiveVisit(room: RoomBlueprint): void {
@@ -2756,7 +2959,7 @@ export class MuseumGameController {
     this.game.reputation = clamp(this.game.reputation + 3 + level, 0, 100);
     this.game.curiosity = clamp(this.game.curiosity + 4 + level, 0, 100);
     this.spawnCoin(roomCenter(room), this.roomTourRewardValue(room));
-    this.logEvent(`Drift route hosted in ${room.label}.`);
+    this.logEvent(`Zone sweep completed in ${room.label}.`);
     this.checkGoals();
   }
 
@@ -3032,7 +3235,7 @@ export class MuseumGameController {
               message:
                 typeof (entry as Record<string, unknown>).message === "string"
                   ? (entry as Record<string, unknown>).message as string
-                  : "Museum log restored."
+                  : "Island log restored."
             }))
             .slice(0, ACTIVITY_LOG_LIMIT)
         : [],

@@ -1,15 +1,16 @@
 import { buildSplatConfig } from "./splat-config.js";
 import { loadConfiguredEnv } from "./load-env.js";
-import { runPhotospherePipeline } from "./photosphere-pipeline.js";
+import { runSplatPipeline } from "./splat-pipeline.js";
 
 async function main() {
   loadConfiguredEnv();
   const config = buildSplatConfig();
-  const summary = await runPhotospherePipeline(config);
+  const summary = await runSplatPipeline(config);
 
   console.log(
-    `Processed ${summary.assetsDiscovered} room assets into ${summary.photospheresCompleted} panorama fallbacks for the splat-first viewer using ${summary.model}.`
+    `Compiled ${summary.splatsWritten} gaussian splat assets from ${summary.librariesDiscovered} room render libraries.`,
   );
+  console.log(`View refresh mode: ${summary.refreshViews ? `Nano Banana via ${summary.model}` : "tracked render-library fallback"}`);
   console.log(`Unique failures: ${summary.uniqueFailures}`);
 
   if (summary.uniqueFailures > 0) {

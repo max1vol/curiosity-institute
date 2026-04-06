@@ -15,6 +15,7 @@ import {
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
 const SPLAT_EXTENSIONS = new Map([
+  [".gsplat", "gsplat"],
   [".ksplat", "ksplat"],
   [".spz", "spz"],
   [".splat", "splat"],
@@ -309,8 +310,8 @@ export async function buildGameData({ repoRoot = path.resolve(".") } = {}) {
       : entry.splatFiles
         .slice()
         .sort((left, right) => {
-          const leftRank = [".ksplat", ".spz", ".splat", ".ply"].indexOf(path.extname(left).toLowerCase());
-          const rightRank = [".ksplat", ".spz", ".splat", ".ply"].indexOf(path.extname(right).toLowerCase());
+          const leftRank = [".gsplat", ".ksplat", ".spz", ".splat", ".ply"].indexOf(path.extname(left).toLowerCase());
+          const rightRank = [".gsplat", ".ksplat", ".spz", ".splat", ".ply"].indexOf(path.extname(right).toLowerCase());
           return leftRank - rightRank || left.localeCompare(right);
         })[0];
 
